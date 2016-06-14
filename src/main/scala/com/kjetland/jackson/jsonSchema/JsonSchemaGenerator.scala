@@ -70,72 +70,76 @@ class JsonSchemaGenerator(rootObjectMapper:ObjectMapper) {
     }
 
     override def expectObjectFormat(_type: JavaType) = {
-      node.put("type", "object")
 
-      val propertiesNode = JsonNodeFactory.instance.objectNode()
-      node.set("properties", propertiesNode)
+      val subTypes: List[SubTypeAndTypeName[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
+        ann: JsonSubTypes => ann.value().map {
+          t: JsonSubTypes.Type =>
+            SubTypeAndTypeName(t.value(), t.name())
+        }.toList
+      }.getOrElse(List())
 
-      new JsonObjectFormatVisitor with MySerializerProvider {
-        override def optionalProperty(writer: BeanProperty): Unit = {
-          val propertyName = writer.getName
-          val propertyType = writer.getType
-          l(s"${propertyName}: ${propertyType}")
+      if (subTypes.nonEmpty) {
+        //l(s"polymorphism - subTypes: $subTypes")
 
-          // check for polymorphism
+        val anyOfArrayNode = JsonNodeFactory.instance.arrayNode()
+        node.set("anyOf", anyOfArrayNode)
 
+        val subTypeSpecifierPropertyName: String = _type.getRawClass.getDeclaredAnnotation(classOf[JsonTypeInfo]).property()
 
-          //val polymorphism:Boolean = !propertyType.isConcrete && !propertyType.isArrayType && !propertyType.isCollectionLikeType && !propertyType.isContainerType && propertyType.isAbstract
+        subTypes.foreach {
+          subType: SubTypeAndTypeName[_] =>
+            l(s"polymorphism - subType: $subType")
 
-          val subTypes: List[SubTypeAndTypeName[_]] = Option(propertyType.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
-            ann: JsonSubTypes => ann.value().map {
-              t: JsonSubTypes.Type =>
-                SubTypeAndTypeName(t.value(), t.name())
-            }.toList
-          }.getOrElse(List())
+            val thisAnyOfNode = JsonNodeFactory.instance.objectNode()
+            anyOfArrayNode.add(thisAnyOfNode)
 
-          if (subTypes.nonEmpty) {
-            //l(s"polymorphism - subTypes: $subTypes")
+            val childVisitor = createChild( thisAnyOfNode )
+            objectMapper.acceptJsonFormatVisitor(subType.clazz, childVisitor)
 
-            val anyOfNode = JsonNodeFactory.instance.objectNode()
-            propertiesNode.set(propertyName, anyOfNode)
+            // must inject the 'type'-param and value as enum with only one possible value
+            val propertiesNode = thisAnyOfNode.get("properties").asInstanceOf[ObjectNode]
 
-            val anyOfArrayNode = JsonNodeFactory.instance.arrayNode()
-            anyOfNode.set("anyOf", anyOfArrayNode)
+            val enumValuesNode = JsonNodeFactory.instance.arrayNode()
+            enumValuesNode.add(subType.subTypeName)
 
-            val subTypeSpecifierPropertyName: String = propertyType.getRawClass.getDeclaredAnnotation(classOf[JsonTypeInfo]).property()
+            val enumObjectNode = JsonNodeFactory.instance.objectNode()
+            enumObjectNode.set("enum", enumValuesNode)
 
-            subTypes.foreach {
-              subType: SubTypeAndTypeName[_] =>
-                l(s"polymorphism - subType: $subType")
-
-                val thisPropertyNode = JsonNodeFactory.instance.objectNode()
-                anyOfArrayNode.add(thisPropertyNode)
-
-                val childVisitor = createChild( thisPropertyNode )
-                objectMapper.acceptJsonFormatVisitor(subType.clazz, childVisitor)
-
-                // must inject the 'type'-param and value as enum with only one possible value
-                thisPropertyNode.get("properties").asInstanceOf[ObjectNode].put(subTypeSpecifierPropertyName, subType.subTypeName)
-            }
-
-          } else {
-
-            val thisPropertyNode = JsonNodeFactory.instance.objectNode()
-            propertiesNode.set(propertyName, thisPropertyNode)
-
-            val childNode = JsonNodeFactory.instance.objectNode()
-
-            objectMapper.acceptJsonFormatVisitor(propertyType, createChild(thisPropertyNode))
-          }
-
+            propertiesNode.set(subTypeSpecifierPropertyName, enumObjectNode)
         }
 
-        override def optionalProperty(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = ???
+        null // Returning null to stop jackson from visiting this object since we have done it manually
 
-        override def property(writer: BeanProperty): Unit = ???
+      } else {
+        node.put("type", "object")
 
-        override def property(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = ???
+        val propertiesNode = JsonNodeFactory.instance.objectNode()
+        node.set("properties", propertiesNode)
+
+        new JsonObjectFormatVisitor with MySerializerProvider {
+          override def optionalProperty(writer: BeanProperty): Unit = {
+            val propertyName = writer.getName
+            val propertyType = writer.getType
+            l(s"${propertyName}: ${propertyType}")
+
+              val thisPropertyNode = JsonNodeFactory.instance.objectNode()
+              propertiesNode.set(propertyName, thisPropertyNode)
+
+              val childNode = JsonNodeFactory.instance.objectNode()
+
+              objectMapper.acceptJsonFormatVisitor(propertyType, createChild(thisPropertyNode))
+
+          }
+
+          override def optionalProperty(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = ???
+
+          override def property(writer: BeanProperty): Unit = ???
+
+          override def property(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = ???
+        }
+
       }
+
     }
 
     override def expectBooleanFormat(_type: JavaType) = new JsonBooleanFormatVisitor {
@@ -154,9 +158,16 @@ class JsonSchemaGenerator(rootObjectMapper:ObjectMapper) {
 
 
   def generateJsonSchema[T <: Any](clazz:Class[T]):JsonNode = {
-    val rootVisitor = new MyJsonFormatVisitorWrapper(rootObjectMapper)
+
+    val rootNode = JsonNodeFactory.instance.objectNode()
+
+    // Specify that this is a v4 json schema
+    rootNode.put("$schema", "http://json-schema.org/draft-04/schema#")
+
+    val rootVisitor = new MyJsonFormatVisitorWrapper(rootObjectMapper, node = rootNode)
     rootObjectMapper.acceptJsonFormatVisitor(clazz, rootVisitor)
-    rootVisitor.node
+
+    rootNode
   }
 
 }
