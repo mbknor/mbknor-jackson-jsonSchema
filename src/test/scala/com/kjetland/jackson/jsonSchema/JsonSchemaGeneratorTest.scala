@@ -3,7 +3,7 @@ package com.kjetland.jackson.jsonSchema
 import com.fasterxml.jackson.annotation.JsonValue
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import com.github.fge.jsonschema.main.JsonSchemaFactory
-import com.kjetland.jackson.jsonSchema.testData.{Child1, Parent, PojoWithParent}
+import com.kjetland.jackson.jsonSchema.testData.{Child1, ManyPrimitives, Parent, PojoWithParent}
 import org.scalatest.{FunSuite, Matchers}
 
 class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
@@ -67,6 +67,13 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
     println(schemaAsJson)
   }
 
+  test("primitives") {
+    val jsonNode = assertToFromJson(manyPrimitives)
+    val schemaAsJson = generateAndValidateSchema(manyPrimitives.getClass, Some(jsonNode))
+    println("--------------------------------------------")
+    println(schemaAsJson)
+  }
+
 
 }
 
@@ -84,4 +91,7 @@ trait TestData {
     p.child = child1
     p
   }
+
+  val manyPrimitives = new ManyPrimitives("s1", 1, 2, true, false, 0.1, 0.2)
+
 }

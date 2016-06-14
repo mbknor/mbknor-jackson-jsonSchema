@@ -1,6 +1,6 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
-public class Child2 {
+public class Child2 extends Parent {
 
     public Integer child2int;
 

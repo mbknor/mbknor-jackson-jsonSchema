@@ -40,9 +40,8 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
       node.put("type", "string")
 
       new JsonStringFormatVisitor {
-        override def enumTypes(enums: util.Set[String]): Unit = l(s"expectStringFormat - enums: $enums")
-
-        override def format(format: JsonValueFormat): Unit = l(s"expectStringFormat - format: $format")
+        override def enumTypes(enums: util.Set[String]): Unit = l(s"JsonStringFormatVisitor.enumTypes: ${enums}")
+        override def format(format: JsonValueFormat): Unit = l(s"JsonStringFormatVisitor.format: ${format}")
       }
     }
 
@@ -64,11 +63,9 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
       node.put("type", "number")
 
       new JsonNumberFormatVisitor {
-        override def numberType(_type: NumberType): Unit = ???
-
-        override def enumTypes(enums: util.Set[String]): Unit = ???
-
-        override def format(format: JsonValueFormat): Unit = ???
+        override def numberType(_type: NumberType): Unit = l(s"JsonNumberFormatVisitor.numberType: ${_type}")
+        override def enumTypes(enums: util.Set[String]): Unit = l(s"JsonNumberFormatVisitor.enumTypes: ${enums}")
+        override def format(format: JsonValueFormat): Unit = l(s"JsonNumberFormatVisitor.format: ${format}")
       }
     }
 
@@ -86,11 +83,9 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
       node.put("type", "integer")
 
       new JsonIntegerFormatVisitor {
-        override def numberType(_type: NumberType): Unit = l(s"expectIntegerFormat - type = ${_type}")
-
-        override def enumTypes(enums: util.Set[String]): Unit = ???
-
-        override def format(format: JsonValueFormat): Unit = ???
+        override def numberType(_type: NumberType): Unit = l(s"JsonIntegerFormatVisitor.numberType: ${_type}")
+        override def enumTypes(enums: util.Set[String]): Unit = l(s"JsonIntegerFormatVisitor.enumTypes: ${enums}")
+        override def format(format: JsonValueFormat): Unit = l(s"JsonIntegerFormatVisitor.format: ${format}")
       }
     }
 
@@ -106,9 +101,8 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
       node.put("type", "boolean")
 
       new JsonBooleanFormatVisitor {
-        override def enumTypes(enums: util.Set[String]): Unit = ???
-
-        override def format(format: JsonValueFormat): Unit = ???
+        override def enumTypes(enums: util.Set[String]): Unit = l(s"JsonBooleanFormatVisitor.enumTypes: ${enums}")
+        override def format(format: JsonValueFormat): Unit = l(s"JsonBooleanFormatVisitor.format: ${format}")
       }
     }
 
@@ -138,7 +132,7 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
         //l(s"polymorphism - subTypes: $subTypes")
 
         val anyOfArrayNode = JsonNodeFactory.instance.arrayNode()
-        node.set("anyOf", anyOfArrayNode)
+        node.set("oneOf", anyOfArrayNode)
 
         val subTypeSpecifierPropertyName: String = _type.getRawClass.getDeclaredAnnotation(classOf[JsonTypeInfo]).property()
 
@@ -146,20 +140,26 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
           subType: SubTypeAndTypeName[_] =>
             l(s"polymorphism - subType: $subType")
 
-            val thisAnyOfNode = JsonNodeFactory.instance.objectNode()
-            anyOfArrayNode.add(thisAnyOfNode)
+            val thisOneOfNode = JsonNodeFactory.instance.objectNode()
 
-            val childVisitor = createChild(thisAnyOfNode)
+            // Set the title = subTypeName
+            thisOneOfNode.put("title", subType.subTypeName)
+
+            anyOfArrayNode.add(thisOneOfNode)
+
+            val childVisitor = createChild(thisOneOfNode)
             objectMapper.acceptJsonFormatVisitor(subType.clazz, childVisitor)
 
             // must inject the 'type'-param and value as enum with only one possible value
-            val propertiesNode = thisAnyOfNode.get("properties").asInstanceOf[ObjectNode]
+            val propertiesNode = thisOneOfNode.get("properties").asInstanceOf[ObjectNode]
 
             val enumValuesNode = JsonNodeFactory.instance.arrayNode()
             enumValuesNode.add(subType.subTypeName)
 
             val enumObjectNode = JsonNodeFactory.instance.objectNode()
             enumObjectNode.set("enum", enumValuesNode)
+            enumObjectNode.put("default", subType.subTypeName)
+
 
             propertiesNode.set(subTypeSpecifierPropertyName, enumObjectNode)
         }
@@ -187,11 +187,15 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
           }
 
-          override def optionalProperty(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = ???
+          override def optionalProperty(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = {
+            l(s"JsonObjectFormatVisitor.optionalProperty: name:${name} handler:${handler} propertyTypeHint:${propertyTypeHint}")
+          }
 
-          override def property(writer: BeanProperty): Unit = ???
+          override def property(writer: BeanProperty): Unit = l(s"JsonObjectFormatVisitor.property: name:${writer}")
 
-          override def property(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = ???
+          override def property(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = {
+            l(s"JsonObjectFormatVisitor.property: name:${name} handler:${handler} propertyTypeHint:${propertyTypeHint}")
+          }
         }
 
       }
