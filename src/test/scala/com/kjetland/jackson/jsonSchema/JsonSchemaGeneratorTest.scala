@@ -2,6 +2,7 @@ package com.kjetland.jackson.jsonSchema
 
 import com.fasterxml.jackson.annotation.JsonValue
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData.{Child1, Parent, PojoWithParent}
 import org.scalatest.{FunSuite, Matchers}
 
@@ -16,35 +17,52 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
   }
 
 
-  def assertToFromJson(o:Any): Unit = {
+  def assertToFromJson(o:Any): JsonNode = {
     assertToFromJson(o, o.getClass)
   }
 
-  def assertToFromJson(o:Any, deserType:Class[_]): Unit = {
+  def assertToFromJson(o:Any, deserType:Class[_]): JsonNode = {
     val json = objectMapper.writeValueAsString(o)
     println(s"json: $json")
-    val r = objectMapper.readValue(json, deserType)
+    val jsonNode = objectMapper.readTree(json)
+    val r = objectMapper.treeToValue(jsonNode, deserType)
     assert( o == r)
+    jsonNode
+  }
+
+  def useSchema(jsonSchema:JsonNode, jsonToTestAgainstSchema:Option[JsonNode] = None): Unit = {
+    val schemaValidator = JsonSchemaFactory.byDefault().getJsonSchema(jsonSchema)
+    jsonToTestAgainstSchema.foreach {
+      node =>
+        val r = schemaValidator.validate(node)
+        if ( !r.isSuccess ) {
+          throw new Exception("json does not validate agains schema: " + r)
+        }
+
+    }
+  }
+
+  def generateAndValidateSchema(clazz:Class[_], jsonToTestAgainstSchema:Option[JsonNode] = None):String = {
+    val schema = jsonSchemaGenerator.generateJsonSchema(clazz)
+    useSchema(schema, jsonToTestAgainstSchema)
+
+    asPrettyJson(schema)
   }
 
   test("polymorphism") {
-    assertToFromJson(pojoWithParent)
+    val jsonNode = assertToFromJson(pojoWithParent)
 
-    val schema = jsonSchemaGenerator.generateJsonSchema(pojoWithParent.getClass)
-
-    val schemaAsJson = asPrettyJson(schema)
+    val schemaAsJson = generateAndValidateSchema(pojoWithParent.getClass, Some(jsonNode))
     println("--------------------------------------------")
     println(schemaAsJson)
 
   }
 
   test("polymorphism - first Level") {
-    assertToFromJson(child1)
+    val jsonNode = assertToFromJson(child1)
     assertToFromJson(child1, classOf[Parent])
 
-    val schema = jsonSchemaGenerator.generateJsonSchema(classOf[Parent])
-
-    val schemaAsJson = asPrettyJson(schema)
+    val schemaAsJson = generateAndValidateSchema(classOf[Parent], Some(jsonNode))
     println("--------------------------------------------")
     println(schemaAsJson)
   }

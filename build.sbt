@@ -42,7 +42,8 @@ lazy val deps  = Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
   "org.slf4j" % "slf4j-api" % slf4jVersion,
   "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test",
-  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test"
+  "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
+  "com.github.fge" % "json-schema-validator" % "2.2.6" % "test"
 )
 
 lazy val root = (project in file("."))
