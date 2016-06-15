@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory
 
 class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
+  import scala.collection.JavaConversions._
+
   val log = LoggerFactory.getLogger(getClass)
 
   trait MySerializerProvider {
@@ -21,6 +23,23 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
     def setProvider(provider: SerializerProvider): Unit = this.provider = provider
 
+  }
+
+  trait EnumSupport {
+
+    val _node: ObjectNode
+
+    def enumTypes(enums: util.Set[String]): Unit = {
+      // l(s"JsonStringFormatVisitor-enum.enumTypes: ${enums}")
+
+      val enumValuesNode = JsonNodeFactory.instance.arrayNode()
+      _node.set("enum", enumValuesNode)
+
+      enums.toSet[String].foreach {
+        enumValue =>
+          enumValuesNode.add(enumValue)
+      }
+    }
   }
 
 
@@ -35,14 +54,16 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
     def createChild(childNode: ObjectNode): MyJsonFormatVisitorWrapper = new MyJsonFormatVisitorWrapper(objectMapper, indent + "   ", childNode)
 
     override def expectStringFormat(_type: JavaType) = {
-      l("expectStringFormat")
+      l(s"expectStringFormat - _type: ${_type}")
 
       node.put("type", "string")
 
-      new JsonStringFormatVisitor {
-        override def enumTypes(enums: util.Set[String]): Unit = l(s"JsonStringFormatVisitor.enumTypes: ${enums}")
+      new JsonStringFormatVisitor with EnumSupport {
+        val _node = node
         override def format(format: JsonValueFormat): Unit = l(s"JsonStringFormatVisitor.format: ${format}")
       }
+
+
     }
 
     override def expectArrayFormat(_type: JavaType) = {
@@ -62,16 +83,15 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
       node.put("type", "number")
 
-      new JsonNumberFormatVisitor {
+      new JsonNumberFormatVisitor  with EnumSupport {
+        val _node = node
         override def numberType(_type: NumberType): Unit = l(s"JsonNumberFormatVisitor.numberType: ${_type}")
-        override def enumTypes(enums: util.Set[String]): Unit = l(s"JsonNumberFormatVisitor.enumTypes: ${enums}")
         override def format(format: JsonValueFormat): Unit = l(s"JsonNumberFormatVisitor.format: ${format}")
       }
     }
 
     override def expectAnyFormat(_type: JavaType) = {
-      l("expectAnyFormat")
-      ???
+      log.warn(s"Not able to generate jsonSchema-info for type: ${_type} - probably using custom serializer which does not override acceptJsonFormatVisitor")
       new JsonAnyFormatVisitor {
       }
 
@@ -82,9 +102,9 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
       node.put("type", "integer")
 
-      new JsonIntegerFormatVisitor {
+      new JsonIntegerFormatVisitor with EnumSupport {
+        val _node = node
         override def numberType(_type: NumberType): Unit = l(s"JsonIntegerFormatVisitor.numberType: ${_type}")
-        override def enumTypes(enums: util.Set[String]): Unit = l(s"JsonIntegerFormatVisitor.enumTypes: ${enums}")
         override def format(format: JsonValueFormat): Unit = l(s"JsonIntegerFormatVisitor.format: ${format}")
       }
     }
@@ -100,8 +120,8 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
       node.put("type", "boolean")
 
-      new JsonBooleanFormatVisitor {
-        override def enumTypes(enums: util.Set[String]): Unit = l(s"JsonBooleanFormatVisitor.enumTypes: ${enums}")
+      new JsonBooleanFormatVisitor with EnumSupport {
+        val _node = node
         override def format(format: JsonValueFormat): Unit = l(s"JsonBooleanFormatVisitor.format: ${format}")
       }
     }

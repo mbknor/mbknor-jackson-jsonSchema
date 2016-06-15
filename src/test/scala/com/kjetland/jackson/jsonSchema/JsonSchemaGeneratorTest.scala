@@ -1,14 +1,19 @@
 package com.kjetland.jackson.jsonSchema
 
 import com.fasterxml.jackson.annotation.JsonValue
+import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import com.github.fge.jsonschema.main.JsonSchemaFactory
-import com.kjetland.jackson.jsonSchema.testData.{Child1, ManyPrimitives, Parent, PojoWithParent}
+import com.kjetland.jackson.jsonSchema.testData._
 import org.scalatest.{FunSuite, Matchers}
 
 class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
 
   val objectMapper = new ObjectMapper()
+  val simpleModule = new SimpleModule()
+  simpleModule.addSerializer(classOf[PojoWithCustomSerializer], new PojoWithCustomSerializerSerializer)
+  simpleModule.addDeserializer(classOf[PojoWithCustomSerializer], new PojoWithCustomSerializerDeserializer)
+  objectMapper.registerModule(simpleModule)
 
   val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper)
 
@@ -74,6 +79,14 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
     println(schemaAsJson)
   }
 
+  test("custom serializer not overriding JsonSerializer.acceptJsonFormatVisitor") {
+
+    val jsonNode = assertToFromJson(pojoWithCustomSerializer)
+    val schemaAsJson = generateAndValidateSchema(pojoWithCustomSerializer.getClass, Some(jsonNode))
+    println("--------------------------------------------")
+    println(schemaAsJson)
+  }
+
 
 }
 
@@ -92,6 +105,11 @@ trait TestData {
     p
   }
 
-  val manyPrimitives = new ManyPrimitives("s1", 1, 2, true, false, 0.1, 0.2)
+  val manyPrimitives = new ManyPrimitives("s1", 1, 2, true, false, 0.1, 0.2, MyEnum.B)
 
+  val pojoWithCustomSerializer = {
+    val p = new PojoWithCustomSerializer
+    p.myString = "xxx"
+    p
+  }
 }
