@@ -7,7 +7,7 @@ import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter
 import com.fasterxml.jackson.databind._
-import com.fasterxml.jackson.databind.node.{JsonNodeFactory, ObjectNode}
+import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import org.slf4j.LoggerFactory
 
 class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
@@ -186,11 +186,20 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
             enumValuesNode.add(subType.subTypeName)
 
             val enumObjectNode = JsonNodeFactory.instance.objectNode()
+            enumObjectNode.put("type", "string")
             enumObjectNode.set("enum", enumValuesNode)
             enumObjectNode.put("default", subType.subTypeName)
 
-
             propertiesNode.set(subTypeSpecifierPropertyName, enumObjectNode)
+
+            val requiredNode:ArrayNode = Option(propertiesNode.get("required")).map(_.asInstanceOf[ArrayNode]).getOrElse {
+              val rn = JsonNodeFactory.instance.arrayNode()
+              thisOneOfNode.set("required", rn)
+              rn
+            }
+
+            requiredNode.add(subTypeSpecifierPropertyName)
+
         }
 
         null // Returning null to stop jackson from visiting this object since we have done it manually
