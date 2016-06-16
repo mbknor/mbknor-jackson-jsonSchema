@@ -6,7 +6,6 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.11.8",
   publishMavenStyle := true,
   publishArtifact in Test := false,
-
   publishTo := {
     val nexus = "http://nexus.nextgentel.net/content/repositories/"
     if (isSnapshot.value)

@@ -21,9 +21,7 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
     var provider: SerializerProvider = null
 
     def getProvider: SerializerProvider = provider
-
     def setProvider(provider: SerializerProvider): Unit = this.provider = provider
-
   }
 
   trait EnumSupport {
@@ -46,16 +44,18 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
 
   case class DefinitionInfo(ref:Option[String], jsonObjectFormatVisitor: Option[JsonObjectFormatVisitor])
 
+  // Class that manages creating new defenitions or getting $refs to existing definitions
   class DefinitionsHandler() {
-    var class2Ref = Map[Class[_], String]()
-    val definitionsNode = JsonNodeFactory.instance.objectNode()
+    private var class2Ref = Map[Class[_], String]()
+    private val definitionsNode = JsonNodeFactory.instance.objectNode()
 
 
     case class WorkInProgress(classInProgress:Class[_], nodeInProgress:ObjectNode)
 
+    // Used when 'combining' multiple invocations to getOrCreateDefinition when processing polymorphism.
     var workInProgress:Option[WorkInProgress] = None
 
-    // returns ref
+    // Either creates new definitions or return $ref to existing one
     def getOrCreateDefinition(clazz:Class[_])(objectDefinitionBuilder:(ObjectNode) => Option[JsonObjectFormatVisitor]):DefinitionInfo = {
 
       class2Ref.get(clazz) match {
