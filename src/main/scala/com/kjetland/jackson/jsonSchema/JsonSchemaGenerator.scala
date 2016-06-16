@@ -67,14 +67,23 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
     }
 
     override def expectArrayFormat(_type: JavaType) = {
-      l("expectArrayFormat")
+      l(s"expectArrayFormat - _type: ${_type}")
 
       node.put("type", "array")
 
-      new JsonArrayFormatVisitor with MySerializerProvider {
-        override def itemsFormat(handler: JsonFormatVisitable, elementType: JavaType): Unit = l(s"expectArrayFormat - handler: $handler - elementType: $elementType")
+      val itemsNode = JsonNodeFactory.instance.objectNode()
+      node.set("items", itemsNode)
 
-        override def itemsFormat(format: JsonFormatTypes): Unit = l(s"itemsFormat - format: $format")
+      new JsonArrayFormatVisitor with MySerializerProvider {
+        override def itemsFormat(handler: JsonFormatVisitable, elementType: JavaType): Unit = {
+          l(s"expectArrayFormat - handler: $handler - elementType: $elementType")
+          objectMapper.acceptJsonFormatVisitor(elementType, createChild(itemsNode))
+        }
+
+        override def itemsFormat(format: JsonFormatTypes): Unit = {
+          l(s"itemsFormat - format: $format")
+          itemsNode.put("type", format.value())
+        }
       }
     }
 

@@ -87,14 +87,30 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
     println(schemaAsJson)
   }
 
+  test("pojoWithArrays") {
+
+    val jsonNode = assertToFromJson(pojoWithArrays)
+    val schemaAsJson = generateAndValidateSchema(pojoWithArrays.getClass, Some(jsonNode))
+    println("--------------------------------------------")
+    println(schemaAsJson)
+  }
+
 
 }
 
 trait TestData {
+  import scala.collection.JavaConversions._
   val child1 = {
     val c = new Child1()
     c.parentString = "pv"
     c.child1String = "cs"
+    c
+  }
+
+  val child2 = {
+    val c = new Child2()
+    c.parentString = "pv"
+    c.child2int = 12
     c
   }
 
@@ -112,4 +128,13 @@ trait TestData {
     p.myString = "xxx"
     p
   }
+
+  val pojoWithArrays = new PojoWithArrays(
+    Array(1,2,3),
+    Array("a1","a2","a3"),
+    List("l1", "l2", "l3"),
+    List(child1, child2),
+    List(child1, child2).toArray
+
+  )
 }
