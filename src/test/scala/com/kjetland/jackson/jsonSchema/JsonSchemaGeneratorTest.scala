@@ -49,7 +49,10 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
 
   def generateAndValidateSchema(clazz:Class[_], jsonToTestAgainstSchema:Option[JsonNode] = None):String = {
     val schema = jsonSchemaGenerator.generateJsonSchema(clazz)
-    //println(asPrettyJson(schema))
+
+    println("--------------------------------------------")
+    println(asPrettyJson(schema))
+
     useSchema(schema, jsonToTestAgainstSchema)
 
     asPrettyJson(schema)
@@ -59,8 +62,6 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
     val jsonNode = assertToFromJson(child1)
 
     val schemaAsJson = generateAndValidateSchema(child1.getClass, Some(jsonNode))
-    println("--------------------------------------------")
-    println(schemaAsJson)
 
   }
 
@@ -68,8 +69,6 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
     val jsonNode = assertToFromJson(pojoWithParent)
 
     val schemaAsJson = generateAndValidateSchema(pojoWithParent.getClass, Some(jsonNode))
-    println("--------------------------------------------")
-    println(schemaAsJson)
 
   }
 
@@ -78,38 +77,29 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
     assertToFromJson(child1, classOf[Parent])
 
     val schemaAsJson = generateAndValidateSchema(classOf[Parent], Some(jsonNode))
-    println("--------------------------------------------")
-    println(schemaAsJson)
   }
 
   test("primitives") {
     val jsonNode = assertToFromJson(manyPrimitives)
     val schemaAsJson = generateAndValidateSchema(manyPrimitives.getClass, Some(jsonNode))
-    println("--------------------------------------------")
-    println(schemaAsJson)
   }
 
   test("custom serializer not overriding JsonSerializer.acceptJsonFormatVisitor") {
 
     val jsonNode = assertToFromJson(pojoWithCustomSerializer)
     val schemaAsJson = generateAndValidateSchema(pojoWithCustomSerializer.getClass, Some(jsonNode))
-    println("--------------------------------------------")
-    println(schemaAsJson)
   }
 
   test("pojoWithArrays") {
 
     val jsonNode = assertToFromJson(pojoWithArrays)
     val schemaAsJson = generateAndValidateSchema(pojoWithArrays.getClass, Some(jsonNode))
-    println("--------------------------------------------")
-    println(schemaAsJson)
   }
 
   test("recursivePojo") {
     val jsonNode = assertToFromJson(recursivePojo)
     val schemaAsJson = generateAndValidateSchema(recursivePojo.getClass, Some(jsonNode))
-    println("--------------------------------------------")
-    println(schemaAsJson)
+
   }
 
 

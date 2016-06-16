@@ -2,17 +2,25 @@
 lazy val commonSettings = Seq(
   organization := "com.kjetland",
   organizationName := "mbknor",
-  version := "1.0.0-build-6-SNAPSHOT",
+  version := "1.0.0-build-7-SNAPSHOT",
   scalaVersion := "2.11.8",
   publishMavenStyle := true,
   publishArtifact in Test := false,
+
   publishTo := {
-    val nexus = "https://oss.sonatype.org/"
+    val nexus = "http://nexus.nextgentel.net/content/repositories/"
     if (isSnapshot.value)
-      Some("snapshots" at nexus + "content/repositories/snapshots")
+      Some("snapshots" at nexus + "snapshots/")
     else
-      Some("releases" at nexus + "service/local/staging/deploy/maven2")
+      Some("releases"  at nexus + "thirdparty/")
   },
+//  publishTo := {
+//    val nexus = "https://oss.sonatype.org/"
+//    if (isSnapshot.value)
+//      Some("snapshots" at nexus + "content/repositories/snapshots")
+//    else
+//      Some("releases" at nexus + "service/local/staging/deploy/maven2")
+//  },
   homepage := Some(url("https://github.com/mbknor/mbknor-jackson-jsonSchema")),
   licenses := Seq("MIT" -> url("https://github.com/mbknor/mbknor-jackson-jsonSchema/blob/master/LICENSE.txt")),
   startYear := Some(2016),

@@ -44,8 +44,6 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
   }
 
 
-  case class SubTypeAndTypeName[T](clazz: Class[T], subTypeName: String)
-
   case class DefinitionInfo(ref:Option[String], jsonObjectFormatVisitor: Option[JsonObjectFormatVisitor])
 
   class DefinitionsHandler() {
@@ -224,12 +222,55 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
       }
     }
 
+    case class PolymorphismInfo(typePropertyName:String, subTypeName:String)
+
+    private def extractPolymorphismInfo(clazz:Class[_]):Option[PolymorphismInfo] = {
+      // look for @JsonTypeInfo
+      var superClass = clazz
+      var jsonTypeInfo:JsonTypeInfo = null
+
+      while( jsonTypeInfo == null && superClass != classOf[Object]) {
+        jsonTypeInfo = Option(superClass.getDeclaredAnnotation(classOf[JsonTypeInfo])).map {
+          ann:JsonTypeInfo => ann
+        }.orNull
+        if ( jsonTypeInfo == null ) {
+          superClass = superClass.getSuperclass
+        }
+      }
+
+      if ( jsonTypeInfo == null) {
+        return None
+      }
+
+
+      if ( jsonTypeInfo.include() != JsonTypeInfo.As.PROPERTY) throw new Exception("We only support polymorphism using jsonTypeInfo.include() == JsonTypeInfo.As.PROPERTY")
+      if ( jsonTypeInfo.use != JsonTypeInfo.Id.NAME) throw new Exception("We only support polymorphism using jsonTypeInfo.use == JsonTypeInfo.Id.NAME")
+
+
+      val propertyName = jsonTypeInfo.property()
+
+      // must look at the @JsonSubTypes to find what this current class should be called
+
+      val subTypeName:String = Option(superClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
+        ann: JsonSubTypes => ann.value()
+          .find {
+            t: JsonSubTypes.Type =>
+              t.value() == clazz
+          }.map(_.name()).getOrElse(throw new Exception(s"Did not find info about the class $clazz in @JsonSubTypes on $superClass"))
+      }.getOrElse(throw new Exception(s"Did not find @JsonSubTypes on $superClass"))
+
+
+      Some(PolymorphismInfo(propertyName, subTypeName))
+
+
+
+    }
+
     override def expectObjectFormat(_type: JavaType) = {
 
-      val subTypes: List[SubTypeAndTypeName[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
+      val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
         ann: JsonSubTypes => ann.value().map {
-          t: JsonSubTypes.Type =>
-            SubTypeAndTypeName(t.value(), t.name())
+          t: JsonSubTypes.Type => t.value()
         }.toList
       }.getOrElse(List())
 
@@ -239,35 +280,18 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
         val anyOfArrayNode = JsonNodeFactory.instance.arrayNode()
         node.set("oneOf", anyOfArrayNode)
 
-        val subTypeSpecifierPropertyName: String = _type.getRawClass.getDeclaredAnnotation(classOf[JsonTypeInfo]).property()
-
         subTypes.foreach {
-          subType: SubTypeAndTypeName[_] =>
+          subType: Class[_] =>
             l(s"polymorphism - subType: $subType")
 
-            val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(subType.clazz){
+            val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(subType){
               objectNode =>
 
-                // Set the title = subTypeName
-                objectNode.put("title", subType.subTypeName)
-
                 val childVisitor = createChild(objectNode)
-                objectMapper.acceptJsonFormatVisitor(subType.clazz, childVisitor)
+                objectMapper.acceptJsonFormatVisitor(subType, childVisitor)
 
                 // must inject the 'type'-param and value as enum with only one possible value
                 val propertiesNode = objectNode.get("properties").asInstanceOf[ObjectNode]
-
-                val enumValuesNode = JsonNodeFactory.instance.arrayNode()
-                enumValuesNode.add(subType.subTypeName)
-
-                val enumObjectNode = JsonNodeFactory.instance.objectNode()
-                enumObjectNode.put("type", "string")
-                enumObjectNode.set("enum", enumValuesNode)
-                enumObjectNode.put("default", subType.subTypeName)
-
-                propertiesNode.set(subTypeSpecifierPropertyName, enumObjectNode)
-
-                getRequiredArrayNode(objectNode).add(subTypeSpecifierPropertyName)
 
                 None
             }
@@ -293,6 +317,27 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
             val propertiesNode = JsonNodeFactory.instance.objectNode()
             thisObjectNode.set("properties", propertiesNode)
+
+            extractPolymorphismInfo(_type.getRawClass).map {
+              case pi:PolymorphismInfo =>
+                // This class is a child in a polymorphism config..
+                // Set the title = subTypeName
+                thisObjectNode.put("title", pi.subTypeName)
+
+                // must inject the 'type'-param and value as enum with only one possible value
+                val enumValuesNode = JsonNodeFactory.instance.arrayNode()
+                enumValuesNode.add(pi.subTypeName)
+
+                val enumObjectNode = JsonNodeFactory.instance.objectNode()
+                enumObjectNode.put("type", "string")
+                enumObjectNode.set("enum", enumValuesNode)
+                enumObjectNode.put("default", pi.subTypeName)
+
+                propertiesNode.set(pi.typePropertyName, enumObjectNode)
+
+                getRequiredArrayNode(thisObjectNode).add(pi.typePropertyName)
+
+            }
 
             Some(new JsonObjectFormatVisitor with MySerializerProvider {
               override def optionalProperty(prop: BeanProperty): Unit = {

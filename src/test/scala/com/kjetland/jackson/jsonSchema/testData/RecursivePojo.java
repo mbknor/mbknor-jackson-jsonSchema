@@ -1,11 +1,14 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.util.List;
 
 public class RecursivePojo {
 
     public String myText;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     public List<RecursivePojo> children;
 
     public RecursivePojo() {
