@@ -138,7 +138,7 @@ trait TestData {
     p
   }
 
-  val manyPrimitives = new ManyPrimitives("s1", 1, 2, true, false, 0.1, 0.2, MyEnum.B)
+  val manyPrimitives = new ManyPrimitives("s1", 1, 2, true, false, true, 0.1, 0.2, MyEnum.B)
 
   val pojoWithCustomSerializer = {
     val p = new PojoWithCustomSerializer

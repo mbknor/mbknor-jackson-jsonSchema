@@ -13,7 +13,7 @@ lazy val commonSettings = Seq(
     else
       Some("releases" at nexus + "service/local/staging/deploy/maven2")
   },
-  homepage := Some(url("https://github.com/mbknor/mbknor-jackons-jsonSchema")),
+  homepage := Some(url("https://github.com/mbknor/mbknor-jackson-jsonSchema")),
   licenses := Seq("MIT" -> url("https://github.com/mbknor/mbknor-jackson-jsonSchema/blob/master/LICENSE.txt")),
   startYear := Some(2016),
   pomExtra := (
@@ -40,6 +40,7 @@ val slf4jVersion = "1.7.7"
 
 lazy val deps  = Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
+  "javax.validation" % "validation-api" % "1.1.0.Final",
   "org.slf4j" % "slf4j-api" % slf4jVersion,
   "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",

@@ -1,6 +1,7 @@
 package com.kjetland.jackson.jsonSchema
 
 import java.util
+import javax.validation.constraints.NotNull
 
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
@@ -294,9 +295,9 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
             thisObjectNode.set("properties", propertiesNode)
 
             Some(new JsonObjectFormatVisitor with MySerializerProvider {
-              override def optionalProperty(writer: BeanProperty): Unit = {
-                val propertyName = writer.getName
-                val propertyType = writer.getType
+              override def optionalProperty(prop: BeanProperty): Unit = {
+                val propertyName = prop.getName
+                val propertyType = prop.getType
                 l(s"JsonObjectFormatVisitor - ${propertyName}: ${propertyType}")
 
                 val thisPropertyNode = JsonNodeFactory.instance.objectNode()
@@ -306,9 +307,18 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
                 objectMapper.acceptJsonFormatVisitor(propertyType, createChild(thisPropertyNode))
 
-                // For some types we must set requeired
-                val rawClass = writer.getType.getRawClass
-                if ( rawClass.isPrimitive && rawClass.isAssignableFrom(classOf[Boolean])) {
+                // Check if we should set this property as required
+                val rawClass = prop.getType.getRawClass
+                val requiredProperty:Boolean = if ( rawClass.isPrimitive && rawClass.isAssignableFrom(classOf[Boolean])) {
+                  // primitive boolean MUST have a value
+                  true
+                } else if(prop.getAnnotation(classOf[NotNull]) != null) {
+                  true
+                } else {
+                  false
+                }
+
+                if ( requiredProperty) {
                   getRequiredArrayNode(thisObjectNode).add(propertyName)
                 }
 
