@@ -2,7 +2,7 @@
 lazy val commonSettings = Seq(
   organization := "com.kjetland",
   organizationName := "mbknor",
-  version := "1.0.0-build-7-SNAPSHOT",
+  version := "1.0.0-build-8-SNAPSHOT",
   scalaVersion := "2.11.8",
   publishMavenStyle := true,
   publishArtifact in Test := false,
@@ -14,6 +14,7 @@ lazy val commonSettings = Seq(
     else
       Some("releases"  at nexus + "thirdparty/")
   },
+  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
 //  publishTo := {
 //    val nexus = "https://oss.sonatype.org/"
 //    if (isSnapshot.value)

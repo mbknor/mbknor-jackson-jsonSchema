@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import org.slf4j.LoggerFactory
 
-class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
+class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false) {
 
   import scala.collection.JavaConversions._
 
@@ -109,7 +109,9 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
   class MyJsonFormatVisitorWrapper(objectMapper: ObjectMapper, level:Int = 0, val node: ObjectNode = JsonNodeFactory.instance.objectNode(), val definitionsHandler:DefinitionsHandler) extends JsonFormatVisitorWrapper with MySerializerProvider {
 
-    def l(s: String): Unit = {
+    def l(s: => String): Unit = {
+      if (!debug) return
+
       var indent = ""
       for( i <- 0 until level) {
         indent = indent + "  "
