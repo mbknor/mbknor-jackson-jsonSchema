@@ -215,6 +215,14 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
     }
 
 
+    private def getRequiredArrayNode(objectNode:ObjectNode):ArrayNode = {
+      Option(objectNode.get("required")).map(_.asInstanceOf[ArrayNode]).getOrElse {
+        val rn = JsonNodeFactory.instance.arrayNode()
+        objectNode.set("required", rn)
+        rn
+      }
+    }
+
     override def expectObjectFormat(_type: JavaType) = {
 
       val subTypes: List[SubTypeAndTypeName[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
@@ -258,13 +266,7 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
 
                 propertiesNode.set(subTypeSpecifierPropertyName, enumObjectNode)
 
-                val requiredNode:ArrayNode = Option(propertiesNode.get("required")).map(_.asInstanceOf[ArrayNode]).getOrElse {
-                  val rn = JsonNodeFactory.instance.arrayNode()
-                  objectNode.set("required", rn)
-                  rn
-                }
-
-                requiredNode.add(subTypeSpecifierPropertyName)
+                getRequiredArrayNode(objectNode).add(subTypeSpecifierPropertyName)
 
                 None
             }
@@ -303,6 +305,12 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper) {
                 val childNode = JsonNodeFactory.instance.objectNode()
 
                 objectMapper.acceptJsonFormatVisitor(propertyType, createChild(thisPropertyNode))
+
+                // For some types we must set requeired
+                val rawClass = writer.getType.getRawClass
+                if ( rawClass.isPrimitive && rawClass.isAssignableFrom(classOf[Boolean])) {
+                  getRequiredArrayNode(thisObjectNode).add(propertyName)
+                }
 
               }
 
