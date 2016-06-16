@@ -6,21 +6,21 @@ lazy val commonSettings = Seq(
   scalaVersion := "2.11.8",
   publishMavenStyle := true,
   publishArtifact in Test := false,
+//  publishTo := {
+//    val nexus = "http://nexus.nextgentel.net/content/repositories/"
+//    if (isSnapshot.value)
+//      Some("snapshots" at nexus + "snapshots/")
+//    else
+//      Some("releases"  at nexus + "thirdparty/")
+//  },
   publishTo := {
-    val nexus = "http://nexus.nextgentel.net/content/repositories/"
+    val nexus = "https://oss.sonatype.org/"
     if (isSnapshot.value)
-      Some("snapshots" at nexus + "snapshots/")
+      Some("snapshots" at nexus + "content/repositories/snapshots")
     else
-      Some("releases"  at nexus + "thirdparty/")
+      Some("releases" at nexus + "service/local/staging/deploy/maven2")
   },
   credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
-//  publishTo := {
-//    val nexus = "https://oss.sonatype.org/"
-//    if (isSnapshot.value)
-//      Some("snapshots" at nexus + "content/repositories/snapshots")
-//    else
-//      Some("releases" at nexus + "service/local/staging/deploy/maven2")
-//  },
   homepage := Some(url("https://github.com/mbknor/mbknor-jackson-jsonSchema")),
   licenses := Seq("MIT" -> url("https://github.com/mbknor/mbknor-jackson-jsonSchema/blob/master/LICENSE.txt")),
   startYear := Some(2016),

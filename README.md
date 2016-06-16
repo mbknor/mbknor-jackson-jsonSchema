@@ -4,6 +4,8 @@ Jackson jsonSchema Generator
 This projects aims to do a better job than the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)
 in generating jsonSchema from your POJOs using Jackson @Annotations.
 
+Current version: *1.0.0-build-8-SNAPSHOT*
+
 **Highlights**
 
 * JSON Schema Draft v4
@@ -37,35 +39,26 @@ I would really appreciate it if other developers wanted to start using and contr
 Dependency
 ===================
 
-The project is currently not published to any repo yet, so you have to clone it and build it your self using sbt.
+This project publishes artifacts to central maven repo.
 
 
 Using Maven
 -----------------
-
-Build is using sbt:
-
-
-    sbt publishM2 
  
 Add this to you pom.xml:
 
     <dependency>
         <groupId>com.kjetland</groupId>
         <artifactId>mbknor-jackson-jsonschema_2.11</artifactId>
-        <version><!-- INSERT VERSiON HERE --></version>
+        <version>1.0.0-build-8-SNAPSHOT</version>
     </dependency>    
 
 Using sbt
 ------------
-
-Build is using sbt:
-
-    sbt publish 
  
 Add this to you sbt build-config:
 
-    "com.kjetland" % "mbknor-jackson-jsonschema" %% <!-- INSERT VERSiON HERE -->
+    "com.kjetland" % "mbknor-jackson-jsonschema" %% "1.0.0-build-8-SNAPSHOT"
 
 
 Code
