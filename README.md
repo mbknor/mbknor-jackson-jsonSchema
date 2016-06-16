@@ -45,6 +45,7 @@ Using Maven
 
 Build is using sbt:
 
+
     sbt publishM2 
  
 Add this to you pom.xml:
@@ -72,20 +73,23 @@ Code
 
 This is how to generate jsonSchema in code using Scala:
 
+```scala
     val objectMapper = new ObjectMapper
     val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper)
     val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
     
     val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
-     
+```
+
 And using Java:
 
+```java
     ObjectMapper objectMapper = new ObjectMapper();
     JsonSchemaGenerator jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper);
     JsonNode jsonSchema = jsonSchemaGenerator.generateJsonSchema(YourPOJO.class);
     
     String jsonSchemaAsString = objectMapper.writeValueAsString(jsonSchema);
-    
+```
 
 Backstory
 --------------
@@ -96,6 +100,7 @@ to generate schemas used when rendering dynamic GUI using [https://github.com/jd
 
 Recently we needed to support POJO's using polymorphism like this:
 
+```java
     @JsonTypeInfo(
             use = JsonTypeInfo.Id.NAME,
             include = JsonTypeInfo.As.PROPERTY,
@@ -108,6 +113,7 @@ Recently we needed to support POJO's using polymorphism like this:
         public String parentString;
         
     }
+```
     
 This is not supported by the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema).
 I have spent many hours trying to figure out how to modify/improve it without any luck,
