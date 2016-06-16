@@ -49,9 +49,19 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
 
   def generateAndValidateSchema(clazz:Class[_], jsonToTestAgainstSchema:Option[JsonNode] = None):String = {
     val schema = jsonSchemaGenerator.generateJsonSchema(clazz)
+    //println(asPrettyJson(schema))
     useSchema(schema, jsonToTestAgainstSchema)
 
     asPrettyJson(schema)
+  }
+
+  test("regular object") {
+    val jsonNode = assertToFromJson(child1)
+
+    val schemaAsJson = generateAndValidateSchema(child1.getClass, Some(jsonNode))
+    println("--------------------------------------------")
+    println(schemaAsJson)
+
   }
 
   test("polymorphism") {
@@ -91,6 +101,13 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers with TestData {
 
     val jsonNode = assertToFromJson(pojoWithArrays)
     val schemaAsJson = generateAndValidateSchema(pojoWithArrays.getClass, Some(jsonNode))
+    println("--------------------------------------------")
+    println(schemaAsJson)
+  }
+
+  test("recursivePojo") {
+    val jsonNode = assertToFromJson(recursivePojo)
+    val schemaAsJson = generateAndValidateSchema(recursivePojo.getClass, Some(jsonNode))
     println("--------------------------------------------")
     println(schemaAsJson)
   }
@@ -137,4 +154,6 @@ trait TestData {
     List(child1, child2).toArray
 
   )
+
+  val recursivePojo = new RecursivePojo("t1", List(new RecursivePojo("c1", null)))
 }
