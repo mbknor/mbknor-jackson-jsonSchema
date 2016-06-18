@@ -11,6 +11,10 @@ import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import org.slf4j.LoggerFactory
 
+object JsonSchemaGenerator {
+  val JSON_SCHEMA_DRAFT_4_URL = "http://json-schema.org/draft-04/schema#"
+}
+
 class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false) {
 
   import scala.collection.JavaConversions._
@@ -356,7 +360,7 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
 
                 // Check if we should set this property as required
                 val rawClass = prop.getType.getRawClass
-                val requiredProperty:Boolean = if ( rawClass.isPrimitive && rawClass.isAssignableFrom(classOf[Boolean])) {
+                val requiredProperty:Boolean = if ( rawClass.isPrimitive ) {
                   // primitive boolean MUST have a value
                   true
                 } else if(prop.getAnnotation(classOf[NotNull]) != null) {
@@ -410,7 +414,7 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
     val rootNode = JsonNodeFactory.instance.objectNode()
 
     // Specify that this is a v4 json schema
-    rootNode.put("$schema", "http://json-schema.org/draft-04/schema#")
+    rootNode.put("$schema", JsonSchemaGenerator.JSON_SCHEMA_DRAFT_4_URL)
     //rootNode.put("id", "http://my.site/myschema#")
 
     val definitionsHandler = new DefinitionsHandler
