@@ -2,11 +2,12 @@ package com.kjetland.jackson.jsonSchema
 
 import com.fasterxml.jackson.annotation.JsonValue
 import com.fasterxml.jackson.databind.module.SimpleModule
-import com.fasterxml.jackson.databind.node.ArrayNode
+import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData._
 import org.scalatest.{FunSuite, Matchers}
+
 import scala.collection.JavaConversions._
 
 class JsonSchemaGeneratorTest extends FunSuite with Matchers {
@@ -106,6 +107,14 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     root.at(fixedRef)
   }
 
+  def getNodeViaRefs(root:JsonNode, nodeWithRef:JsonNode, definitionName:String):ObjectNode = {
+    val ref = nodeWithRef.at("/$ref").asText()
+    assert( ref.endsWith(s"/$definitionName"))
+    // use ref to look the node up
+    val fixedRef = ref.substring(1) // Removing starting #
+    root.at(fixedRef).asInstanceOf[ObjectNode]
+  }
+
   test("Generate scheme for plain class not using @JsonTypeInfo") {
     val jsonNode = assertToFromJson(testData.classNotExtendingAnything)
 
@@ -202,17 +211,55 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     val jsonNode = assertToFromJson(testData.pojoWithCustomSerializer)
     val schema = generateAndValidateSchema(testData.pojoWithCustomSerializer.getClass, Some(jsonNode))
+    assert( schema.asInstanceOf[ObjectNode].fieldNames().toList == List("$schema")) // Empyt schema due to custom serializer
   }
+
+  test("object with property using custom serializer not overriding JsonSerializer.acceptJsonFormatVisitor") {
+
+    val jsonNode = assertToFromJson(testData.objectWithPropertyWithCustomSerializer)
+    val schema = generateAndValidateSchema(testData.objectWithPropertyWithCustomSerializer.getClass, Some(jsonNode))
+    assert( schema.at("/properties/s/type").asText() == "string")
+    assert( schema.at("/properties/child").asInstanceOf[ObjectNode].fieldNames().toList.size == 0)
+  }
+
 
   test("pojoWithArrays") {
 
     val jsonNode = assertToFromJson(testData.pojoWithArrays)
     val schema = generateAndValidateSchema(testData.pojoWithArrays.getClass, Some(jsonNode))
+
+    assert(schema.at("/properties/intArray1/type").asText() == "array")
+    assert(schema.at("/properties/intArray1/items/type").asText() == "integer")
+
+    assert(schema.at("/properties/stringArray/type").asText() == "array")
+    assert(schema.at("/properties/stringArray/items/type").asText() == "string")
+
+    assert(schema.at("/properties/stringList/type").asText() == "array")
+    assert(schema.at("/properties/stringList/items/type").asText() == "string")
+
+    assert(schema.at("/properties/polymorphismList/type").asText() == "array")
+    assertChild1(schema, "/properties/polymorphismList/items/oneOf")
+    assertChild2(schema, "/properties/polymorphismList/items/oneOf")
+
+    assert(schema.at("/properties/polymorphismArray/type").asText() == "array")
+    assertChild1(schema, "/properties/polymorphismArray/items/oneOf")
+    assertChild2(schema, "/properties/polymorphismArray/items/oneOf")
   }
 
   test("recursivePojo") {
     val jsonNode = assertToFromJson(testData.recursivePojo)
     val schema = generateAndValidateSchema(testData.recursivePojo.getClass, Some(jsonNode))
+
+    assert( schema.at("/properties/myText/type").asText() == "string")
+
+    assert( schema.at("/properties/children/type").asText() == "array")
+    val defViaRef = getNodeViaRefs(schema, schema.at("/properties/children/items"), "RecursivePojo")
+
+    assert( defViaRef.at("/properties/myText/type").asText() == "string")
+    assert( defViaRef.at("/properties/children/type").asText() == "array")
+    val defViaRef2 = getNodeViaRefs(schema, defViaRef.at("/properties/children/items"), "RecursivePojo")
+
+    assert( defViaRef == defViaRef2)
 
   }
 
@@ -255,6 +302,8 @@ trait TestData {
     p.myString = "xxx"
     p
   }
+
+  val objectWithPropertyWithCustomSerializer = new ObjectWithPropertyWithCustomSerializer("s1", pojoWithCustomSerializer)
 
   val pojoWithArrays = new PojoWithArrays(
     Array(1,2,3),
