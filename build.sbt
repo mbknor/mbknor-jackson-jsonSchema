@@ -2,10 +2,11 @@
 lazy val commonSettings = Seq(
   organization := "com.kjetland",
   organizationName := "mbknor",
-  version := "1.0.0-build-8-SNAPSHOT",
+  version := "1.0.0",
   scalaVersion := "2.11.8",
   publishMavenStyle := true,
   publishArtifact in Test := false,
+  pomIncludeRepository := { _ => false },
 //  publishTo := {
 //    val nexus = "http://nexus.nextgentel.net/content/repositories/"
 //    if (isSnapshot.value)
