@@ -190,9 +190,9 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
       }
     }
 
-    override def expectNullFormat(_type: JavaType) = new JsonNullFormatVisitor {
-      l("expectNullFormat")
-      ???
+    override def expectNullFormat(_type: JavaType) = {
+      l(s"expectNullFormat - _type: ${_type}")
+      new JsonNullFormatVisitor {}
     }
 
 
@@ -208,14 +208,25 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
     }
 
     override def expectMapFormat(_type: JavaType) = {
-      l("expectMapFormat")
+      l(s"expectMapFormat - _type: ${_type}")
 
-      ???
+      // There is no way to specify map in jsonSchema,
+      // So we're going to treat it as type=object with additionalProperties = true,
+      // so that it can hold whatever the map can hold
+
+
+      node.put("type", "object")
+      node.put("additionalProperties", true)
+
 
       new JsonMapFormatVisitor with MySerializerProvider {
-        override def keyFormat(handler: JsonFormatVisitable, keyType: JavaType): Unit = ???
+        override def keyFormat(handler: JsonFormatVisitable, keyType: JavaType): Unit = {
+          l(s"JsonMapFormatVisitor.keyFormat handler: $handler - keyType: $keyType")
+        }
 
-        override def valueFormat(handler: JsonFormatVisitable, valueType: JavaType): Unit = ???
+        override def valueFormat(handler: JsonFormatVisitable, valueType: JavaType): Unit = {
+          l(s"JsonMapFormatVisitor.valueFormat handler: $handler - valueType: $valueType")
+        }
       }
     }
 

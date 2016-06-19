@@ -18,7 +18,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   simpleModule.addDeserializer(classOf[PojoWithCustomSerializer], new PojoWithCustomSerializerDeserializer)
   objectMapper.registerModule(simpleModule)
 
-  val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper)
+  val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, debug = true)
 
   val testData = new TestData{}
 
@@ -263,6 +263,20 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   }
 
+  test("pojo using Maps") {
+    val jsonNode = assertToFromJson(testData.pojoUsingMaps)
+    val schema = generateAndValidateSchema(testData.pojoUsingMaps.getClass, Some(jsonNode))
+
+    assert( schema.at("/properties/string2Integer/type").asText() == "object")
+    assert( schema.at("/properties/string2Integer/additionalProperties").asBoolean() == true)
+
+    assert( schema.at("/properties/string2String/type").asText() == "object")
+    assert( schema.at("/properties/string2String/additionalProperties").asBoolean() == true)
+
+    assert( schema.at("/properties/string2PojoUsingJsonTypeInfo/type").asText() == "object")
+    assert( schema.at("/properties/string2PojoUsingJsonTypeInfo/additionalProperties").asBoolean() == true)
+  }
+
 
 }
 
@@ -315,4 +329,11 @@ trait TestData {
   )
 
   val recursivePojo = new RecursivePojo("t1", List(new RecursivePojo("c1", null)))
+
+  val pojoUsingMaps = new PojoUsingMaps(
+      Map[String, Integer]("a" -> 1, "b" -> 2),
+      Map("x" -> "y", "z" -> "w"),
+      Map[String, Parent]("1" -> child1, "2" -> child2)
+    )
+
 }
