@@ -1,5 +1,6 @@
 Jackson jsonSchema Generator
 ===================================
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.kjetland/mbknor-jackson-jsonschema_2.11/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cmbknor-jackson-jsonSchema)
 
 This projects aims to do a better job than the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)
 in generating jsonSchema from your POJOs using Jackson @Annotations.
