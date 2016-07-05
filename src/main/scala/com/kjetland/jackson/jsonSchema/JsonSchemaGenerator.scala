@@ -8,6 +8,7 @@ import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter
 import com.fasterxml.jackson.databind._
+import com.fasterxml.jackson.databind.introspect.{AnnotatedClass, JacksonAnnotationIntrospector}
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import org.slf4j.LoggerFactory
 
@@ -15,7 +16,7 @@ object JsonSchemaGenerator {
   val JSON_SCHEMA_DRAFT_4_URL = "http://json-schema.org/draft-04/schema#"
 }
 
-class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false) {
+class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = false) {
 
   import scala.collection.JavaConversions._
 
@@ -146,9 +147,13 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
       val itemsNode = JsonNodeFactory.instance.objectNode()
       node.set("items", itemsNode)
 
+      // When processing scala modules we sometimes get a better elementType here than later in itemsFormat
+      val preferredElementType:Option[JavaType] = if ( _type.containedTypeCount() >= 1) Some(_type.containedType(0)) else None
+
       new JsonArrayFormatVisitor with MySerializerProvider {
-        override def itemsFormat(handler: JsonFormatVisitable, elementType: JavaType): Unit = {
-          l(s"expectArrayFormat - handler: $handler - elementType: $elementType")
+        override def itemsFormat(handler: JsonFormatVisitable, _elementType: JavaType): Unit = {
+          l(s"expectArrayFormat - handler: $handler - elementType: ${_elementType} - preferredElementType: $preferredElementType")
+          val elementType = preferredElementType.getOrElse(_elementType)
           objectMapper.acceptJsonFormatVisitor(elementType, createChild(itemsNode))
         }
 
@@ -173,6 +178,9 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
 
     override def expectAnyFormat(_type: JavaType) = {
       log.warn(s"Not able to generate jsonSchema-info for type: ${_type} - probably using custom serializer which does not override acceptJsonFormatVisitor")
+
+
+
       new JsonAnyFormatVisitor {
       }
 
@@ -241,45 +249,30 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
 
     case class PolymorphismInfo(typePropertyName:String, subTypeName:String)
 
-    private def extractPolymorphismInfo(clazz:Class[_]):Option[PolymorphismInfo] = {
+    private def extractPolymorphismInfo(_type:JavaType):Option[PolymorphismInfo] = {
       // look for @JsonTypeInfo
-      var superClass = clazz
-      var jsonTypeInfo:JsonTypeInfo = null
+      val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
+      Option(ac.getAnnotations.get(classOf[JsonTypeInfo])).map {
+        jsonTypeInfo =>
+          if ( jsonTypeInfo.include() != JsonTypeInfo.As.PROPERTY) throw new Exception("We only support polymorphism using jsonTypeInfo.include() == JsonTypeInfo.As.PROPERTY")
+          if ( jsonTypeInfo.use != JsonTypeInfo.Id.NAME) throw new Exception("We only support polymorphism using jsonTypeInfo.use == JsonTypeInfo.Id.NAME")
 
-      while( jsonTypeInfo == null && superClass != classOf[Object]) {
-        jsonTypeInfo = Option(superClass.getDeclaredAnnotation(classOf[JsonTypeInfo])).map {
-          ann:JsonTypeInfo => ann
-        }.orNull
-        if ( jsonTypeInfo == null ) {
-          superClass = superClass.getSuperclass
-        }
+
+          val propertyName = jsonTypeInfo.property()
+
+          // must look at the @JsonSubTypes to find what this current class should be called
+
+          val subTypeName:String = Option(ac.getAnnotations.get(classOf[JsonSubTypes])).map {
+            ann: JsonSubTypes => ann.value()
+              .find {
+                t: JsonSubTypes.Type =>
+                  t.value() == _type.getRawClass
+              }.map(_.name()).getOrElse(throw new Exception(s"Did not find info about the class ${_type.getRawClass} in @JsonSubTypes"))
+          }.getOrElse(throw new Exception(s"Did not find @JsonSubTypes"))
+
+
+          PolymorphismInfo(propertyName, subTypeName)
       }
-
-      if ( jsonTypeInfo == null) {
-        return None
-      }
-
-
-      if ( jsonTypeInfo.include() != JsonTypeInfo.As.PROPERTY) throw new Exception("We only support polymorphism using jsonTypeInfo.include() == JsonTypeInfo.As.PROPERTY")
-      if ( jsonTypeInfo.use != JsonTypeInfo.Id.NAME) throw new Exception("We only support polymorphism using jsonTypeInfo.use == JsonTypeInfo.Id.NAME")
-
-
-      val propertyName = jsonTypeInfo.property()
-
-      // must look at the @JsonSubTypes to find what this current class should be called
-
-      val subTypeName:String = Option(superClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
-        ann: JsonSubTypes => ann.value()
-          .find {
-            t: JsonSubTypes.Type =>
-              t.value() == clazz
-          }.map(_.name()).getOrElse(throw new Exception(s"Did not find info about the class $clazz in @JsonSubTypes on $superClass"))
-      }.getOrElse(throw new Exception(s"Did not find @JsonSubTypes on $superClass"))
-
-
-      Some(PolymorphismInfo(propertyName, subTypeName))
-
-
 
     }
 
@@ -335,7 +328,7 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
             val propertiesNode = JsonNodeFactory.instance.objectNode()
             thisObjectNode.set("properties", propertiesNode)
 
-            extractPolymorphismInfo(_type.getRawClass).map {
+            extractPolymorphismInfo(_type).map {
               case pi:PolymorphismInfo =>
                 // This class is a child in a polymorphism config..
                 // Set the title = subTypeName
@@ -367,7 +360,20 @@ class JsonSchemaGenerator(rootObjectMapper: ObjectMapper, debug:Boolean = false)
 
                 val childNode = JsonNodeFactory.instance.objectNode()
 
-                objectMapper.acceptJsonFormatVisitor(propertyType, createChild(thisPropertyNode))
+
+                val childVisitor = createChild(thisPropertyNode)
+
+                // Workaround for scala lists and so on
+                if ( (propertyType.isArrayType || propertyType.isCollectionLikeType) && propertyType.containedTypeCount() >= 1) {
+                  val itemType = propertyType.containedType(0)
+                  // If visiting a scala list and using default acceptJsonFormatVisitor-apporach,
+                  // we get java.lang.Object instead of actual type.
+                  // By doing it manually like this it works.
+
+                  childVisitor.expectArrayFormat(itemType).itemsFormat(null, itemType)
+                } else {
+                  objectMapper.acceptJsonFormatVisitor(propertyType, childVisitor)
+                }
 
                 // Check if we should set this property as required
                 val rawClass = prop.getType.getRawClass

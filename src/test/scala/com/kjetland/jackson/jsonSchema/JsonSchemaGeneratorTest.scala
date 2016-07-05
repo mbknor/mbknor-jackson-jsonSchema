@@ -1,9 +1,10 @@
 package com.kjetland.jackson.jsonSchema
 
-import com.fasterxml.jackson.annotation.JsonValue
+import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo, JsonValue}
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData._
 import org.scalatest.{FunSuite, Matchers}
@@ -12,33 +13,42 @@ import scala.collection.JavaConversions._
 
 class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
-  val objectMapper = new ObjectMapper()
-  val simpleModule = new SimpleModule()
-  simpleModule.addSerializer(classOf[PojoWithCustomSerializer], new PojoWithCustomSerializerSerializer)
-  simpleModule.addDeserializer(classOf[PojoWithCustomSerializer], new PojoWithCustomSerializerDeserializer)
-  objectMapper.registerModule(simpleModule)
+  val _objectMapper = new ObjectMapper()
+  val _objectMapperScala = new ObjectMapper()
+  _objectMapperScala.registerModule(new DefaultScalaModule)
 
-  val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, debug = true)
+  List(_objectMapper, _objectMapperScala).foreach {
+    om =>
+      val simpleModule = new SimpleModule()
+      simpleModule.addSerializer(classOf[PojoWithCustomSerializer], new PojoWithCustomSerializerSerializer)
+      simpleModule.addDeserializer(classOf[PojoWithCustomSerializer], new PojoWithCustomSerializerDeserializer)
+      om.registerModule(simpleModule)
+  }
+
+
+
+  val jsonSchemaGenerator = new JsonSchemaGenerator(_objectMapper, debug = true)
+  val jsonSchemaGeneratorScala = new JsonSchemaGenerator(_objectMapperScala, debug = true)
 
   val testData = new TestData{}
 
-  def asPrettyJson(node:JsonNode):String = {
-    objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(node)
+  def asPrettyJson(node:JsonNode, om:ObjectMapper):String = {
+    om.writerWithDefaultPrettyPrinter().writeValueAsString(node)
   }
 
 
   // Asserts that we're able to go from object => json => equal object
-  def assertToFromJson(o:Any): JsonNode = {
-    assertToFromJson(o, o.getClass)
+  def assertToFromJson(g:JsonSchemaGenerator, o:Any): JsonNode = {
+    assertToFromJson(g, o, o.getClass)
   }
 
   // Asserts that we're able to go from object => json => equal object
   // deserType might be a class which o extends (polymorphism)
-  def assertToFromJson(o:Any, deserType:Class[_]): JsonNode = {
-    val json = objectMapper.writeValueAsString(o)
+  def assertToFromJson(g:JsonSchemaGenerator, o:Any, deserType:Class[_]): JsonNode = {
+    val json = g.rootObjectMapper.writeValueAsString(o)
     println(s"json: $json")
-    val jsonNode = objectMapper.readTree(json)
-    val r = objectMapper.treeToValue(jsonNode, deserType)
+    val jsonNode = g.rootObjectMapper.readTree(json)
+    val r = g.rootObjectMapper.treeToValue(jsonNode, deserType)
     assert( o == r)
     jsonNode
   }
@@ -57,11 +67,11 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   // Generates schema, validates the schema using external schema validator and
   // Optionally tries to validate json against the schema.
-  def generateAndValidateSchema(clazz:Class[_], jsonToTestAgainstSchema:Option[JsonNode] = None):JsonNode = {
-    val schema = jsonSchemaGenerator.generateJsonSchema(clazz)
+  def generateAndValidateSchema(g:JsonSchemaGenerator, clazz:Class[_], jsonToTestAgainstSchema:Option[JsonNode] = None):JsonNode = {
+    val schema = g.generateJsonSchema(clazz)
 
     println("--------------------------------------------")
-    println(asPrettyJson(schema))
+    println(asPrettyJson(schema, g.rootObjectMapper))
 
     assert( JsonSchemaGenerator.JSON_SCHEMA_DRAFT_4_URL == schema.at("/$schema").asText())
 
@@ -116,67 +126,109 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   }
 
   test("Generate scheme for plain class not using @JsonTypeInfo") {
-    val jsonNode = assertToFromJson(testData.classNotExtendingAnything)
 
-    val schema = generateAndValidateSchema((testData.classNotExtendingAnything).getClass, Some(jsonNode))
+    def doTest(pojo:Object, clazz:Class[_], g:JsonSchemaGenerator): Unit = {
 
-    assert( false == schema.at("/additionalProperties").asBoolean())
-    assert( schema.at("/properties/someString/type").asText() == "string")
+      val jsonNode = assertToFromJson(g, pojo)
+      val schema = generateAndValidateSchema(g, clazz, Some(jsonNode))
+
+      assert( false == schema.at("/additionalProperties").asBoolean())
+      assert( schema.at("/properties/someString/type").asText() == "string")
+    }
+
+    doTest(testData.classNotExtendingAnything, testData.classNotExtendingAnything.getClass, jsonSchemaGenerator)
+    doTest(testData.classNotExtendingAnythingScala, testData.classNotExtendingAnythingScala.getClass, jsonSchemaGeneratorScala)
 
   }
 
   test("Generating schema for concrete class which happens to extend class using @JsonTypeInfo") {
-    val jsonNode = assertToFromJson(testData.child1)
 
-    val schema = generateAndValidateSchema(testData.child1.getClass, Some(jsonNode))
+    def doTest(pojo:Object, clazz:Class[_], g:JsonSchemaGenerator): Unit = {
+      val jsonNode = assertToFromJson(g, pojo)
+      val schema = generateAndValidateSchema(g, clazz, Some(jsonNode))
 
-    assert( false == schema.at("/additionalProperties").asBoolean())
-    assert( schema.at("/properties/parentString/type").asText() == "string")
-    assertJsonSubTypesInfo(schema, "type", "child1")
+      assert( false == schema.at("/additionalProperties").asBoolean())
+      assert( schema.at("/properties/parentString/type").asText() == "string")
+      assertJsonSubTypesInfo(schema, "type", "child1")
+    }
 
+    doTest(testData.child1, testData.child1.getClass, jsonSchemaGenerator)
+    doTest(testData.child1Scala, testData.child1Scala.getClass, jsonSchemaGeneratorScala)
   }
 
   test("Generate schema for regular class which has a property of class annotated with @JsonTypeInfo") {
-    val jsonNode = assertToFromJson(testData.pojoWithParent)
-    val schema = generateAndValidateSchema(testData.pojoWithParent.getClass, Some(jsonNode))
 
-    assert( false == schema.at("/additionalProperties").asBoolean())
-    assert( schema.at("/properties/pojoValue/type").asText() == "boolean")
+    // Java
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoWithParent)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoWithParent.getClass, Some(jsonNode))
 
-    assertChild1(schema, "/properties/child/oneOf")
-    assertChild2(schema, "/properties/child/oneOf")
+      assert(false == schema.at("/additionalProperties").asBoolean())
+      assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
 
+      assertChild1(schema, "/properties/child/oneOf")
+      assertChild2(schema, "/properties/child/oneOf")
+
+    }
+
+    // Scala
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.pojoWithParentScala)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, testData.pojoWithParentScala.getClass, Some(jsonNode))
+
+      assert(false == schema.at("/additionalProperties").asBoolean())
+      assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
+
+      assertChild1(schema, "/properties/child/oneOf", "Child1Scala")
+      assertChild2(schema, "/properties/child/oneOf", "Child2Scala")
+
+    }
 
   }
 
-  def assertChild1(node:JsonNode, path:String): Unit ={
-    val child1 = getNodeViaArrayOfRefs(node, path, "Child1")
+  def assertChild1(node:JsonNode, path:String, defName:String = "Child1"): Unit ={
+    val child1 = getNodeViaArrayOfRefs(node, path, defName)
     assertJsonSubTypesInfo(child1, "type", "child1")
     assert( child1.at("/properties/parentString/type").asText() == "string" )
     assert( child1.at("/properties/child1String/type").asText() == "string" )
   }
 
-  def assertChild2(node:JsonNode, path:String): Unit ={
-    val child2 = getNodeViaArrayOfRefs(node, path, "Child2")
+  def assertChild2(node:JsonNode, path:String, defName:String = "Child2"): Unit ={
+    val child2 = getNodeViaArrayOfRefs(node, path, defName)
     assertJsonSubTypesInfo(child2, "type", "child2")
     assert( child2.at("/properties/parentString/type").asText() == "string" )
     assert( child2.at("/properties/child2int/type").asText() == "integer" )
   }
 
   test("Generate schema for super class annotated with @JsonTypeInfo") {
-    val jsonNode = assertToFromJson(testData.child1)
-    assertToFromJson(testData.child1, classOf[Parent])
 
-    val schema = generateAndValidateSchema(classOf[Parent], Some(jsonNode))
+    // Java
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child1)
+      assertToFromJson(jsonSchemaGenerator, testData.child1, classOf[Parent])
 
-    assertChild1(schema, "/oneOf")
-    assertChild2(schema, "/oneOf")
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, classOf[Parent], Some(jsonNode))
+
+      assertChild1(schema, "/oneOf")
+      assertChild2(schema, "/oneOf")
+    }
+
+    // Scala
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.child1Scala)
+      assertToFromJson(jsonSchemaGeneratorScala, testData.child1Scala, classOf[ParentScala])
+
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, classOf[ParentScala], Some(jsonNode))
+
+      assertChild1(schema, "/oneOf", "Child1Scala")
+      assertChild2(schema, "/oneOf", "Child2Scala")
+    }
 
   }
 
   test("primitives") {
-    val jsonNode = assertToFromJson(testData.manyPrimitives)
-    val schema = generateAndValidateSchema(testData.manyPrimitives.getClass, Some(jsonNode))
+    val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.manyPrimitives)
+    val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.manyPrimitives.getClass, Some(jsonNode))
 
     assert( schema.at("/properties/_string/type").asText() == "string" )
 
@@ -209,15 +261,15 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   test("custom serializer not overriding JsonSerializer.acceptJsonFormatVisitor") {
 
-    val jsonNode = assertToFromJson(testData.pojoWithCustomSerializer)
-    val schema = generateAndValidateSchema(testData.pojoWithCustomSerializer.getClass, Some(jsonNode))
+    val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoWithCustomSerializer)
+    val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoWithCustomSerializer.getClass, Some(jsonNode))
     assert( schema.asInstanceOf[ObjectNode].fieldNames().toList == List("$schema")) // Empyt schema due to custom serializer
   }
 
   test("object with property using custom serializer not overriding JsonSerializer.acceptJsonFormatVisitor") {
 
-    val jsonNode = assertToFromJson(testData.objectWithPropertyWithCustomSerializer)
-    val schema = generateAndValidateSchema(testData.objectWithPropertyWithCustomSerializer.getClass, Some(jsonNode))
+    val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.objectWithPropertyWithCustomSerializer)
+    val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.objectWithPropertyWithCustomSerializer.getClass, Some(jsonNode))
     assert( schema.at("/properties/s/type").asText() == "string")
     assert( schema.at("/properties/child").asInstanceOf[ObjectNode].fieldNames().toList.size == 0)
   }
@@ -225,30 +277,37 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   test("pojoWithArrays") {
 
-    val jsonNode = assertToFromJson(testData.pojoWithArrays)
-    val schema = generateAndValidateSchema(testData.pojoWithArrays.getClass, Some(jsonNode))
+    def doTest(pojo:Object, clazz:Class[_], g:JsonSchemaGenerator): Unit ={
 
-    assert(schema.at("/properties/intArray1/type").asText() == "array")
-    assert(schema.at("/properties/intArray1/items/type").asText() == "integer")
+      val jsonNode = assertToFromJson(g, pojo)
+      val schema = generateAndValidateSchema(g, clazz, Some(jsonNode))
 
-    assert(schema.at("/properties/stringArray/type").asText() == "array")
-    assert(schema.at("/properties/stringArray/items/type").asText() == "string")
+      assert(schema.at("/properties/intArray1/type").asText() == "array")
+      assert(schema.at("/properties/intArray1/items/type").asText() == "integer")
 
-    assert(schema.at("/properties/stringList/type").asText() == "array")
-    assert(schema.at("/properties/stringList/items/type").asText() == "string")
+      assert(schema.at("/properties/stringArray/type").asText() == "array")
+      assert(schema.at("/properties/stringArray/items/type").asText() == "string")
 
-    assert(schema.at("/properties/polymorphismList/type").asText() == "array")
-    assertChild1(schema, "/properties/polymorphismList/items/oneOf")
-    assertChild2(schema, "/properties/polymorphismList/items/oneOf")
+      assert(schema.at("/properties/stringList/type").asText() == "array")
+      assert(schema.at("/properties/stringList/items/type").asText() == "string")
 
-    assert(schema.at("/properties/polymorphismArray/type").asText() == "array")
-    assertChild1(schema, "/properties/polymorphismArray/items/oneOf")
-    assertChild2(schema, "/properties/polymorphismArray/items/oneOf")
+      assert(schema.at("/properties/polymorphismList/type").asText() == "array")
+      assertChild1(schema, "/properties/polymorphismList/items/oneOf")
+      assertChild2(schema, "/properties/polymorphismList/items/oneOf")
+
+      assert(schema.at("/properties/polymorphismArray/type").asText() == "array")
+      assertChild1(schema, "/properties/polymorphismArray/items/oneOf")
+      assertChild2(schema, "/properties/polymorphismArray/items/oneOf")
+    }
+
+    doTest( testData.pojoWithArrays, testData.pojoWithArrays.getClass, jsonSchemaGenerator)
+    doTest( testData.pojoWithArraysScala, testData.pojoWithArraysScala.getClass, jsonSchemaGeneratorScala)
+
   }
 
   test("recursivePojo") {
-    val jsonNode = assertToFromJson(testData.recursivePojo)
-    val schema = generateAndValidateSchema(testData.recursivePojo.getClass, Some(jsonNode))
+    val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.recursivePojo)
+    val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.recursivePojo.getClass, Some(jsonNode))
 
     assert( schema.at("/properties/myText/type").asText() == "string")
 
@@ -264,8 +323,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   }
 
   test("pojo using Maps") {
-    val jsonNode = assertToFromJson(testData.pojoUsingMaps)
-    val schema = generateAndValidateSchema(testData.pojoUsingMaps.getClass, Some(jsonNode))
+    val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingMaps)
+    val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingMaps.getClass, Some(jsonNode))
 
     assert( schema.at("/properties/string2Integer/type").asText() == "object")
     assert( schema.at("/properties/string2Integer/additionalProperties").asBoolean() == true)
@@ -289,12 +348,16 @@ trait TestData {
     c
   }
 
+  val child1Scala = Child1Scala("pv", "cs")
+
   val child2 = {
     val c = new Child2()
     c.parentString = "pv"
     c.child2int = 12
     c
   }
+
+  val child2Scala = Child2Scala("pv", 12)
 
   val pojoWithParent = {
     val p = new PojoWithParent
@@ -303,11 +366,15 @@ trait TestData {
     p
   }
 
+  val pojoWithParentScala = PojoWithParentScala(true, child1Scala)
+
   val classNotExtendingAnything = {
     val o = new ClassNotExtendingAnything
     o.someString = "Something"
     o
   }
+
+  val classNotExtendingAnythingScala = ClassNotExtendingAnythingScala("Something")
 
   val manyPrimitives = new ManyPrimitives("s1", 1, 2, true, false, true, 0.1, 0.2, MyEnum.B)
 
@@ -324,8 +391,17 @@ trait TestData {
     Array("a1","a2","a3"),
     List("l1", "l2", "l3"),
     List(child1, child2),
-    List(child1, child2).toArray
+    List(child1, child2).toArray,
+    List(classNotExtendingAnything, classNotExtendingAnything)
+  )
 
+  val pojoWithArraysScala = PojoWithArraysScala(
+    Some(List(1,2,3)),
+    List("a1","a2","a3"),
+    List("l1", "l2", "l3"),
+    List(child1, child2),
+    List(child1, child2),
+    List(classNotExtendingAnything, classNotExtendingAnything)
   )
 
   val recursivePojo = new RecursivePojo("t1", List(new RecursivePojo("c1", null)))
@@ -337,3 +413,25 @@ trait TestData {
     )
 
 }
+
+
+case class PojoWithArraysScala
+(
+  intArray1:Option[List[Integer]], // We never use array in scala - use list instead to make it compatible with PojoWithArrays (java)
+  stringArray:List[String], // We never use array in scala - use list instead to make it compatible with PojoWithArrays (java)
+  stringList:List[String],
+  polymorphismList:List[Parent],
+  polymorphismArray:List[Parent], // We never use array in scala - use list instead to make it compatible with PojoWithArrays (java)
+  regularObjectList:List[ClassNotExtendingAnything]
+)
+
+case class ClassNotExtendingAnythingScala(someString:String)
+
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+@JsonSubTypes(Array(new JsonSubTypes.Type(value = classOf[Child1Scala], name = "child1"), new JsonSubTypes.Type(value = classOf[Child2Scala], name = "child2")))
+trait ParentScala
+
+case class Child1Scala(parentString:String, child1String:String) extends ParentScala
+case class Child2Scala(parentString:String, child2int:Int) extends ParentScala
+
+case class PojoWithParentScala(pojoValue:Boolean, child:ParentScala)

@@ -44,6 +44,7 @@ lazy val commonSettings = Seq(
 
 
 val jacksonVersion = "2.7.5"
+val jacksonModuleScalaVersion = "2.7.4"
 val slf4jVersion = "1.7.7"
 
 
@@ -53,7 +54,8 @@ lazy val deps  = Seq(
   "org.slf4j" % "slf4j-api" % slf4jVersion,
   "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
-  "com.github.fge" % "json-schema-validator" % "2.2.6" % "test"
+  "com.github.fge" % "json-schema-validator" % "2.2.6" % "test",
+  "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % jacksonModuleScalaVersion % "test"
 )
 
 lazy val root = (project in file("."))
