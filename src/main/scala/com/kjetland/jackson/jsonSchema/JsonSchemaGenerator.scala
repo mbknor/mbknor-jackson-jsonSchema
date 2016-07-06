@@ -366,12 +366,12 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
                 val childVisitor = createChild(thisPropertyNode)
 
                 // Workaround for scala lists and so on
-                if ( (propertyType.isArrayType || propertyType.isCollectionLikeType) && propertyType.containedTypeCount() >= 1) {
+                if ( (propertyType.isArrayType || propertyType.isCollectionLikeType) && !classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) && propertyType.containedTypeCount() >= 1) {
                   val itemType = propertyType.containedType(0)
-                  // If visiting a scala list and using default acceptJsonFormatVisitor-apporach,
+                  // If visiting a scala list and using default acceptJsonFormatVisitor-approach,
                   // we get java.lang.Object instead of actual type.
                   // By doing it manually like this it works.
-
+                  l(s"JsonObjectFormatVisitor - forcing array for ${prop}")
                   childVisitor.expectArrayFormat(itemType).itemsFormat(null, itemType)
                 } else if(classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) && propertyType.containedTypeCount() >= 1) {
 

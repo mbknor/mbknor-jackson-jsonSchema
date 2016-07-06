@@ -131,17 +131,30 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   test("Generate scheme for plain class not using @JsonTypeInfo") {
 
-    def doTest(pojo:Object, clazz:Class[_], g:JsonSchemaGenerator): Unit = {
+    {
 
-      val jsonNode = assertToFromJson(g, pojo)
-      val schema = generateAndValidateSchema(g, clazz, Some(jsonNode))
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.classNotExtendingAnything)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.classNotExtendingAnything.getClass, Some(jsonNode))
 
       assert( false == schema.at("/additionalProperties").asBoolean())
       assert( schema.at("/properties/someString/type").asText() == "string")
+
+      assert( schema.at("/properties/myEnum/type").asText() == "string")
+      assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == List("A","B","C"))
     }
 
-    doTest(testData.classNotExtendingAnything, testData.classNotExtendingAnything.getClass, jsonSchemaGenerator)
-    doTest(testData.classNotExtendingAnythingScala, testData.classNotExtendingAnythingScala.getClass, jsonSchemaGeneratorScala)
+    {
+
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.classNotExtendingAnythingScala)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, testData.classNotExtendingAnythingScala.getClass, Some(jsonNode))
+
+      assert( false == schema.at("/additionalProperties").asBoolean())
+      assert( schema.at("/properties/someString/type").asText() == "string")
+
+      assert( schema.at("/properties/myEnum/type").asText() == "string")
+      assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == List("A","B","C"))
+      assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnumO/enum")) == List("A","B","C"))
+    }
 
   }
 
@@ -303,6 +316,10 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertJsonSubTypesInfo(child1, "type", "child1")
     assert( child1.at("/properties/parentString/type").asText() == "string" )
     assert( child1.at("/properties/child1String/type").asText() == "string" )
+
+    assert(schema.at("/properties/optionalList/type").asText() == "array")
+    assert(schema.at("/properties/optionalList/items/$ref").asText() == "#/definitions/ClassNotExtendingAnythingScala")
+
   }
 
   test("custom serializer not overriding JsonSerializer.acceptJsonFormatVisitor") {
@@ -417,16 +434,17 @@ trait TestData {
   val classNotExtendingAnything = {
     val o = new ClassNotExtendingAnything
     o.someString = "Something"
+    o.myEnum = MyEnum.C
     o
   }
 
-  val classNotExtendingAnythingScala = ClassNotExtendingAnythingScala("Something")
+  val classNotExtendingAnythingScala = ClassNotExtendingAnythingScala("Something", MyEnum.C, Some(MyEnum.A))
 
   val manyPrimitives = new ManyPrimitives("s1", 1, 2, true, false, true, 0.1, 0.2, MyEnum.B)
 
   val manyPrimitivesScala = ManyPrimitivesScala("s1", 1, true, 0.1)
 
-  val pojoUsingOptionScala = PojoUsingOptionScala(Some("s1"), Some(1), Some(true), Some(0.1), Some(child1Scala))
+  val pojoUsingOptionScala = PojoUsingOptionScala(Some("s1"), Some(1), Some(true), Some(0.1), Some(child1Scala), Some(List(classNotExtendingAnythingScala)))
 
   val pojoWithCustomSerializer = {
     val p = new PojoWithCustomSerializer
@@ -475,7 +493,7 @@ case class PojoWithArraysScala
   regularObjectList:List[ClassNotExtendingAnything]
 )
 
-case class ClassNotExtendingAnythingScala(someString:String)
+case class ClassNotExtendingAnythingScala(someString:String, myEnum: MyEnum, myEnumO: Option[MyEnum])
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 @JsonSubTypes(Array(new JsonSubTypes.Type(value = classOf[Child1Scala], name = "child1"), new JsonSubTypes.Type(value = classOf[Child2Scala], name = "child2")))
@@ -493,6 +511,7 @@ case class PojoUsingOptionScala(
                                  @JsonDeserialize(contentAs = classOf[Int])     _integer:Option[Int],
                                  @JsonDeserialize(contentAs = classOf[Boolean]) _boolean:Option[Boolean],
                                  @JsonDeserialize(contentAs = classOf[Double])  _double:Option[Double],
-                                 child1:Option[Child1Scala]
+                                 child1:Option[Child1Scala],
+                                 optionalList:Option[List[ClassNotExtendingAnythingScala]]
                                  //, parent:Option[ParentScala] - Not using this one: jackson-scala-module does not support Option combined with Polymorphism
                                )
