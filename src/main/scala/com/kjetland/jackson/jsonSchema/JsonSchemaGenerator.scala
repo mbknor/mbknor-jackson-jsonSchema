@@ -367,11 +367,13 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
 
                 // Workaround for scala lists and so on
                 if ( (propertyType.isArrayType || propertyType.isCollectionLikeType) && !classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) && propertyType.containedTypeCount() >= 1) {
-                  val itemType = propertyType.containedType(0)
                   // If visiting a scala list and using default acceptJsonFormatVisitor-approach,
                   // we get java.lang.Object instead of actual type.
                   // By doing it manually like this it works.
                   l(s"JsonObjectFormatVisitor - forcing array for ${prop}")
+
+                  val itemType:JavaType = resolveType(prop, objectMapper)
+
                   childVisitor.expectArrayFormat(itemType).itemsFormat(null, itemType)
                 } else if(classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) && propertyType.containedTypeCount() >= 1) {
 
@@ -381,25 +383,7 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
                   // To workaround this, we use the same workaround as jackson-scala-module described here:
                   // https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges
 
-                  val containedType = propertyType.containedType(0)
-
-                  val optionType:JavaType = if ( containedType.getRawClass == classOf[Object] ) {
-                    // try to resolve it via @JsonDeserialize as described here: https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges
-                    Option(prop.getAnnotation(classOf[JsonDeserialize])).flatMap {
-                      jsonDeserialize:JsonDeserialize =>
-                        Option(jsonDeserialize.contentAs()).map {
-                          clazz =>
-                            objectMapper.getTypeFactory.uncheckedSimpleType(clazz)
-                        }
-                    }.getOrElse( {
-                      log.warn(s"$prop uses Scala Option and we're unable to extract its Type using fallback-approach looking for @JsonDeserialize")
-                      containedType
-                    })
-
-                  } else {
-                    // use containedType as is
-                    containedType
-                  }
+                  val optionType:JavaType = resolveType(prop, objectMapper)
 
                   objectMapper.acceptJsonFormatVisitor(optionType, childVisitor)
 
@@ -455,6 +439,28 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
 
     }
 
+  }
+
+  def resolveType(prop: BeanProperty, objectMapper: ObjectMapper):JavaType = {
+    val containedType = prop.getType.containedType(0)
+
+    if ( containedType.getRawClass == classOf[Object] ) {
+      // try to resolve it via @JsonDeserialize as described here: https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges
+      Option(prop.getAnnotation(classOf[JsonDeserialize])).flatMap {
+        jsonDeserialize:JsonDeserialize =>
+          Option(jsonDeserialize.contentAs()).map {
+            clazz =>
+              objectMapper.getTypeFactory.uncheckedSimpleType(clazz)
+          }
+      }.getOrElse( {
+        log.warn(s"$prop - Contained type is java.lang.Object and we're unable to extract its Type using fallback-approach looking for @JsonDeserialize")
+        containedType
+      })
+
+    } else {
+      // use containedType as is
+      containedType
+    }
   }
 
 
