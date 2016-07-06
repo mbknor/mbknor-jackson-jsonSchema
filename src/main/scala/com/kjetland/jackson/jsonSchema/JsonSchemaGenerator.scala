@@ -1,5 +1,6 @@
 package com.kjetland.jackson.jsonSchema
 
+import java.lang.reflect.{Field, Method, ParameterizedType}
 import java.util
 import javax.validation.constraints.NotNull
 
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter
 import com.fasterxml.jackson.databind._
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.introspect.{AnnotatedClass, JacksonAnnotationIntrospector}
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import org.slf4j.LoggerFactory
@@ -371,6 +373,36 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
                   // By doing it manually like this it works.
 
                   childVisitor.expectArrayFormat(itemType).itemsFormat(null, itemType)
+                } else if(classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) && propertyType.containedTypeCount() >= 1) {
+
+                  // Property is scala Option.
+                  //
+                  // Due to Java's Type Erasure, the type behind Option is lost.
+                  // To workaround this, we use the same workaround as jackson-scala-module described here:
+                  // https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges
+
+                  val containedType = propertyType.containedType(0)
+
+                  val optionType:JavaType = if ( containedType.getRawClass == classOf[Object] ) {
+                    // try to resolve it via @JsonDeserialize as described here: https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges
+                    Option(prop.getAnnotation(classOf[JsonDeserialize])).flatMap {
+                      jsonDeserialize:JsonDeserialize =>
+                        Option(jsonDeserialize.contentAs()).map {
+                          clazz =>
+                            objectMapper.getTypeFactory.uncheckedSimpleType(clazz)
+                        }
+                    }.getOrElse( {
+                      log.warn(s"$prop uses Scala Option and we're unable to extract its Type using fallback-approach looking for @JsonDeserialize")
+                      containedType
+                    })
+
+                  } else {
+                    // use containedType as is
+                    containedType
+                  }
+
+                  objectMapper.acceptJsonFormatVisitor(optionType, childVisitor)
+
                 } else {
                   objectMapper.acceptJsonFormatVisitor(propertyType, childVisitor)
                 }

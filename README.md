@@ -73,6 +73,25 @@ This is how to generate jsonSchema in code using Scala:
     val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
 ```
 
+**Note about Scala and Option[Int]**:
+
+Due to Java's Type Erasure it impossible to resolve the type T behind Option[T] when T is Int, Boolean, Double.
+Ass a workaround, you have to use the *@JsonDeserialize*-annotation in such cases.
+See https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges for more info.
+
+Example:
+```scala
+    case class PojoUsingOptionScala(
+                                     _string:Option[String], // @JsonDeserialize not needed here
+                                     @JsonDeserialize(contentAs = classOf[Int])     _integer:Option[Int],
+                                     @JsonDeserialize(contentAs = classOf[Boolean]) _boolean:Option[Boolean],
+                                     @JsonDeserialize(contentAs = classOf[Double])  _double:Option[Double],
+                                     child1:Option[SomeOtherPojo] // @JsonDeserialize not needed here
+                                   )
+```
+
+PS: Scala Option combined with Polymorphism does not work in jackson-scala-module not this project.
+
 And using Java:
 
 ```java

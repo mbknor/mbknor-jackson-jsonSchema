@@ -1,8 +1,9 @@
 package com.kjetland.jackson.jsonSchema
 
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo, JsonValue}
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.module.SimpleModule
-import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
+import com.fasterxml.jackson.databind.node.{ArrayNode, MissingNode, ObjectNode}
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
@@ -101,7 +102,10 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   }
 
   def getArrayNodeAsListOfStrings(node:JsonNode):List[String] = {
-    node.asInstanceOf[ArrayNode].iterator().toList.map(_.asText())
+    node match {
+      case x:MissingNode => List()
+      case x:ArrayNode   => x.toList.map(_.asText())
+    }
   }
 
   def getRequiredList(node:JsonNode):List[String] = {
@@ -227,36 +231,78 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   }
 
   test("primitives") {
-    val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.manyPrimitives)
-    val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.manyPrimitives.getClass, Some(jsonNode))
 
-    assert( schema.at("/properties/_string/type").asText() == "string" )
+    // java
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.manyPrimitives)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.manyPrimitives.getClass, Some(jsonNode))
 
-    assert( schema.at("/properties/_integer/type").asText() == "integer" )
-    assert( !getRequiredList(schema).contains("_integer")) // Should allow null by default
+      assert(schema.at("/properties/_string/type").asText() == "string")
 
-    assert( schema.at("/properties/_int/type").asText() == "integer" )
-    assert( getRequiredList(schema).contains("_int")) // Must have a value
+      assert(schema.at("/properties/_integer/type").asText() == "integer")
+      assert(!getRequiredList(schema).contains("_integer")) // Should allow null by default
 
-    assert( schema.at("/properties/_booleanObject/type").asText() == "boolean" )
-    assert( !getRequiredList(schema).contains("_booleanObject")) // Should allow null by default
+      assert(schema.at("/properties/_int/type").asText() == "integer")
+      assert(getRequiredList(schema).contains("_int")) // Must have a value
 
-    assert( schema.at("/properties/_booleanPrimitive/type").asText() == "boolean" )
-    assert( getRequiredList(schema).contains("_booleanPrimitive")) // Must be required since it must have true or false - not null
+      assert(schema.at("/properties/_booleanObject/type").asText() == "boolean")
+      assert(!getRequiredList(schema).contains("_booleanObject")) // Should allow null by default
 
-    assert( schema.at("/properties/_booleanObjectWithNotNull/type").asText() == "boolean" )
-    assert( getRequiredList(schema).contains("_booleanObjectWithNotNull"))
+      assert(schema.at("/properties/_booleanPrimitive/type").asText() == "boolean")
+      assert(getRequiredList(schema).contains("_booleanPrimitive")) // Must be required since it must have true or false - not null
 
-    assert( schema.at("/properties/_doubleObject/type").asText() == "number" )
-    assert( !getRequiredList(schema).contains("_doubleObject")) // Should allow null by default
+      assert(schema.at("/properties/_booleanObjectWithNotNull/type").asText() == "boolean")
+      assert(getRequiredList(schema).contains("_booleanObjectWithNotNull"))
 
-    assert( schema.at("/properties/_doublePrimitive/type").asText() == "number" )
-    assert( getRequiredList(schema).contains("_doublePrimitive")) // Must be required since it must have a value - not null
+      assert(schema.at("/properties/_doubleObject/type").asText() == "number")
+      assert(!getRequiredList(schema).contains("_doubleObject")) // Should allow null by default
 
-    assert( schema.at("/properties/myEnum/type").asText() == "string")
-    assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == List("A", "B", "C") )
+      assert(schema.at("/properties/_doublePrimitive/type").asText() == "number")
+      assert(getRequiredList(schema).contains("_doublePrimitive")) // Must be required since it must have a value - not null
 
+      assert(schema.at("/properties/myEnum/type").asText() == "string")
+      assert(getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == List("A", "B", "C"))
+    }
 
+    // scala
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.manyPrimitivesScala)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, testData.manyPrimitivesScala.getClass, Some(jsonNode))
+
+      assert(schema.at("/properties/_string/type").asText() == "string")
+
+      assert(schema.at("/properties/_integer/type").asText() == "integer")
+      assert(getRequiredList(schema).contains("_integer")) // Should allow null by default
+
+      assert(schema.at("/properties/_boolean/type").asText() == "boolean")
+      assert(getRequiredList(schema).contains("_boolean")) // Should allow null by default
+
+      assert(schema.at("/properties/_double/type").asText() == "number")
+      assert(getRequiredList(schema).contains("_double")) // Should allow null by default
+    }
+  }
+
+  test("scala using option") {
+    val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.pojoUsingOptionScala)
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, testData.pojoUsingOptionScala.getClass, Some(jsonNode))
+
+    assert(schema.at("/properties/_string/type").asText() == "string")
+    assert(!getRequiredList(schema).contains("_string")) // Should allow null by default
+
+    assert(schema.at("/properties/_integer/type").asText() == "integer")
+    assert(!getRequiredList(schema).contains("_integer")) // Should allow null by default
+
+    assert(schema.at("/properties/_boolean/type").asText() == "boolean")
+    assert(!getRequiredList(schema).contains("_boolean")) // Should allow null by default
+
+    assert(schema.at("/properties/_double/type").asText() == "number")
+    assert(!getRequiredList(schema).contains("_double")) // Should allow null by default
+
+    val child1 = getNodeViaRefs(schema, schema.at("/properties/child1"), "Child1Scala")
+
+    assertJsonSubTypesInfo(child1, "type", "child1")
+    assert( child1.at("/properties/parentString/type").asText() == "string" )
+    assert( child1.at("/properties/child1String/type").asText() == "string" )
   }
 
   test("custom serializer not overriding JsonSerializer.acceptJsonFormatVisitor") {
@@ -378,6 +424,10 @@ trait TestData {
 
   val manyPrimitives = new ManyPrimitives("s1", 1, 2, true, false, true, 0.1, 0.2, MyEnum.B)
 
+  val manyPrimitivesScala = ManyPrimitivesScala("s1", 1, true, 0.1)
+
+  val pojoUsingOptionScala = PojoUsingOptionScala(Some("s1"), Some(1), Some(true), Some(0.1), Some(child1Scala))
+
   val pojoWithCustomSerializer = {
     val p = new PojoWithCustomSerializer
     p.myString = "xxx"
@@ -435,3 +485,14 @@ case class Child1Scala(parentString:String, child1String:String) extends ParentS
 case class Child2Scala(parentString:String, child2int:Int) extends ParentScala
 
 case class PojoWithParentScala(pojoValue:Boolean, child:ParentScala)
+
+case class ManyPrimitivesScala(_string:String, _integer:Int, _boolean:Boolean, _double:Double)
+
+case class PojoUsingOptionScala(
+                                 _string:Option[String],
+                                 @JsonDeserialize(contentAs = classOf[Int])     _integer:Option[Int],
+                                 @JsonDeserialize(contentAs = classOf[Boolean]) _boolean:Option[Boolean],
+                                 @JsonDeserialize(contentAs = classOf[Double])  _double:Option[Double],
+                                 child1:Option[Child1Scala]
+                                 //, parent:Option[ParentScala] - Not using this one: jackson-scala-module does not support Option combined with Polymorphism
+                               )
