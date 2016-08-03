@@ -40,6 +40,8 @@ Dependency
 
 This project publishes artifacts to central maven repo.
 
+The project is also compiled using Java 8. This means that you also need to use Java 8.
+
 
 Using Maven
 -----------------
