@@ -5,12 +5,14 @@ Jackson jsonSchema Generator
 This projects aims to do a better job than the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)
 in generating jsonSchema from your POJOs using Jackson @Annotations.
 
-Current version: *1.0.0*
+Current version: *1.0.1*
 
 **Highlights**
 
 * JSON Schema Draft v4
 * Supports polymorphism using **@JsonTypeInfo** and **oneOf**
+* Supports schema customization using @JsonSchemaDescription, @JsonSchemaFormat and @JsonSchemaTitle
+* Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor)
 
 **Benefits**
 
@@ -21,7 +23,7 @@ Current version: *1.0.0*
 **The Future**
 
 * Should support all different variations of Jackson-usage
-* Should support all (a lot?) of *javax.validation-API* 
+* Should support all (a lot?) of *javax.validation-API*-annotations
 
 
 Project status
@@ -51,7 +53,7 @@ Add this to you pom.xml:
     <dependency>
         <groupId>com.kjetland</groupId>
         <artifactId>mbknor-jackson-jsonschema_2.11</artifactId>
-        <version>1.0.0</version>
+        <version>1.0.1</version>
     </dependency>    
 
 Using sbt
@@ -59,7 +61,7 @@ Using sbt
  
 Add this to you sbt build-config:
 
-    "com.kjetland" % "mbknor-jackson-jsonschema" %% "1.0.0"
+    "com.kjetland" % "mbknor-jackson-jsonschema" %% "1.0.1"
 
 
 Code
