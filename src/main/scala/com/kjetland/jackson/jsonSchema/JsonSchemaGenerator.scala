@@ -1,6 +1,7 @@
 package com.kjetland.jackson.jsonSchema
 
 import java.lang.reflect.{Field, Method, ParameterizedType}
+import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime}
 import java.util
 import javax.validation.constraints.NotNull
 
@@ -12,17 +13,31 @@ import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.introspect.{AnnotatedClass, JacksonAnnotationIntrospector}
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
+import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle}
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
   val JSON_SCHEMA_DRAFT_4_URL = "http://json-schema.org/draft-04/schema#"
 }
 
-class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = false) {
+class JsonSchemaGenerator
+(
+  val rootObjectMapper: ObjectMapper,
+  debug:Boolean = false,
+  extraClazz2FormatMapping:Map[Class[_], String] = Map(),
+  autoGenerateTitleForProperties:Boolean = true,
+  defaultArrayFormat:Option[String] = Some("table")) {
 
   import scala.collection.JavaConversions._
 
   val log = LoggerFactory.getLogger(getClass)
+
+  val clazz2FormatMapping = Map[Class[_], String](
+    classOf[OffsetDateTime] -> "datetime",
+    classOf[LocalDateTime]  -> "datetime-local",
+    classOf[LocalDate]      -> "date",
+    classOf[LocalTime]      -> "time"
+  ) ++ extraClazz2FormatMapping
 
   trait MySerializerProvider {
     var provider: SerializerProvider = null
@@ -145,6 +160,10 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
       l(s"expectArrayFormat - _type: ${_type}")
 
       node.put("type", "array")
+
+      defaultArrayFormat.foreach {
+        format => node.put("format", format)
+      }
 
       val itemsNode = JsonNodeFactory.instance.objectNode()
       node.set("items", itemsNode)
@@ -302,17 +321,12 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
                 val childVisitor = createChild(objectNode)
                 objectMapper.acceptJsonFormatVisitor(subType, childVisitor)
 
-                // must inject the 'type'-param and value as enum with only one possible value
-                val propertiesNode = objectNode.get("properties").asInstanceOf[ObjectNode]
-
                 None
             }
 
             val thisOneOfNode = JsonNodeFactory.instance.objectNode()
             thisOneOfNode.put("$ref", definitionInfo.ref.get)
             anyOfArrayNode.add(thisOneOfNode)
-
-
 
         }
 
@@ -326,6 +340,25 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
 
             thisObjectNode.put("type", "object")
             thisObjectNode.put("additionalProperties", false)
+
+            // If class is annotated with JsonSchemaFormat, we should add it
+            val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
+            Option(ac.getAnnotations.get(classOf[JsonSchemaFormat])).map(_.value()).foreach {
+              format =>
+                thisObjectNode.put("format", format)
+            }
+
+            // If class is annotated with JsonSchemaDescription, we should add it
+            Option(ac.getAnnotations.get(classOf[JsonSchemaDescription])).map(_.value()).foreach {
+              description =>
+                thisObjectNode.put("description", description)
+            }
+
+            // If class is annotated with JsonSchemaTitle, we should add it
+            Option(ac.getAnnotations.get(classOf[JsonSchemaTitle])).map(_.value()).foreach {
+              title =>
+                thisObjectNode.put("title", title)
+            }
 
             val propertiesNode = JsonNodeFactory.instance.objectNode()
             thisObjectNode.set("properties", propertiesNode)
@@ -406,6 +439,30 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
                   getRequiredArrayNode(thisObjectNode).add(propertyName)
                 }
 
+                resolvePropertyFormat(prop).foreach {
+                  format =>
+                    thisPropertyNode.put("format", format)
+                }
+
+                // Optionally add description
+                Option(prop.getAnnotation(classOf[JsonSchemaDescription])).map {
+                  jsonSchemaDescription =>
+                    thisPropertyNode.put("description", jsonSchemaDescription.value())
+                }
+
+                // Optionally add title
+                Option(prop.getAnnotation(classOf[JsonSchemaTitle])).map(_.value())
+                  .orElse {
+                    if (autoGenerateTitleForProperties) {
+                      // We should generate 'pretty-name' based on propertyName
+                      Some(generateTitleFromPropertyName(propertyName))
+                    } else None
+                  }
+                  .map {
+                  title =>
+                    thisPropertyNode.put("title", title)
+                }
+
               }
 
               override def optionalProperty(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = {
@@ -439,6 +496,32 @@ class JsonSchemaGenerator(val rootObjectMapper: ObjectMapper, debug:Boolean = fa
 
     }
 
+  }
+
+  def generateTitleFromPropertyName(propertyName:String):String = {
+    // Code found here: http://stackoverflow.com/questions/2559759/how-do-i-convert-camelcase-into-human-readable-names-in-java
+    val s = propertyName.replaceAll(
+      String.format("%s|%s|%s",
+        "(?<=[A-Z])(?=[A-Z][a-z])",
+        "(?<=[^A-Z])(?=[A-Z])",
+        "(?<=[A-Za-z])(?=[^A-Za-z])"
+      ),
+      " "
+    )
+
+    // Make the first letter uppercase
+    s.substring(0,1).toUpperCase() + s.substring(1)
+  }
+
+  def resolvePropertyFormat(prop: BeanProperty):Option[String] = {
+    // Prefer format specified in annotation
+    Option(prop.getAnnotation(classOf[JsonSchemaFormat])).map {
+      jsonSchemaFormat =>
+        jsonSchemaFormat.value()
+    }.orElse {
+      // Try to resolve format from type
+      clazz2FormatMapping.get( prop.getType.getRawClass )
+    }
   }
 
   def resolveType(prop: BeanProperty, objectMapper: ObjectMapper):JavaType = {
