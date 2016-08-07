@@ -1,7 +1,8 @@
 package com.kjetland.jackson.jsonSchema
 
 import java.time.OffsetDateTime
-import java.util.TimeZone
+import java.util
+import java.util.{Optional, TimeZone}
 
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo, JsonValue}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -40,8 +41,9 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
 
   val jsonSchemaGenerator = new JsonSchemaGenerator(_objectMapper, debug = true)
-  val jsonSchemaGeneratorHTML5Date = new JsonSchemaGenerator(_objectMapper, debug = true, config = JsonSchemaConfig.html5EnabledSchema)
+  val jsonSchemaGeneratorHTML5 = new JsonSchemaGenerator(_objectMapper, debug = true, config = JsonSchemaConfig.html5EnabledSchema)
   val jsonSchemaGeneratorScala = new JsonSchemaGenerator(_objectMapperScala, debug = true)
+  val jsonSchemaGeneratorScalaHTML5 = new JsonSchemaGenerator(_objectMapperScala, debug = true, config = JsonSchemaConfig.html5EnabledSchema)
 
   val testData = new TestData{}
 
@@ -334,6 +336,27 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   }
 
+  test("java using option") {
+    val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingOptionalJava)
+    val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingOptionalJava.getClass, Some(jsonNode))
+
+    assert(schema.at("/properties/_string/type").asText() == "string")
+    assert(!getRequiredList(schema).contains("_string")) // Should allow null by default
+
+    assert(schema.at("/properties/_integer/type").asText() == "integer")
+    assert(!getRequiredList(schema).contains("_integer")) // Should allow null by default
+
+    val child1 = getNodeViaRefs(schema, schema.at("/properties/child1"), "Child1")
+
+    assertJsonSubTypesInfo(child1, "type", "child1")
+    assert( child1.at("/properties/parentString/type").asText() == "string" )
+    assert( child1.at("/properties/child1String/type").asText() == "string" )
+
+    assert(schema.at("/properties/optionalList/type").asText() == "array")
+    assert(schema.at("/properties/optionalList/items/$ref").asText() == "#/definitions/ClassNotExtendingAnything")
+
+  }
+
   test("custom serializer not overriding JsonSerializer.acceptJsonFormatVisitor") {
 
     val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoWithCustomSerializer)
@@ -414,7 +437,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   test("pojo Using Custom Annotations") {
     val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoUsingFormat)
     val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingFormat.getClass, Some(jsonNode))
-    val schemaHTML5Date = generateAndValidateSchema(jsonSchemaGeneratorHTML5Date, testData.pojoUsingFormat.getClass, Some(jsonNode))
+    val schemaHTML5Date = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoUsingFormat.getClass, Some(jsonNode))
 
     assert( schema.at("/format").asText() == "grid")
     assert( schema.at("/description").asText() == "This is our pojo")
@@ -441,6 +464,83 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert( schemaHTML5Date.at("/properties/dateTimeWithAnnotation/title").asText() == "Date Time With Annotation")
 
 
+  }
+
+  test("scala using option with HTML5") {
+    val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.pojoUsingOptionScala)
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.pojoUsingOptionScala.getClass, Some(jsonNode))
+
+    assert(schema.at("/properties/_string/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/_string/oneOf/0/title").asText() == "Not included")
+    assert(schema.at("/properties/_string/oneOf/1/type").asText() == "string")
+    assert(!getRequiredList(schema).contains("_string")) // Should allow null by default
+    assert(schema.at("/properties/_string/title").asText() == "_string")
+
+    assert(schema.at("/properties/_integer/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/_integer/oneOf/0/title").asText() == "Not included")
+    assert(schema.at("/properties/_integer/oneOf/1/type").asText() == "integer")
+    assert(!getRequiredList(schema).contains("_integer")) // Should allow null by default
+    assert(schema.at("/properties/_integer/title").asText() == "_integer")
+
+    assert(schema.at("/properties/_boolean/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/_boolean/oneOf/0/title").asText() == "Not included")
+    assert(schema.at("/properties/_boolean/oneOf/1/type").asText() == "boolean")
+    assert(!getRequiredList(schema).contains("_boolean")) // Should allow null by default
+    assert(schema.at("/properties/_boolean/title").asText() == "_boolean")
+
+    assert(schema.at("/properties/_double/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/_double/oneOf/0/title").asText() == "Not included")
+    assert(schema.at("/properties/_double/oneOf/1/type").asText() == "number")
+    assert(!getRequiredList(schema).contains("_double")) // Should allow null by default
+    assert(schema.at("/properties/_double/title").asText() == "_double")
+
+    assert(schema.at("/properties/child1/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/child1/oneOf/0/title").asText() == "Not included")
+    val child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1Scala")
+    assert(schema.at("/properties/child1/title").asText() == "Child 1")
+
+    assertJsonSubTypesInfo(child1, "type", "child1")
+    assert( child1.at("/properties/parentString/type").asText() == "string" )
+    assert( child1.at("/properties/child1String/type").asText() == "string" )
+
+    assert(schema.at("/properties/optionalList/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/optionalList/oneOf/0/title").asText() == "Not included")
+    assert(schema.at("/properties/optionalList/oneOf/1/type").asText() == "array")
+    assert(schema.at("/properties/optionalList/oneOf/1/items/$ref").asText() == "#/definitions/ClassNotExtendingAnythingScala")
+    assert(schema.at("/properties/optionalList/title").asText() == "Optional List")
+  }
+
+  test("java using optional with HTML5") {
+    val jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.pojoUsingOptionalJava)
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoUsingOptionalJava.getClass, Some(jsonNode))
+
+    assert(schema.at("/properties/_string/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/_string/oneOf/0/title").asText() == "Not included")
+    assert(schema.at("/properties/_string/oneOf/1/type").asText() == "string")
+    assert(!getRequiredList(schema).contains("_string")) // Should allow null by default
+    assert(schema.at("/properties/_string/title").asText() == "_string")
+
+    assert(schema.at("/properties/_integer/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/_integer/oneOf/0/title").asText() == "Not included")
+    assert(schema.at("/properties/_integer/oneOf/1/type").asText() == "integer")
+    assert(!getRequiredList(schema).contains("_integer")) // Should allow null by default
+    assert(schema.at("/properties/_integer/title").asText() == "_integer")
+
+
+    assert(schema.at("/properties/child1/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/child1/oneOf/0/title").asText() == "Not included")
+    val child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1")
+    assert(schema.at("/properties/child1/title").asText() == "Child 1")
+
+    assertJsonSubTypesInfo(child1, "type", "child1")
+    assert( child1.at("/properties/parentString/type").asText() == "string" )
+    assert( child1.at("/properties/child1String/type").asText() == "string" )
+
+    assert(schema.at("/properties/optionalList/oneOf/0/type").asText() == "null")
+    assert(schema.at("/properties/optionalList/oneOf/0/title").asText() == "Not included")
+    assert(schema.at("/properties/optionalList/oneOf/1/type").asText() == "array")
+    assert(schema.at("/properties/optionalList/oneOf/1/items/$ref").asText() == "#/definitions/ClassNotExtendingAnything")
+    assert(schema.at("/properties/optionalList/title").asText() == "Optional List")
   }
 
 }
@@ -488,6 +588,8 @@ trait TestData {
   val manyPrimitivesScala = ManyPrimitivesScala("s1", 1, true, 0.1)
 
   val pojoUsingOptionScala = PojoUsingOptionScala(Some("s1"), Some(1), Some(true), Some(0.1), Some(child1Scala), Some(List(classNotExtendingAnythingScala)))
+
+  val pojoUsingOptionalJava = new PojoUsingOptionalJava(Optional.of("s"), Optional.of(1), Optional.of(child1), Optional.of(util.Arrays.asList(classNotExtendingAnything)))
 
   val pojoWithCustomSerializer = {
     val p = new PojoWithCustomSerializer

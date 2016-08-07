@@ -3,6 +3,7 @@ package com.kjetland.jackson.jsonSchema
 import java.lang.reflect.{Field, Method, ParameterizedType}
 import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime}
 import java.util
+import java.util.Optional
 import javax.validation.constraints.NotNull
 
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
@@ -25,7 +26,9 @@ object JsonSchemaConfig {
   val vanillaJsonSchemaDraft4 = JsonSchemaConfig(
     useHTML5DateTimeLocal = false,
     autoGenerateTitleForProperties = false,
-    defaultArrayFormat = None)
+    defaultArrayFormat = None,
+    useOneOfForOption = false
+  )
 
   /**
     * Use this configuration if using the JsonSchema to generate HTML5 GUI, eg. by using https://github.com/jdorn/json-editor
@@ -38,14 +41,17 @@ object JsonSchemaConfig {
   val html5EnabledSchema = JsonSchemaConfig(
     useHTML5DateTimeLocal = true,
     autoGenerateTitleForProperties = true,
-    defaultArrayFormat = Some("table"))
+    defaultArrayFormat = Some("table"),
+    useOneOfForOption = true
+  )
 }
 
 case class JsonSchemaConfig
 (
-  useHTML5DateTimeLocal:Boolean = false,
-  autoGenerateTitleForProperties:Boolean = true,
-  defaultArrayFormat:Option[String] = Some("table")
+  useHTML5DateTimeLocal:Boolean,
+  autoGenerateTitleForProperties:Boolean,
+  defaultArrayFormat:Option[String],
+  useOneOfForOption:Boolean
 )
 
 
@@ -440,13 +446,46 @@ class JsonSchemaGenerator
                 val propertyType = prop.getType
                 l(s"JsonObjectFormatVisitor - ${propertyName}: ${propertyType}")
 
-                val thisPropertyNode = JsonNodeFactory.instance.objectNode()
-                propertiesNode.set(propertyName, thisPropertyNode)
+                // Need to check for Option/Optional-special-case before we know what node to use here.
 
-                val childNode = JsonNodeFactory.instance.objectNode()
+                case class PropertyNode(main:ObjectNode, meta:ObjectNode)
+
+                val thisPropertyNode:PropertyNode = {
+                  val thisPropertyNode = JsonNodeFactory.instance.objectNode()
+                  propertiesNode.set(propertyName, thisPropertyNode)
+
+                  // Check for Option/Optional-special-case
+                  if ( config.useOneOfForOption &&
+                       (    classOf[Option[_]].isAssignableFrom(propertyType.getRawClass)
+                         || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass)) ) {
+                    // Need to special-case for property using Option/Optional
+                    // Should insert oneOf between 'real one' and 'null'
+                    val oneOfArray = JsonNodeFactory.instance.arrayNode()
+                    thisPropertyNode.set("oneOf", oneOfArray)
 
 
-                val childVisitor = createChild(thisPropertyNode)
+                    // Create the one used when Option is empty
+                    val oneOfNull = JsonNodeFactory.instance.objectNode()
+                    oneOfNull.put("type", "null")
+                    oneOfNull.put("title", "Not included")
+                    oneOfArray.add(oneOfNull)
+
+                    // Create the one used when Option is defined with the real value
+                    val oneOfReal = JsonNodeFactory.instance.objectNode()
+                    oneOfArray.add(oneOfReal)
+
+                    // Return oneOfReal which, from now on, will be used as the node representing this property
+                    PropertyNode(oneOfReal, thisPropertyNode)
+
+                  } else {
+                    // Not special-casing - using thisPropertyNode as is
+                    PropertyNode(thisPropertyNode, thisPropertyNode)
+                  }
+                }
+
+                // Continue processing this property
+
+                val childVisitor = createChild(thisPropertyNode.main)
 
                 // Workaround for scala lists and so on
                 if ( (propertyType.isArrayType || propertyType.isCollectionLikeType) && !classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) && propertyType.containedTypeCount() >= 1) {
@@ -458,9 +497,9 @@ class JsonSchemaGenerator
                   val itemType:JavaType = resolveType(prop, objectMapper)
 
                   childVisitor.expectArrayFormat(itemType).itemsFormat(null, itemType)
-                } else if(classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) && propertyType.containedTypeCount() >= 1) {
+                } else if( (classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass) ) && propertyType.containedTypeCount() >= 1) {
 
-                  // Property is scala Option.
+                  // Property is scala Option or Java Optional.
                   //
                   // Due to Java's Type Erasure, the type behind Option is lost.
                   // To workaround this, we use the same workaround as jackson-scala-module described here:
@@ -491,13 +530,13 @@ class JsonSchemaGenerator
 
                 resolvePropertyFormat(prop).foreach {
                   format =>
-                    setFormat(thisPropertyNode, format)
+                    setFormat(thisPropertyNode.main, format)
                 }
 
                 // Optionally add description
                 Option(prop.getAnnotation(classOf[JsonSchemaDescription])).map {
                   jsonSchemaDescription =>
-                    thisPropertyNode.put("description", jsonSchemaDescription.value())
+                    thisPropertyNode.meta.put("description", jsonSchemaDescription.value())
                 }
 
                 // Optionally add title
@@ -510,7 +549,7 @@ class JsonSchemaGenerator
                   }
                   .map {
                   title =>
-                    thisPropertyNode.put("title", title)
+                    thisPropertyNode.meta.put("title", title)
                 }
 
               }
