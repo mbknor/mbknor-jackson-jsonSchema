@@ -12,7 +12,7 @@ Current version: *1.0.1*
 * JSON Schema Draft v4
 * Supports polymorphism using **@JsonTypeInfo** and **oneOf**
 * Supports schema customization using @JsonSchemaDescription, @JsonSchemaFormat and @JsonSchemaTitle
-* Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor)
+* Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor) - NB: Must be configured to use this mode
 
 **Benefits**
 
@@ -77,6 +77,17 @@ This is how to generate jsonSchema in code using Scala:
     val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
 ```
 
+This is how to generate jsonSchema used for generating HTML5 GUI using [json-editor](https://github.com/jdorn/json-editor): 
+
+```scala
+    val objectMapper = new ObjectMapper
+    val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config = JsonSchemaConfig.html5EnabledSchema)
+    val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
+    
+    val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
+```
+
+
 **Note about Scala and Option[Int]**:
 
 Due to Java's Type Erasure it impossible to resolve the type T behind Option[T] when T is Int, Boolean, Double.
@@ -94,13 +105,17 @@ Example:
                                    )
 ```
 
-PS: Scala Option combined with Polymorphism does not work in jackson-scala-module not this project.
+PS: Scala Option combined with Polymorphism does not work in jackson-scala-module and therefor not this project either.
 
 And using Java:
 
 ```java
     ObjectMapper objectMapper = new ObjectMapper();
     JsonSchemaGenerator jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper);
+    
+    // If using JsonSchema to generate HTML5 GUI:
+    // JsonSchemaGenerator html5 = new JsonSchemaGenerator(objectMapper, JsonSchemaConfig.html5EnabledSchema() );
+    
     JsonNode jsonSchema = jsonSchemaGenerator.generateJsonSchema(YourPOJO.class);
     
     String jsonSchemaAsString = objectMapper.writeValueAsString(jsonSchema);

@@ -20,24 +20,58 @@ object JsonSchemaGenerator {
   val JSON_SCHEMA_DRAFT_4_URL = "http://json-schema.org/draft-04/schema#"
 }
 
+object JsonSchemaConfig {
+
+  val vanillaJsonSchemaDraft4 = JsonSchemaConfig(
+    useHTML5DateTimeLocal = false,
+    autoGenerateTitleForProperties = false,
+    defaultArrayFormat = None)
+
+  /**
+    * Use this configuration if using the JsonSchema to generate HTML5 GUI, eg. by using https://github.com/jdorn/json-editor
+    *
+    * useHTML5DateTimeLocal - use "datetime-local" as format instead of "date-time"
+    * autoGenerateTitleForProperties - If property is named "someName", we will add {"title": "Some Name"}
+    * defaultArrayFormat - this will result in a better gui than te default one.
+
+    */
+  val html5EnabledSchema = JsonSchemaConfig(
+    useHTML5DateTimeLocal = true,
+    autoGenerateTitleForProperties = true,
+    defaultArrayFormat = Some("table"))
+}
+
+case class JsonSchemaConfig
+(
+  useHTML5DateTimeLocal:Boolean = false,
+  autoGenerateTitleForProperties:Boolean = true,
+  defaultArrayFormat:Option[String] = Some("table")
+)
+
+
+
+/**
+  * Json Schema Generator
+  * @param rootObjectMapper pre-configured ObjectMapper
+  * @param debug Default = false - set to true if generator should log some debug info while generating the schema
+  * @param config default = vanillaJsonSchemaDraft4. Please use html5EnabledSchema if generating HTML5 GUI, e.g. using https://github.com/jdorn/json-editor
+  */
 class JsonSchemaGenerator
 (
   val rootObjectMapper: ObjectMapper,
   debug:Boolean = false,
-  extraClazz2FormatMapping:Map[Class[_], String] = Map(),
-  autoGenerateTitleForProperties:Boolean = true,
-  defaultArrayFormat:Option[String] = Some("table")) {
+  config:JsonSchemaConfig = JsonSchemaConfig.vanillaJsonSchemaDraft4
+) {
+
+  // Java API
+  def this(rootObjectMapper: ObjectMapper) = this(rootObjectMapper, false, JsonSchemaConfig.vanillaJsonSchemaDraft4)
+
+  // Java API
+  def this(rootObjectMapper: ObjectMapper, config:JsonSchemaConfig) = this(rootObjectMapper, false, config)
 
   import scala.collection.JavaConversions._
 
   val log = LoggerFactory.getLogger(getClass)
-
-  val clazz2FormatMapping = Map[Class[_], String](
-    classOf[OffsetDateTime] -> "datetime",
-    classOf[LocalDateTime]  -> "datetime-local",
-    classOf[LocalDate]      -> "date",
-    classOf[LocalTime]      -> "time"
-  ) ++ extraClazz2FormatMapping
 
   trait MySerializerProvider {
     var provider: SerializerProvider = null
@@ -61,6 +95,14 @@ class JsonSchemaGenerator
           enumValuesNode.add(enumValue)
       }
     }
+  }
+
+  private def setFormat(node:ObjectNode, format:String): Unit ={
+    val formatToUse = if ( config.useHTML5DateTimeLocal && format == "date-time" )
+        "datetime-local"
+      else format
+
+    node.put("format", formatToUse)
   }
 
 
@@ -150,7 +192,9 @@ class JsonSchemaGenerator
 
       new JsonStringFormatVisitor with EnumSupport {
         val _node = node
-        override def format(format: JsonValueFormat): Unit = l(s"JsonStringFormatVisitor.format: ${format}")
+        override def format(format: JsonValueFormat): Unit = {
+          setFormat(node, format.toString)
+        }
       }
 
 
@@ -161,8 +205,8 @@ class JsonSchemaGenerator
 
       node.put("type", "array")
 
-      defaultArrayFormat.foreach {
-        format => node.put("format", format)
+      config.defaultArrayFormat.foreach {
+        format => setFormat(node, format)
       }
 
       val itemsNode = JsonNodeFactory.instance.objectNode()
@@ -193,7 +237,9 @@ class JsonSchemaGenerator
       new JsonNumberFormatVisitor  with EnumSupport {
         val _node = node
         override def numberType(_type: NumberType): Unit = l(s"JsonNumberFormatVisitor.numberType: ${_type}")
-        override def format(format: JsonValueFormat): Unit = l(s"JsonNumberFormatVisitor.format: ${format}")
+        override def format(format: JsonValueFormat): Unit = {
+          setFormat(node, format.toString)
+        }
       }
     }
 
@@ -215,7 +261,9 @@ class JsonSchemaGenerator
       new JsonIntegerFormatVisitor with EnumSupport {
         val _node = node
         override def numberType(_type: NumberType): Unit = l(s"JsonIntegerFormatVisitor.numberType: ${_type}")
-        override def format(format: JsonValueFormat): Unit = l(s"JsonIntegerFormatVisitor.format: ${format}")
+        override def format(format: JsonValueFormat): Unit = {
+          setFormat(node, format.toString)
+        }
       }
     }
 
@@ -232,7 +280,9 @@ class JsonSchemaGenerator
 
       new JsonBooleanFormatVisitor with EnumSupport {
         val _node = node
-        override def format(format: JsonValueFormat): Unit = l(s"JsonBooleanFormatVisitor.format: ${format}")
+        override def format(format: JsonValueFormat): Unit = {
+          setFormat(node, format.toString)
+        }
       }
     }
 
@@ -345,7 +395,7 @@ class JsonSchemaGenerator
             val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
             Option(ac.getAnnotations.get(classOf[JsonSchemaFormat])).map(_.value()).foreach {
               format =>
-                thisObjectNode.put("format", format)
+                setFormat(thisObjectNode, format)
             }
 
             // If class is annotated with JsonSchemaDescription, we should add it
@@ -441,7 +491,7 @@ class JsonSchemaGenerator
 
                 resolvePropertyFormat(prop).foreach {
                   format =>
-                    thisPropertyNode.put("format", format)
+                    setFormat(thisPropertyNode, format)
                 }
 
                 // Optionally add description
@@ -453,7 +503,7 @@ class JsonSchemaGenerator
                 // Optionally add title
                 Option(prop.getAnnotation(classOf[JsonSchemaTitle])).map(_.value())
                   .orElse {
-                    if (autoGenerateTitleForProperties) {
+                    if (config.autoGenerateTitleForProperties) {
                       // We should generate 'pretty-name' based on propertyName
                       Some(generateTitleFromPropertyName(propertyName))
                     } else None
@@ -518,9 +568,6 @@ class JsonSchemaGenerator
     Option(prop.getAnnotation(classOf[JsonSchemaFormat])).map {
       jsonSchemaFormat =>
         jsonSchemaFormat.value()
-    }.orElse {
-      // Try to resolve format from type
-      clazz2FormatMapping.get( prop.getType.getRawClass )
     }
   }
 
