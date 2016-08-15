@@ -29,7 +29,8 @@ object JsonSchemaConfig {
     defaultArrayFormat = None,
     useOneOfForOption = false,
     usePropertyOrdering = false,
-    hidePolymorphismTypeProperty = false
+    hidePolymorphismTypeProperty = false,
+    disableWarnings = false
   )
 
   /**
@@ -46,7 +47,8 @@ object JsonSchemaConfig {
     defaultArrayFormat = Some("table"),
     useOneOfForOption = true,
     usePropertyOrdering = true,
-    hidePolymorphismTypeProperty = true
+    hidePolymorphismTypeProperty = true,
+    disableWarnings = false
   )
 }
 
@@ -57,7 +59,8 @@ case class JsonSchemaConfig
   defaultArrayFormat:Option[String],
   useOneOfForOption:Boolean,
   usePropertyOrdering:Boolean,
-  hidePolymorphismTypeProperty:Boolean
+  hidePolymorphismTypeProperty:Boolean,
+  disableWarnings:Boolean
 )
 
 
@@ -256,8 +259,9 @@ class JsonSchemaGenerator
     }
 
     override def expectAnyFormat(_type: JavaType) = {
-      log.warn(s"Not able to generate jsonSchema-info for type: ${_type} - probably using custom serializer which does not override acceptJsonFormatVisitor")
-
+      if (!config.disableWarnings) {
+        log.warn(s"Not able to generate jsonSchema-info for type: ${_type} - probably using custom serializer which does not override acceptJsonFormatVisitor")
+      }
 
 
       new JsonAnyFormatVisitor {
@@ -463,6 +467,14 @@ class JsonSchemaGenerator
               def myPropertyHandler(propertyName:String, propertyType:JavaType, prop: Option[BeanProperty], jsonPropertyRequired:Boolean): Unit = {
                 l(s"JsonObjectFormatVisitor - ${propertyName}: ${propertyType}")
 
+                if ( propertiesNode.get(propertyName) != null) {
+                  if (!config.disableWarnings) {
+                    log.warn(s"Ignoring property '$propertyName' in $propertyType since it has already been added, probably as type-property using polymorphism")
+                  }
+                  return
+                }
+
+
                 // Need to check for Option/Optional-special-case before we know what node to use here.
 
                 case class PropertyNode(main:ObjectNode, meta:ObjectNode)
@@ -666,7 +678,9 @@ class JsonSchemaGenerator
               objectMapper.getTypeFactory.uncheckedSimpleType(clazz)
           }
       }.getOrElse( {
-        log.warn(s"$prop - Contained type is java.lang.Object and we're unable to extract its Type using fallback-approach looking for @JsonDeserialize")
+        if (!config.disableWarnings) {
+          log.warn(s"$prop - Contained type is java.lang.Object and we're unable to extract its Type using fallback-approach looking for @JsonDeserialize")
+        }
         containedType
       })
 
