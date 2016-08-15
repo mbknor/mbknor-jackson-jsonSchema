@@ -95,7 +95,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     schema
   }
 
-  def assertJsonSubTypesInfo(node:JsonNode, typeParamName:String, typeName:String): Unit ={
+  def assertJsonSubTypesInfo(node:JsonNode, typeParamName:String, typeName:String, html5Checks:Boolean = false): Unit ={
     /*
       "properties" : {
         "type" : {
@@ -112,6 +112,10 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert( node.at(s"/properties/$typeParamName/default").asText() == typeName)
     assert( node.at(s"/title").asText() == typeName)
     assert( getRequiredList(node).contains(typeParamName))
+
+    if (html5Checks) {
+      assert( node.at(s"/properties/$typeParamName/options/hidden").asBoolean() == true )
+    }
 
   }
 
@@ -202,6 +206,19 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     }
 
+    // Java - html5
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.pojoWithParent)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.pojoWithParent.getClass, Some(jsonNode))
+
+      assert(false == schema.at("/additionalProperties").asBoolean())
+      assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
+
+      assertChild1(schema, "/properties/child/oneOf", html5Checks = true)
+      assertChild2(schema, "/properties/child/oneOf", html5Checks = true)
+
+    }
+
     // Scala
     {
       val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.pojoWithParentScala)
@@ -217,9 +234,9 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   }
 
-  def assertChild1(node:JsonNode, path:String, defName:String = "Child1"): Unit ={
+  def assertChild1(node:JsonNode, path:String, defName:String = "Child1", html5Checks:Boolean = false): Unit ={
     val child1 = getNodeViaArrayOfRefs(node, path, defName)
-    assertJsonSubTypesInfo(child1, "type", "child1")
+    assertJsonSubTypesInfo(child1, "type", "child1", html5Checks)
     assert( child1.at("/properties/parentString/type").asText() == "string" )
     assert( child1.at("/properties/child1String/type").asText() == "string" )
     assert( child1.at("/properties/_child1String2/type").asText() == "string" )
@@ -227,9 +244,9 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(getRequiredList(child1).contains("_child1String3"))
   }
 
-  def assertChild2(node:JsonNode, path:String, defName:String = "Child2"): Unit ={
+  def assertChild2(node:JsonNode, path:String, defName:String = "Child2", html5Checks:Boolean = false): Unit ={
     val child2 = getNodeViaArrayOfRefs(node, path, defName)
-    assertJsonSubTypesInfo(child2, "type", "child2")
+    assertJsonSubTypesInfo(child2, "type", "child2", html5Checks)
     assert( child2.at("/properties/parentString/type").asText() == "string" )
     assert( child2.at("/properties/child2int/type").asText() == "integer" )
   }

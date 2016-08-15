@@ -28,7 +28,8 @@ object JsonSchemaConfig {
     autoGenerateTitleForProperties = false,
     defaultArrayFormat = None,
     useOneOfForOption = false,
-    usePropertyOrdering = false
+    usePropertyOrdering = false,
+    hidePolymorphismTypeProperty = false
   )
 
   /**
@@ -44,7 +45,8 @@ object JsonSchemaConfig {
     autoGenerateTitleForProperties = true,
     defaultArrayFormat = Some("table"),
     useOneOfForOption = true,
-    usePropertyOrdering = true
+    usePropertyOrdering = true,
+    hidePolymorphismTypeProperty = true
   )
 }
 
@@ -54,7 +56,8 @@ case class JsonSchemaConfig
   autoGenerateTitleForProperties:Boolean,
   defaultArrayFormat:Option[String],
   useOneOfForOption:Boolean,
-  usePropertyOrdering:Boolean
+  usePropertyOrdering:Boolean,
+  hidePolymorphismTypeProperty:Boolean
 )
 
 
@@ -436,6 +439,13 @@ class JsonSchemaGenerator
                 enumObjectNode.put("type", "string")
                 enumObjectNode.set("enum", enumValuesNode)
                 enumObjectNode.put("default", pi.subTypeName)
+
+                if (config.hidePolymorphismTypeProperty) {
+                  // Make sure the editor hides this polymorphism-specific property
+                  val optionsNode = JsonNodeFactory.instance.objectNode()
+                  enumObjectNode.set("options", optionsNode)
+                  optionsNode.put("hidden", true)
+                }
 
                 propertiesNode.set(pi.typePropertyName, enumObjectNode)
 
