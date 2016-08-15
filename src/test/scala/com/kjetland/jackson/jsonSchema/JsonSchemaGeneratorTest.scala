@@ -4,7 +4,7 @@ import java.time.OffsetDateTime
 import java.util
 import java.util.{Optional, TimeZone}
 
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo, JsonValue}
+import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo, JsonValue}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.node.{ArrayNode, MissingNode, ObjectNode}
@@ -222,6 +222,9 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertJsonSubTypesInfo(child1, "type", "child1")
     assert( child1.at("/properties/parentString/type").asText() == "string" )
     assert( child1.at("/properties/child1String/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String2/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String3/type").asText() == "string" )
+    assert(getRequiredList(child1).contains("_child1String3"))
   }
 
   def assertChild2(node:JsonNode, path:String, defName:String = "Child2"): Unit ={
@@ -330,6 +333,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertJsonSubTypesInfo(child1, "type", "child1")
     assert( child1.at("/properties/parentString/type").asText() == "string" )
     assert( child1.at("/properties/child1String/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String2/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String3/type").asText() == "string" )
 
     assert(schema.at("/properties/optionalList/type").asText() == "array")
     assert(schema.at("/properties/optionalList/items/$ref").asText() == "#/definitions/ClassNotExtendingAnythingScala")
@@ -351,6 +356,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertJsonSubTypesInfo(child1, "type", "child1")
     assert( child1.at("/properties/parentString/type").asText() == "string" )
     assert( child1.at("/properties/child1String/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String2/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String3/type").asText() == "string" )
 
     assert(schema.at("/properties/optionalList/type").asText() == "array")
     assert(schema.at("/properties/optionalList/items/$ref").asText() == "#/definitions/ClassNotExtendingAnything")
@@ -502,6 +509,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertJsonSubTypesInfo(child1, "type", "child1")
     assert( child1.at("/properties/parentString/type").asText() == "string" )
     assert( child1.at("/properties/child1String/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String2/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String3/type").asText() == "string" )
 
     assert(schema.at("/properties/optionalList/oneOf/0/type").asText() == "null")
     assert(schema.at("/properties/optionalList/oneOf/0/title").asText() == "Not included")
@@ -535,6 +544,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertJsonSubTypesInfo(child1, "type", "child1")
     assert( child1.at("/properties/parentString/type").asText() == "string" )
     assert( child1.at("/properties/child1String/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String2/type").asText() == "string" )
+    assert( child1.at("/properties/_child1String3/type").asText() == "string" )
 
     assert(schema.at("/properties/optionalList/oneOf/0/type").asText() == "null")
     assert(schema.at("/properties/optionalList/oneOf/0/title").asText() == "Not included")
@@ -551,10 +562,12 @@ trait TestData {
     val c = new Child1()
     c.parentString = "pv"
     c.child1String = "cs"
+    c.child1String2 = "cs2"
+    c.child1String3 = "cs3"
     c
   }
 
-  val child1Scala = Child1Scala("pv", "cs")
+  val child1Scala = Child1Scala("pv", "cs", "cs2", "cs3")
 
   val child2 = {
     val c = new Child2()
@@ -646,7 +659,18 @@ case class ClassNotExtendingAnythingScala(someString:String, myEnum: MyEnum, myE
 @JsonSubTypes(Array(new JsonSubTypes.Type(value = classOf[Child1Scala], name = "child1"), new JsonSubTypes.Type(value = classOf[Child2Scala], name = "child2")))
 trait ParentScala
 
-case class Child1Scala(parentString:String, child1String:String) extends ParentScala
+case class Child1Scala
+(
+  parentString:String,
+  child1String:String,
+
+  @JsonProperty("_child1String2")
+  child1String2:String,
+
+  @JsonProperty(value = "_child1String3", required = true)
+  child1String3:String
+) extends ParentScala
+
 case class Child2Scala(parentString:String, child2int:Int) extends ParentScala
 
 case class PojoWithParentScala(pojoValue:Boolean, child:ParentScala)

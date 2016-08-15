@@ -441,9 +441,8 @@ class JsonSchemaGenerator
             }
 
             Some(new JsonObjectFormatVisitor with MySerializerProvider {
-              override def optionalProperty(prop: BeanProperty): Unit = {
-                val propertyName = prop.getName
-                val propertyType = prop.getType
+
+              def myPropertyHandler(propertyName:String, propertyType:JavaType, prop: Option[BeanProperty], jsonPropertyRequired:Boolean): Unit = {
                 l(s"JsonObjectFormatVisitor - ${propertyName}: ${propertyType}")
 
                 // Need to check for Option/Optional-special-case before we know what node to use here.
@@ -456,8 +455,8 @@ class JsonSchemaGenerator
 
                   // Check for Option/Optional-special-case
                   if ( config.useOneOfForOption &&
-                       (    classOf[Option[_]].isAssignableFrom(propertyType.getRawClass)
-                         || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass)) ) {
+                    (    classOf[Option[_]].isAssignableFrom(propertyType.getRawClass)
+                      || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass)) ) {
                     // Need to special-case for property using Option/Optional
                     // Should insert oneOf between 'real one' and 'null'
                     val oneOfArray = JsonNodeFactory.instance.arrayNode()
@@ -492,9 +491,9 @@ class JsonSchemaGenerator
                   // If visiting a scala list and using default acceptJsonFormatVisitor-approach,
                   // we get java.lang.Object instead of actual type.
                   // By doing it manually like this it works.
-                  l(s"JsonObjectFormatVisitor - forcing array for ${prop}")
+                  l(s"JsonObjectFormatVisitor - forcing array for propertyName:$propertyName, propertyType: $propertyType")
 
-                  val itemType:JavaType = resolveType(prop, objectMapper)
+                  val itemType:JavaType = resolveType(propertyType, prop, objectMapper)
 
                   childVisitor.expectArrayFormat(itemType).itemsFormat(null, itemType)
                 } else if( (classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass) ) && propertyType.containedTypeCount() >= 1) {
@@ -505,7 +504,7 @@ class JsonSchemaGenerator
                   // To workaround this, we use the same workaround as jackson-scala-module described here:
                   // https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges
 
-                  val optionType:JavaType = resolveType(prop, objectMapper)
+                  val optionType:JavaType = resolveType(propertyType, prop, objectMapper)
 
                   objectMapper.acceptJsonFormatVisitor(optionType, childVisitor)
 
@@ -514,11 +513,14 @@ class JsonSchemaGenerator
                 }
 
                 // Check if we should set this property as required
-                val rawClass = prop.getType.getRawClass
+                val rawClass = propertyType.getRawClass
                 val requiredProperty:Boolean = if ( rawClass.isPrimitive ) {
                   // primitive boolean MUST have a value
                   true
-                } else if(prop.getAnnotation(classOf[NotNull]) != null) {
+                } else if( jsonPropertyRequired) {
+                  // @JsonPropertyRequired is set to true
+                  true
+                } else if(prop.isDefined && prop.get.getAnnotation(classOf[NotNull]) != null) {
                   true
                 } else {
                   false
@@ -528,19 +530,25 @@ class JsonSchemaGenerator
                   getRequiredArrayNode(thisObjectNode).add(propertyName)
                 }
 
-                resolvePropertyFormat(prop).foreach {
+                prop.flatMap( resolvePropertyFormat(_) ).foreach {
                   format =>
                     setFormat(thisPropertyNode.main, format)
                 }
 
                 // Optionally add description
-                Option(prop.getAnnotation(classOf[JsonSchemaDescription])).map {
+                prop.flatMap {
+                  p:BeanProperty =>
+                    Option(p.getAnnotation(classOf[JsonSchemaDescription]))
+                }.map {
                   jsonSchemaDescription =>
                     thisPropertyNode.meta.put("description", jsonSchemaDescription.value())
                 }
 
                 // Optionally add title
-                Option(prop.getAnnotation(classOf[JsonSchemaTitle])).map(_.value())
+                prop.flatMap {
+                  p:BeanProperty =>
+                    Option(p.getAnnotation(classOf[JsonSchemaTitle]))
+                }.map(_.value())
                   .orElse {
                     if (config.autoGenerateTitleForProperties) {
                       // We should generate 'pretty-name' based on propertyName
@@ -548,20 +556,30 @@ class JsonSchemaGenerator
                     } else None
                   }
                   .map {
-                  title =>
-                    thisPropertyNode.meta.put("title", title)
-                }
+                    title =>
+                      thisPropertyNode.meta.put("title", title)
+                  }
 
+              }
+
+              override def optionalProperty(prop: BeanProperty): Unit = {
+                l(s"JsonObjectFormatVisitor.optionalProperty: prop:${prop}")
+                myPropertyHandler(prop.getName, prop.getType, Some(prop), jsonPropertyRequired = false)
               }
 
               override def optionalProperty(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = {
                 l(s"JsonObjectFormatVisitor.optionalProperty: name:${name} handler:${handler} propertyTypeHint:${propertyTypeHint}")
+                myPropertyHandler(name, propertyTypeHint, None, jsonPropertyRequired = false)
               }
 
-              override def property(writer: BeanProperty): Unit = l(s"JsonObjectFormatVisitor.property: name:${writer}")
+              override def property(prop: BeanProperty): Unit = {
+                l(s"JsonObjectFormatVisitor.property: prop:${prop}")
+                myPropertyHandler(prop.getName, prop.getType, Some(prop), jsonPropertyRequired = true)
+              }
 
               override def property(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = {
                 l(s"JsonObjectFormatVisitor.property: name:${name} handler:${handler} propertyTypeHint:${propertyTypeHint}")
+                myPropertyHandler(name, propertyTypeHint, None, jsonPropertyRequired = true)
               }
             })
         }
@@ -610,12 +628,15 @@ class JsonSchemaGenerator
     }
   }
 
-  def resolveType(prop: BeanProperty, objectMapper: ObjectMapper):JavaType = {
-    val containedType = prop.getType.containedType(0)
+  def resolveType(propertyType:JavaType, prop: Option[BeanProperty], objectMapper: ObjectMapper):JavaType = {
+    val containedType = propertyType.containedType(0)
 
     if ( containedType.getRawClass == classOf[Object] ) {
       // try to resolve it via @JsonDeserialize as described here: https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges
-      Option(prop.getAnnotation(classOf[JsonDeserialize])).flatMap {
+      prop.flatMap {
+        p:BeanProperty =>
+          Option(p.getAnnotation(classOf[JsonDeserialize]))
+      }.flatMap {
         jsonDeserialize:JsonDeserialize =>
           Option(jsonDeserialize.contentAs()).map {
             clazz =>
