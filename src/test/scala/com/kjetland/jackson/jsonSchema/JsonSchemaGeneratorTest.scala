@@ -7,7 +7,7 @@ import java.util.{Optional, TimeZone}
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo, JsonValue}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.module.SimpleModule
-import com.fasterxml.jackson.databind.node.{ArrayNode, MissingNode, ObjectNode}
+import com.fasterxml.jackson.databind.node.{ArrayNode, MissingNode, NullNode, ObjectNode}
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper, SerializationFeature}
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
@@ -552,6 +552,24 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(schema.at("/properties/optionalList/oneOf/1/type").asText() == "array")
     assert(schema.at("/properties/optionalList/oneOf/1/items/$ref").asText() == "#/definitions/ClassNotExtendingAnything")
     assert(schema.at("/properties/optionalList/title").asText() == "Optional List")
+  }
+
+  test("propertyOrdering") {
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorHTML5, testData.classNotExtendingAnything)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, testData.classNotExtendingAnything.getClass, Some(jsonNode))
+
+      assert(schema.at("/properties/someString/propertyOrder").asInt() == 1)
+      assert(schema.at("/properties/myEnum/propertyOrder").asInt() == 2)
+    }
+
+    // Make sure propertyOrder is not enabled when not using html5
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.classNotExtendingAnything)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.classNotExtendingAnything.getClass, Some(jsonNode))
+
+      assert(schema.at("/properties/someString/propertyOrder").isMissingNode == true)
+    }
   }
 
 }

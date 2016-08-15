@@ -27,7 +27,8 @@ object JsonSchemaConfig {
     useHTML5DateTimeLocal = false,
     autoGenerateTitleForProperties = false,
     defaultArrayFormat = None,
-    useOneOfForOption = false
+    useOneOfForOption = false,
+    usePropertyOrdering = false
   )
 
   /**
@@ -42,7 +43,8 @@ object JsonSchemaConfig {
     useHTML5DateTimeLocal = true,
     autoGenerateTitleForProperties = true,
     defaultArrayFormat = Some("table"),
-    useOneOfForOption = true
+    useOneOfForOption = true,
+    usePropertyOrdering = true
   )
 }
 
@@ -51,7 +53,8 @@ case class JsonSchemaConfig
   useHTML5DateTimeLocal:Boolean,
   autoGenerateTitleForProperties:Boolean,
   defaultArrayFormat:Option[String],
-  useOneOfForOption:Boolean
+  useOneOfForOption:Boolean,
+  usePropertyOrdering:Boolean
 )
 
 
@@ -442,6 +445,11 @@ class JsonSchemaGenerator
 
             Some(new JsonObjectFormatVisitor with MySerializerProvider {
 
+
+              // Used when rendering schema using propertyOrdering as specified here:
+              // https://github.com/jdorn/json-editor#property-ordering
+              var nextPropertyOrderIndex = 1
+
               def myPropertyHandler(propertyName:String, propertyType:JavaType, prop: Option[BeanProperty], jsonPropertyRequired:Boolean): Unit = {
                 l(s"JsonObjectFormatVisitor - ${propertyName}: ${propertyType}")
 
@@ -452,6 +460,11 @@ class JsonSchemaGenerator
                 val thisPropertyNode:PropertyNode = {
                   val thisPropertyNode = JsonNodeFactory.instance.objectNode()
                   propertiesNode.set(propertyName, thisPropertyNode)
+
+                  if ( config.usePropertyOrdering ) {
+                    thisPropertyNode.put("propertyOrder", nextPropertyOrderIndex)
+                    nextPropertyOrderIndex = nextPropertyOrderIndex + 1
+                  }
 
                   // Check for Option/Optional-special-case
                   if ( config.useOneOfForOption &&
