@@ -90,7 +90,8 @@ class JsonSchemaGenerator
 
   val dateFormatMapping = Map[String,String](
     // Java7 dates
-    "java.time.OffsetDateTime" -> "datetime-local", // using datetime-local since it is supported in html5
+    "java.time.LocalDateTime" -> "datetime-local",
+    "java.time.OffsetDateTime" -> "datetime",
     "java.time.LocalDate" -> "date",
 
     // Joda-dates

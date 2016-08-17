@@ -1,6 +1,6 @@
 package com.kjetland.jackson.jsonSchema
 
-import java.time.{LocalDate, OffsetDateTime}
+import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.{Optional, TimeZone}
 
@@ -480,7 +480,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     assert( schema.at("/properties/dateTime/type").asText() == "string")
     assert( schema.at("/properties/dateTime/format").asText() == "date-time")
-    assert( schemaHTML5Date.at("/properties/dateTime/format").asText() == "datetime-local")
+    assert( schemaHTML5Date.at("/properties/dateTime/format").asText() == "datetime")
 
 
     assert( schema.at("/properties/dateTimeWithAnnotation/type").asText() == "string")
@@ -596,7 +596,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.manyDates)
     val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.manyDates.getClass, Some(jsonNode))
 
-    assert(schema.at("/properties/javaOffsetDate/format").asText() == "datetime-local")
+    assert(schema.at("/properties/javaLocalDateTime/format").asText() == "datetime-local")
+    assert(schema.at("/properties/javaOffsetDateTime/format").asText() == "datetime")
     assert(schema.at("/properties/javaLocalDate/format").asText() == "date")
     assert(schema.at("/properties/jodaLocalDate/format").asText() == "date")
 
@@ -687,7 +688,7 @@ trait TestData {
     )
 
   val pojoUsingFormat = new PojoUsingFormat("test@example.com", true, OffsetDateTime.now(), OffsetDateTime.now())
-  val manyDates = ManyDates(OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
+  val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
 }
 
 
@@ -737,7 +738,8 @@ case class PojoUsingOptionScala(
 
 case class ManyDates
 (
-  javaOffsetDate:OffsetDateTime,
+  javaLocalDateTime:LocalDateTime,
+  javaOffsetDateTime:OffsetDateTime,
   javaLocalDate:LocalDate,
   jodaLocalDate:org.joda.time.LocalDate
 )
