@@ -744,13 +744,34 @@ class JsonSchemaGenerator
   }
 
 
-  def generateJsonSchema[T <: Any](clazz: Class[T]): JsonNode = {
+  def generateJsonSchema[T <: Any](clazz: Class[T], title:Option[String] = None, description:Option[String] = None): JsonNode = {
 
     val rootNode = JsonNodeFactory.instance.objectNode()
 
     // Specify that this is a v4 json schema
     rootNode.put("$schema", JsonSchemaGenerator.JSON_SCHEMA_DRAFT_4_URL)
     //rootNode.put("id", "http://my.site/myschema#")
+
+    // Add schema title
+    title.orElse {
+      Some(generateTitleFromPropertyName(clazz.getSimpleName))
+    }.flatMap {
+      title =>
+        // Skip it if specified to empty string
+        if ( title.isEmpty) None else Some(title)
+    }.map {
+      title =>
+        rootNode.put("title", title)
+        // If root class is annotated with @JsonSchemaTitle, it will later override this title
+    }
+
+    // Maybe set schema description
+    description.map {
+      d =>
+        rootNode.put("description", d)
+        // If root class is annotated with @JsonSchemaDescription, it will later override this description
+    }
+
 
     val definitionsHandler = new DefinitionsHandler
     val rootVisitor = new MyJsonFormatVisitorWrapper(rootObjectMapper, node = rootNode, definitionsHandler = definitionsHandler, currentProperty = None)
