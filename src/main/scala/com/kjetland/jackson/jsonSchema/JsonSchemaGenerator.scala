@@ -24,43 +24,43 @@ object JsonSchemaGenerator {
 object JsonSchemaConfig {
 
   val vanillaJsonSchemaDraft4 = JsonSchemaConfig(
-    useHTML5DateTimeLocal = false,
     autoGenerateTitleForProperties = false,
     defaultArrayFormat = None,
     useOneOfForOption = false,
     usePropertyOrdering = false,
     hidePolymorphismTypeProperty = false,
-    disableWarnings = false
+    disableWarnings = false,
+    useImprovedDateFormatMapping = false
   )
 
   /**
     * Use this configuration if using the JsonSchema to generate HTML5 GUI, eg. by using https://github.com/jdorn/json-editor
     *
-    * useHTML5DateTimeLocal - use "datetime-local" as format instead of "date-time"
     * autoGenerateTitleForProperties - If property is named "someName", we will add {"title": "Some Name"}
     * defaultArrayFormat - this will result in a better gui than te default one.
 
     */
   val html5EnabledSchema = JsonSchemaConfig(
-    useHTML5DateTimeLocal = true,
     autoGenerateTitleForProperties = true,
     defaultArrayFormat = Some("table"),
     useOneOfForOption = true,
     usePropertyOrdering = true,
     hidePolymorphismTypeProperty = true,
-    disableWarnings = false
+    disableWarnings = false,
+    useImprovedDateFormatMapping = true
   )
+
 }
 
 case class JsonSchemaConfig
 (
-  useHTML5DateTimeLocal:Boolean,
   autoGenerateTitleForProperties:Boolean,
   defaultArrayFormat:Option[String],
   useOneOfForOption:Boolean,
   usePropertyOrdering:Boolean,
   hidePolymorphismTypeProperty:Boolean,
-  disableWarnings:Boolean
+  disableWarnings:Boolean,
+  useImprovedDateFormatMapping:Boolean
 )
 
 
@@ -88,6 +88,15 @@ class JsonSchemaGenerator
 
   val log = LoggerFactory.getLogger(getClass)
 
+  val dateFormatMapping = Map[String,String](
+    // Java7 dates
+    "java.time.OffsetDateTime" -> "datetime-local", // using datetime-local since it is supported in html5
+    "java.time.LocalDate" -> "date",
+
+    // Joda-dates
+    "org.joda.time.LocalDate" -> "date"
+  )
+
   trait MySerializerProvider {
     var provider: SerializerProvider = null
 
@@ -112,12 +121,8 @@ class JsonSchemaGenerator
     }
   }
 
-  private def setFormat(node:ObjectNode, format:String): Unit ={
-    val formatToUse = if ( config.useHTML5DateTimeLocal && format == "date-time" )
-        "datetime-local"
-      else format
-
-    node.put("format", formatToUse)
+  private def setFormat(node:ObjectNode, format:String): Unit = {
+    node.put("format", format)
   }
 
 
@@ -660,6 +665,10 @@ class JsonSchemaGenerator
     Option(prop.getAnnotation(classOf[JsonSchemaFormat])).map {
       jsonSchemaFormat =>
         jsonSchemaFormat.value()
+    }.orElse {
+      if( config.useImprovedDateFormatMapping ) {
+        dateFormatMapping.get(prop.getType.getRawClass.getName)
+      } else None
     }
   }
 

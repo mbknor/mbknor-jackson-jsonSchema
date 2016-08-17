@@ -2,7 +2,7 @@
 lazy val commonSettings = Seq(
   organization := "com.kjetland",
   organizationName := "mbknor",
-  version := "1.0.5-SNAPSHOT",
+  version := "1.0.5-b1-SNAPSHOT",
   scalaVersion := "2.11.8",
   publishMavenStyle := true,
   publishArtifact in Test := false,
@@ -57,7 +57,9 @@ lazy val deps  = Seq(
   "com.github.fge" % "json-schema-validator" % "2.2.6" % "test",
   "com.fasterxml.jackson.module" % "jackson-module-scala_2.11" % jacksonModuleScalaVersion % "test",
   "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % jacksonVersion % "test",
-  "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % jacksonVersion % "test"
+  "com.fasterxml.jackson.datatype" % "jackson-datatype-jsr310" % jacksonVersion % "test",
+  "joda-time" % "joda-time" % "2.9.4" % "test",
+  "com.fasterxml.jackson.datatype" % "jackson-datatype-joda" % jacksonVersion % "test"
 )
 
 lazy val root = (project in file("."))

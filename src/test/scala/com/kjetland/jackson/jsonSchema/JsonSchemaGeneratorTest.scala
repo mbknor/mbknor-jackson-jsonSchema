@@ -1,6 +1,6 @@
 package com.kjetland.jackson.jsonSchema
 
-import java.time.OffsetDateTime
+import java.time.{LocalDate, OffsetDateTime}
 import java.util
 import java.util.{Optional, TimeZone}
 
@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.node.{ArrayNode, MissingNode, NullNode, ObjectNode}
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper, SerializationFeature}
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
+import com.fasterxml.jackson.datatype.joda.JodaModule
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
@@ -33,6 +34,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       om.registerModule(new JavaTimeModule)
       om.registerModule(new Jdk8Module )
+      om.registerModule(new JodaModule)
 
       om.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
       om.setTimeZone(TimeZone.getDefault())
@@ -589,6 +591,17 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
   }
 
+  test("dates") {
+
+    val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.manyDates)
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.manyDates.getClass, Some(jsonNode))
+
+    assert(schema.at("/properties/javaOffsetDate/format").asText() == "datetime-local")
+    assert(schema.at("/properties/javaLocalDate/format").asText() == "date")
+    assert(schema.at("/properties/jodaLocalDate/format").asText() == "date")
+
+  }
+
 }
 
 trait TestData {
@@ -674,7 +687,7 @@ trait TestData {
     )
 
   val pojoUsingFormat = new PojoUsingFormat("test@example.com", true, OffsetDateTime.now(), OffsetDateTime.now())
-
+  val manyDates = ManyDates(OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
 }
 
 
@@ -721,3 +734,10 @@ case class PojoUsingOptionScala(
                                  optionalList:Option[List[ClassNotExtendingAnythingScala]]
                                  //, parent:Option[ParentScala] - Not using this one: jackson-scala-module does not support Option combined with Polymorphism
                                )
+
+case class ManyDates
+(
+  javaOffsetDate:OffsetDateTime,
+  javaLocalDate:LocalDate,
+  jodaLocalDate:org.joda.time.LocalDate
+)
