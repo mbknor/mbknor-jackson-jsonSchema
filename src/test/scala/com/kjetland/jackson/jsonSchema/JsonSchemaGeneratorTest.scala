@@ -3,6 +3,7 @@ package com.kjetland.jackson.jsonSchema
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.{Optional, TimeZone}
+import javax.validation.constraints.{NotNull, Size}
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo, JsonValue}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -603,6 +604,23 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   }
 
+  test("validation") {
+    val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.classUsingValidation)
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.classUsingValidation.getClass, Some(jsonNode))
+
+    assert(schema.at("/properties/stringUsingNotNull/minLength").asInt() == 1)
+    assert(schema.at("/properties/stringUsingNotNull/maxLength").isMissingNode == true)
+
+    assert(schema.at("/properties/stringUsingSize/minLength").asInt() == 1)
+    assert(schema.at("/properties/stringUsingSize/maxLength").asInt() == 20)
+
+    assert(schema.at("/properties/stringUsingSizeOnlyMin/minLength").asInt() == 1)
+    assert(schema.at("/properties/stringUsingSizeOnlyMin/maxLength").isMissingNode == true)
+
+    assert(schema.at("/properties/stringUsingSizeOnlyMax/maxLength").asInt() == 30)
+    assert(schema.at("/properties/stringUsingSizeOnlyMax/minLength").isMissingNode == true)
+  }
+
 }
 
 trait TestData {
@@ -689,6 +707,8 @@ trait TestData {
 
   val pojoUsingFormat = new PojoUsingFormat("test@example.com", true, OffsetDateTime.now(), OffsetDateTime.now())
   val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
+
+  val classUsingValidation = ClassUsingValidation("_stringUsingNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax" )
 }
 
 
@@ -742,4 +762,20 @@ case class ManyDates
   javaOffsetDateTime:OffsetDateTime,
   javaLocalDate:LocalDate,
   jodaLocalDate:org.joda.time.LocalDate
+)
+
+case class ClassUsingValidation
+(
+  @NotNull
+  stringUsingNotNull:String,
+
+  @Size(min=1, max=20)
+  stringUsingSize:String,
+
+  @Size(min=1)
+  stringUsingSizeOnlyMin:String,
+
+  @Size(max=30)
+  stringUsingSizeOnlyMax:String
+
 )

@@ -4,7 +4,7 @@ import java.lang.reflect.{Field, Method, ParameterizedType}
 import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime}
 import java.util
 import java.util.Optional
-import javax.validation.constraints.NotNull
+import javax.validation.constraints.{NotNull, Size}
 
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
@@ -30,7 +30,8 @@ object JsonSchemaConfig {
     usePropertyOrdering = false,
     hidePolymorphismTypeProperty = false,
     disableWarnings = false,
-    useImprovedDateFormatMapping = false
+    useImprovedDateFormatMapping = false,
+    useMinLengthForNotNull = false
   )
 
   /**
@@ -47,7 +48,8 @@ object JsonSchemaConfig {
     usePropertyOrdering = true,
     hidePolymorphismTypeProperty = true,
     disableWarnings = false,
-    useImprovedDateFormatMapping = true
+    useImprovedDateFormatMapping = true,
+    useMinLengthForNotNull = true
   )
 
 }
@@ -60,7 +62,8 @@ case class JsonSchemaConfig
   usePropertyOrdering:Boolean,
   hidePolymorphismTypeProperty:Boolean,
   disableWarnings:Boolean,
-  useImprovedDateFormatMapping:Boolean
+  useImprovedDateFormatMapping:Boolean,
+  useMinLengthForNotNull:Boolean
 )
 
 
@@ -192,7 +195,14 @@ class JsonSchemaGenerator
 
   }
 
-  class MyJsonFormatVisitorWrapper(objectMapper: ObjectMapper, level:Int = 0, val node: ObjectNode = JsonNodeFactory.instance.objectNode(), val definitionsHandler:DefinitionsHandler) extends JsonFormatVisitorWrapper with MySerializerProvider {
+  class MyJsonFormatVisitorWrapper
+  (
+    objectMapper: ObjectMapper,
+    level:Int = 0,
+    val node: ObjectNode = JsonNodeFactory.instance.objectNode(),
+    val definitionsHandler:DefinitionsHandler,
+    currentProperty:Option[BeanProperty] // This property may represent the BeanProperty when we're directly processing beneath the property
+  ) extends JsonFormatVisitorWrapper with MySerializerProvider {
 
     def l(s: => String): Unit = {
       if (!debug) return
@@ -204,12 +214,46 @@ class JsonSchemaGenerator
       println(indent + s)
     }
 
-    def createChild(childNode: ObjectNode): MyJsonFormatVisitorWrapper = new MyJsonFormatVisitorWrapper(objectMapper, level + 1, node = childNode, definitionsHandler = definitionsHandler)
+    def createChild(childNode: ObjectNode, currentProperty:Option[BeanProperty]): MyJsonFormatVisitorWrapper = {
+      new MyJsonFormatVisitorWrapper(objectMapper, level + 1, node = childNode, definitionsHandler = definitionsHandler, currentProperty = currentProperty)
+    }
 
     override def expectStringFormat(_type: JavaType) = {
       l(s"expectStringFormat - _type: ${_type}")
 
       node.put("type", "string")
+
+      // Check if we should include minLength and/or maxLength
+      case class MinAndMaxLength(minLength:Option[Int], maxLength:Option[Int])
+
+      val minAndMaxLength:Option[MinAndMaxLength] = currentProperty.flatMap {
+        p =>
+          // Look for @Size
+          Option(p.getAnnotation(classOf[Size]))
+              .map {
+                size =>
+                  (size.min(), size.max()) match {
+                    case (0, max)                 => MinAndMaxLength(None, Some(max))
+                    case (min, Integer.MAX_VALUE) => MinAndMaxLength(Some(min), None)
+                    case (min, max)               => MinAndMaxLength(Some(min), Some(max))
+                  }
+              }
+              .orElse {
+                // We did not find @Size - check if we should include it anyway
+                if (config.useMinLengthForNotNull) {
+                  Option(p.getAnnotation(classOf[NotNull])).map {
+                    notNull =>
+                      MinAndMaxLength(Some(1), None)
+                  }
+                } else None
+              }
+      }
+
+      minAndMaxLength.map {
+        minAndMax:MinAndMaxLength =>
+          minAndMax.minLength.map( length => node.put("minLength", length) )
+          minAndMax.maxLength.map( length => node.put("maxLength", length) )
+      }
 
       new JsonStringFormatVisitor with EnumSupport {
         val _node = node
@@ -217,7 +261,6 @@ class JsonSchemaGenerator
           setFormat(node, format.toString)
         }
       }
-
 
     }
 
@@ -240,7 +283,7 @@ class JsonSchemaGenerator
         override def itemsFormat(handler: JsonFormatVisitable, _elementType: JavaType): Unit = {
           l(s"expectArrayFormat - handler: $handler - elementType: ${_elementType} - preferredElementType: $preferredElementType")
           val elementType = preferredElementType.getOrElse(_elementType)
-          objectMapper.acceptJsonFormatVisitor(elementType, createChild(itemsNode))
+          objectMapper.acceptJsonFormatVisitor(elementType, createChild(itemsNode, currentProperty = None))
         }
 
         override def itemsFormat(format: JsonFormatTypes): Unit = {
@@ -390,7 +433,7 @@ class JsonSchemaGenerator
             val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(subType){
               objectNode =>
 
-                val childVisitor = createChild(objectNode)
+                val childVisitor = createChild(objectNode, currentProperty = None)
                 objectMapper.acceptJsonFormatVisitor(subType, childVisitor)
 
                 None
@@ -525,7 +568,7 @@ class JsonSchemaGenerator
 
                 // Continue processing this property
 
-                val childVisitor = createChild(thisPropertyNode.main)
+                val childVisitor = createChild(thisPropertyNode.main, currentProperty = prop)
 
                 // Workaround for scala lists and so on
                 if ( (propertyType.isArrayType || propertyType.isCollectionLikeType) && !classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) && propertyType.containedTypeCount() >= 1) {
@@ -710,7 +753,7 @@ class JsonSchemaGenerator
     //rootNode.put("id", "http://my.site/myschema#")
 
     val definitionsHandler = new DefinitionsHandler
-    val rootVisitor = new MyJsonFormatVisitorWrapper(rootObjectMapper, node = rootNode, definitionsHandler = definitionsHandler)
+    val rootVisitor = new MyJsonFormatVisitorWrapper(rootObjectMapper, node = rootNode, definitionsHandler = definitionsHandler, currentProperty = None)
     rootObjectMapper.acceptJsonFormatVisitor(clazz, rootVisitor)
 
     definitionsHandler.getFinalDefinitionsNode().foreach {
