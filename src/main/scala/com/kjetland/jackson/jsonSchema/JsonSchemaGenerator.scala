@@ -4,7 +4,7 @@ import java.lang.reflect.{Field, Method, ParameterizedType}
 import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime}
 import java.util
 import java.util.Optional
-import javax.validation.constraints.{NotNull, Size}
+import javax.validation.constraints.{Max, Min, NotNull, Size}
 
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
@@ -298,6 +298,20 @@ class JsonSchemaGenerator
 
       node.put("type", "number")
 
+      // Look for @Min, @Max => minumum, maximum
+      currentProperty.map {
+        p =>
+          Option(p.getAnnotation(classOf[Min])).map {
+            min =>
+              node.put("minimum", min.value())
+          }
+
+          Option(p.getAnnotation(classOf[Max])).map {
+            max =>
+              node.put("maximum", max.value())
+          }
+      }
+
       new JsonNumberFormatVisitor  with EnumSupport {
         val _node = node
         override def numberType(_type: NumberType): Unit = l(s"JsonNumberFormatVisitor.numberType: ${_type}")
@@ -322,6 +336,21 @@ class JsonSchemaGenerator
       l("expectIntegerFormat")
 
       node.put("type", "integer")
+
+      // Look for @Min, @Max => minumum, maximum
+      currentProperty.map {
+        p =>
+          Option(p.getAnnotation(classOf[Min])).map {
+            min =>
+              node.put("minimum", min.value())
+          }
+
+          Option(p.getAnnotation(classOf[Max])).map {
+            max =>
+              node.put("maximum", max.value())
+          }
+      }
+
 
       new JsonIntegerFormatVisitor with EnumSupport {
         val _node = node

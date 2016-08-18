@@ -3,7 +3,7 @@ package com.kjetland.jackson.jsonSchema
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.{Optional, TimeZone}
-import javax.validation.constraints.{NotNull, Size}
+import javax.validation.constraints.{Max, Min, NotNull, Size}
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo, JsonValue}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -619,6 +619,12 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     assert(schema.at("/properties/stringUsingSizeOnlyMax/maxLength").asInt() == 30)
     assert(schema.at("/properties/stringUsingSizeOnlyMax/minLength").isMissingNode == true)
+
+    assert(schema.at("/properties/intMin/minimum").asInt() == 1)
+    assert(schema.at("/properties/intMax/maximum").asInt() == 10)
+
+    assert(schema.at("/properties/doubleMin/minimum").asInt() == 1)
+    assert(schema.at("/properties/doubleMax/maximum").asInt() == 10)
   }
 
 }
@@ -708,7 +714,7 @@ trait TestData {
   val pojoUsingFormat = new PojoUsingFormat("test@example.com", true, OffsetDateTime.now(), OffsetDateTime.now())
   val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
 
-  val classUsingValidation = ClassUsingValidation("_stringUsingNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax" )
+  val classUsingValidation = ClassUsingValidation("_stringUsingNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", 1, 2, 1.0, 2.0 )
 }
 
 
@@ -776,6 +782,16 @@ case class ClassUsingValidation
   stringUsingSizeOnlyMin:String,
 
   @Size(max=30)
-  stringUsingSizeOnlyMax:String
+  stringUsingSizeOnlyMax:String,
+
+  @Min(1)
+  intMin:Int,
+  @Max(10)
+  intMax:Int,
+  @Min(1)
+  doubleMin:Double,
+  @Max(10)
+  doubleMax:Double
+
 
 )

@@ -12,6 +12,7 @@ Current version: *1.0.5*
 * JSON Schema Draft v4
 * Supports polymorphism using **@JsonTypeInfo** and **oneOf**
 * Supports schema customization using **@JsonSchemaDescription**, **@JsonSchemaFormat** and **@JsonSchemaTitle**
+* Supports many Javax-validation @Annotations
 * Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor)
   - (Must be configured to use this mode)
   - Special handling of Option-/Optional-properties using oneOf.
@@ -22,20 +23,11 @@ Current version: *1.0.5*
 * Implemented in Scala 
 * Easy to fix and add functionality
 
-**The Future**
-
-* Should support all different variations of Jackson-usage
-* Should support all (a lot?) of *javax.validation-API*-annotations
-
 
 Project status
 ---------------
 We're currently using this codebase in an ongoing (not yet released) project at work,
 and we're improving the jsonSchema-generating code when we finds issues and/or features we need that not yet is supported.
-
-**Currently missing**
-
-* Lot of javax.validation-API support
 
 I would really appreciate it if other developers wanted to start using and contributing improvements and features. 
 
