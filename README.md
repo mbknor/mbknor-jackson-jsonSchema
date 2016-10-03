@@ -38,6 +38,7 @@ This project publishes artifacts to central maven repo.
 
 The project is also compiled using Java 8. This means that you also need to use Java 8.
 
+Artifacts for both Scala 2.10 and 2.11 is now available (Thanks to @bbyk for adding crossBuild functionality). 
 
 Using Maven
 -----------------
