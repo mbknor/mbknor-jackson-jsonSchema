@@ -4,7 +4,7 @@ import java.lang.reflect.{Field, Method, ParameterizedType}
 import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime}
 import java.util
 import java.util.Optional
-import javax.validation.constraints.{Max, Min, NotNull, Size}
+import javax.validation.constraints.{Pattern, Max, Min, NotNull, Size}
 
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
@@ -228,6 +228,12 @@ class JsonSchemaGenerator
 
       val minAndMaxLength:Option[MinAndMaxLength] = currentProperty.flatMap {
         p =>
+          // Look for @Pattern
+          Option(p.getAnnotation(classOf[Pattern])).map {
+            pattern =>
+              node.put("pattern", pattern.regexp())
+          }
+
           // Look for @Size
           Option(p.getAnnotation(classOf[Size]))
               .map {

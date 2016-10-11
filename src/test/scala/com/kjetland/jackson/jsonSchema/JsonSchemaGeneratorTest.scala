@@ -3,7 +3,7 @@ package com.kjetland.jackson.jsonSchema
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.{Optional, TimeZone}
-import javax.validation.constraints.{Max, Min, NotNull, Size}
+import javax.validation.constraints.{Pattern, Max, Min, NotNull, Size}
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo, JsonValue}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -77,7 +77,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       node =>
         val r = schemaValidator.validate(node)
         if ( !r.isSuccess ) {
-          throw new Exception("json does not validate agains schema: " + r)
+          throw new Exception("json does not validate against schema: " + r)
         }
 
     }
@@ -609,16 +609,18 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.classUsingValidation.getClass, Some(jsonNode))
 
     assert(schema.at("/properties/stringUsingNotNull/minLength").asInt() == 1)
-    assert(schema.at("/properties/stringUsingNotNull/maxLength").isMissingNode == true)
+    assert(schema.at("/properties/stringUsingNotNull/maxLength").isMissingNode)
 
     assert(schema.at("/properties/stringUsingSize/minLength").asInt() == 1)
     assert(schema.at("/properties/stringUsingSize/maxLength").asInt() == 20)
 
     assert(schema.at("/properties/stringUsingSizeOnlyMin/minLength").asInt() == 1)
-    assert(schema.at("/properties/stringUsingSizeOnlyMin/maxLength").isMissingNode == true)
+    assert(schema.at("/properties/stringUsingSizeOnlyMin/maxLength").isMissingNode)
 
     assert(schema.at("/properties/stringUsingSizeOnlyMax/maxLength").asInt() == 30)
-    assert(schema.at("/properties/stringUsingSizeOnlyMax/minLength").isMissingNode == true)
+    assert(schema.at("/properties/stringUsingSizeOnlyMax/minLength").isMissingNode)
+
+    assert(schema.at("/properties/stringUsingPattern/pattern").asText() == "_stringUsingPatternA|_stringUsingPatternB")
 
     assert(schema.at("/properties/intMin/minimum").asInt() == 1)
     assert(schema.at("/properties/intMax/maximum").asInt() == 10)
@@ -714,7 +716,10 @@ trait TestData {
   val pojoUsingFormat = new PojoUsingFormat("test@example.com", true, OffsetDateTime.now(), OffsetDateTime.now())
   val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
 
-  val classUsingValidation = ClassUsingValidation("_stringUsingNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", 1, 2, 1.0, 2.0 )
+  val classUsingValidation = ClassUsingValidation(
+    "_stringUsingNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", "_stringUsingPatternA",
+    1, 2, 1.0, 2.0
+  )
 }
 
 
@@ -783,6 +788,9 @@ case class ClassUsingValidation
 
   @Size(max=30)
   stringUsingSizeOnlyMax:String,
+
+  @Pattern(regexp = "_stringUsingPatternA|_stringUsingPatternB")
+  stringUsingPattern:String,
 
   @Min(1)
   intMin:Int,
