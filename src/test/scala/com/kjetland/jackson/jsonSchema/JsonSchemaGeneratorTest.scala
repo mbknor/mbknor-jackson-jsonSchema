@@ -16,6 +16,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData._
+import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import org.scalatest.{FunSuite, Matchers}
 
 import scala.collection.JavaConversions._
@@ -36,6 +37,9 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       om.registerModule(new JavaTimeModule)
       om.registerModule(new Jdk8Module )
       om.registerModule(new JodaModule)
+
+      // For the mixin-test
+      om.registerModule( new MixinModule)
 
       om.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
       om.setTimeZone(TimeZone.getDefault())
@@ -627,6 +631,20 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(schema.at("/properties/doubleMax/maximum").asInt() == 10)
   }
 
+  test("Polymorphism using mixin") {
+
+    // Java
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.mixinChild1)
+      assertToFromJson(jsonSchemaGenerator, testData.mixinChild1, classOf[MixinParent])
+
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, classOf[MixinParent], Some(jsonNode))
+
+      assertChild1(schema, "/oneOf")
+      assertChild2(schema, "/oneOf")
+    }
+  }
+
 }
 
 trait TestData {
@@ -715,6 +733,15 @@ trait TestData {
   val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
 
   val classUsingValidation = ClassUsingValidation("_stringUsingNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", 1, 2, 1.0, 2.0 )
+
+  val mixinChild1 = {
+    val c = new MixinChild1()
+    c.parentString = "pv"
+    c.child1String = "cs"
+    c.child1String2 = "cs2"
+    c.child1String3 = "cs3"
+    c
+  }
 }
 
 

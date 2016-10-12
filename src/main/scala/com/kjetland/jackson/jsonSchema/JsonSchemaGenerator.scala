@@ -432,7 +432,8 @@ class JsonSchemaGenerator
               .find {
                 t: JsonSubTypes.Type =>
                   t.value() == _type.getRawClass
-              }.map(_.name()).getOrElse(throw new Exception(s"Did not find info about the class ${_type.getRawClass} in @JsonSubTypes"))
+              }.map(_.name())
+              .getOrElse(throw new Exception(s"Did not find info about the class ${_type.getRawClass} in @JsonSubTypes"))
           }.getOrElse(throw new Exception(s"Did not find @JsonSubTypes"))
 
 
@@ -442,6 +443,11 @@ class JsonSchemaGenerator
     }
 
     override def expectObjectFormat(_type: JavaType) = {
+
+      sdf
+
+      val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
+      Option(ac.getAnnotations.get(classOf[JsonSubTypes]))
 
       val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
         ann: JsonSubTypes => ann.value().map {
