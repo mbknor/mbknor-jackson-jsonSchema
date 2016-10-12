@@ -431,16 +431,11 @@ class JsonSchemaGenerator
 
           val propertyName = jsonTypeInfo.property()
 
-          // must look at the @JsonSubTypes to find what this current class should be called
-
-          val subTypeName:String = Option(ac.getAnnotations.get(classOf[JsonSubTypes])).map {
-            ann: JsonSubTypes => ann.value()
-              .find {
-                t: JsonSubTypes.Type =>
-                  t.value() == _type.getRawClass
-              }.map(_.name()).getOrElse(throw new Exception(s"Did not find info about the class ${_type.getRawClass} in @JsonSubTypes"))
-          }.getOrElse(throw new Exception(s"Did not find @JsonSubTypes"))
-
+          // Must find out what this current class should be called
+          val subTypeName: String = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).toList
+            .filter(_.getType == _type.getRawClass)
+            .find(p => true) // find first
+            .get.getName
 
           PolymorphismInfo(propertyName, subTypeName)
       }
@@ -449,11 +444,10 @@ class JsonSchemaGenerator
 
     override def expectObjectFormat(_type: JavaType) = {
 
-      val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
-        ann: JsonSubTypes => ann.value().map {
-          t: JsonSubTypes.Type => t.value()
-        }.toList
-      }.getOrElse(List())
+      val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
+      val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).toList
+      val subTypes: List[Class[_]] = resolvedSubTypes.map( _.getType)
+        .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
 
       if (subTypes.nonEmpty) {
         //l(s"polymorphism - subTypes: $subTypes")
