@@ -772,8 +772,9 @@ class JsonSchemaGenerator
     }
   }
 
-
-  def generateJsonSchema[T <: Any](clazz: Class[T], title:Option[String] = None, description:Option[String] = None): JsonNode = {
+  def generateJsonSchema[T <: Any](clazz: Class[T]): JsonNode = generateJsonSchema(clazz, None, None)
+  def generateJsonSchema[T <: Any](clazz: Class[T], title:String, description:String): JsonNode = generateJsonSchema(clazz, Option(title), Option(description))
+  def generateJsonSchema[T <: Any](clazz: Class[T], title:Option[String], description:Option[String]): JsonNode = {
 
     val rootNode = JsonNodeFactory.instance.objectNode()
 

@@ -15,8 +15,8 @@ public class UseItFromJavaTest {
         ObjectMapper objectMapper = new ObjectMapper();
         JsonSchemaGenerator g1 = new JsonSchemaGenerator(objectMapper);
         // TODO - This is not very beautiful from Java - Need to improve Java API
-        g1.generateJsonSchema(MyJavaPojo.class, Option.apply(null), Option.apply(null));
-        g1.generateJsonSchema(MyJavaPojo.class, Option.apply("My title"), Option.apply("My description"));
+        g1.generateJsonSchema(MyJavaPojo.class);
+        g1.generateJsonSchema(MyJavaPojo.class, "My title", "My description");
     }
 
 }
