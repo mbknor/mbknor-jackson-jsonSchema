@@ -31,7 +31,8 @@ object JsonSchemaConfig {
     hidePolymorphismTypeProperty = false,
     disableWarnings = false,
     useImprovedDateFormatMapping = false,
-    useMinLengthForNotNull = false
+    useMinLengthForNotNull = false,
+    useTypeIdForDefinitionName = false
   )
 
   /**
@@ -49,7 +50,8 @@ object JsonSchemaConfig {
     hidePolymorphismTypeProperty = true,
     disableWarnings = false,
     useImprovedDateFormatMapping = true,
-    useMinLengthForNotNull = true
+    useMinLengthForNotNull = true,
+    useTypeIdForDefinitionName = false
   )
 
 }
@@ -63,7 +65,8 @@ case class JsonSchemaConfig
   hidePolymorphismTypeProperty:Boolean,
   disableWarnings:Boolean,
   useImprovedDateFormatMapping:Boolean,
-  useMinLengthForNotNull:Boolean
+  useMinLengthForNotNull:Boolean,
+  useTypeIdForDefinitionName:Boolean
 )
 
 
@@ -143,6 +146,8 @@ class JsonSchemaGenerator
     // Used when 'combining' multiple invocations to getOrCreateDefinition when processing polymorphism.
     var workInProgress:Option[WorkInProgress] = None
 
+    def getDefinitionName (clazz:Class[_]) = { if (config.useTypeIdForDefinitionName) clazz.getName else clazz.getSimpleName }
+
     // Either creates new definitions or return $ref to existing one
     def getOrCreateDefinition(clazz:Class[_])(objectDefinitionBuilder:(ObjectNode) => Option[JsonObjectFormatVisitor]):DefinitionInfo = {
 
@@ -164,8 +169,8 @@ class JsonSchemaGenerator
 
           // new one - must build it
           var retryCount = 0
-          var shortRef = clazz.getSimpleName
-          var longRef = "#/definitions/"+clazz.getSimpleName
+          var shortRef = getDefinitionName(clazz)
+          var longRef = "#/definitions/" + shortRef
           while( class2Ref.values.contains(longRef)) {
             retryCount = retryCount + 1
             shortRef = clazz.getSimpleName + "_" + retryCount
