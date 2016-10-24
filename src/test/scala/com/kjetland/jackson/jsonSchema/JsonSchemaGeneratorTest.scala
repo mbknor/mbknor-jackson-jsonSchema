@@ -52,6 +52,19 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   val jsonSchemaGeneratorScala = new JsonSchemaGenerator(_objectMapperScala, debug = true)
   val jsonSchemaGeneratorScalaHTML5 = new JsonSchemaGenerator(_objectMapperScala, debug = true, config = JsonSchemaConfig.html5EnabledSchema)
 
+  val vanillaJsonSchemaDraft4WithIds = JsonSchemaConfig(
+    autoGenerateTitleForProperties = true,
+    defaultArrayFormat = Some("table"),
+    useOneOfForOption = true,
+    usePropertyOrdering = true,
+    hidePolymorphismTypeProperty = true,
+    disableWarnings = false,
+    useImprovedDateFormatMapping = true,
+    useMinLengthForNotNull = true,
+    useTypeIdForDefinitionName = true
+  )
+  val jsonSchemaGeneratorWithIds = new JsonSchemaGenerator(_objectMapperScala, debug = true, vanillaJsonSchemaDraft4WithIds)
+
   val testData = new TestData{}
 
   def asPrettyJson(node:JsonNode, om:ObjectMapper):String = {
@@ -226,6 +239,20 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     }
 
+    //Using fully-qualified class names
+    {
+
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorWithIds, testData.pojoWithParent)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorWithIds, testData.pojoWithParent.getClass, Some(jsonNode))
+
+      assert(false == schema.at("/additionalProperties").asBoolean())
+      assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
+
+      assertChild1(schema, "/properties/child/oneOf", "com.kjetland.jackson.jsonSchema.testData.Child1", false)
+      assertChild2(schema, "/properties/child/oneOf", "com.kjetland.jackson.jsonSchema.testData.Child2", false)
+      
+    }
+    
     // Scala
     {
       val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.pojoWithParentScala)
