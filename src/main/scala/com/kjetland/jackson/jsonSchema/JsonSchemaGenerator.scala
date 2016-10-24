@@ -287,14 +287,15 @@ class JsonSchemaGenerator
       val itemsNode = JsonNodeFactory.instance.objectNode()
       node.set("items", itemsNode)
 
-      // When processing scala modules we sometimes get a better elementType here than later in itemsFormat
-      val preferredElementType:Option[JavaType] = if ( _type.containedTypeCount() >= 1) Some(_type.containedType(0)) else None
+      // We get improved result while processing scala-collections by getting elementType this way
+      // instead of using the one which we receive in JsonArrayFormatVisitor.itemsFormat
+      // This approach also works for Java
+      val preferredElementType:JavaType = _type.getContentType
 
       new JsonArrayFormatVisitor with MySerializerProvider {
         override def itemsFormat(handler: JsonFormatVisitable, _elementType: JavaType): Unit = {
           l(s"expectArrayFormat - handler: $handler - elementType: ${_elementType} - preferredElementType: $preferredElementType")
-          val elementType = preferredElementType.getOrElse(_elementType)
-          objectMapper.acceptJsonFormatVisitor(elementType, createChild(itemsNode, currentProperty = None))
+          objectMapper.acceptJsonFormatVisitor(preferredElementType, createChild(itemsNode, currentProperty = None))
         }
 
         override def itemsFormat(format: JsonFormatTypes): Unit = {
@@ -604,17 +605,7 @@ class JsonSchemaGenerator
 
                 val childVisitor = createChild(thisPropertyNode.main, currentProperty = prop)
 
-                // Workaround for scala lists and so on
-                if ( (propertyType.isArrayType || propertyType.isCollectionLikeType) && !classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) && propertyType.containedTypeCount() >= 1) {
-                  // If visiting a scala list and using default acceptJsonFormatVisitor-approach,
-                  // we get java.lang.Object instead of actual type.
-                  // By doing it manually like this it works.
-                  l(s"JsonObjectFormatVisitor - forcing array for propertyName:$propertyName, propertyType: $propertyType")
-
-                  val itemType:JavaType = resolveType(propertyType, prop, objectMapper)
-
-                  childVisitor.expectArrayFormat(itemType).itemsFormat(null, itemType)
-                } else if( (classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass) ) && propertyType.containedTypeCount() >= 1) {
+                if( (classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass) ) && propertyType.containedTypeCount() >= 1) {
 
                   // Property is scala Option or Java Optional.
                   //

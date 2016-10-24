@@ -738,7 +738,8 @@ trait TestData {
     List("l1", "l2", "l3"),
     List(child1, child2),
     List(child1, child2).toArray,
-    List(classNotExtendingAnything, classNotExtendingAnything)
+    List(classNotExtendingAnything, classNotExtendingAnything),
+    PojoWithArrays._listOfListOfStringsValues // It was difficult to construct this from scala :)
   )
 
   val pojoWithArraysScala = PojoWithArraysScala(
@@ -747,7 +748,8 @@ trait TestData {
     List("l1", "l2", "l3"),
     List(child1, child2),
     List(child1, child2),
-    List(classNotExtendingAnything, classNotExtendingAnything)
+    List(classNotExtendingAnything, classNotExtendingAnything),
+    List(List("l11","l12"), List("l21"))
   )
 
   val recursivePojo = new RecursivePojo("t1", List(new RecursivePojo("c1", null)))
@@ -784,7 +786,8 @@ case class PojoWithArraysScala
   stringList:List[String],
   polymorphismList:List[Parent],
   polymorphismArray:List[Parent], // We never use array in scala - use list instead to make it compatible with PojoWithArrays (java)
-  regularObjectList:List[ClassNotExtendingAnything]
+  regularObjectList:List[ClassNotExtendingAnything],
+  listOfListOfStrings:List[List[String]]
 )
 
 case class ClassNotExtendingAnythingScala(someString:String, myEnum: MyEnum, myEnumO: Option[MyEnum])
