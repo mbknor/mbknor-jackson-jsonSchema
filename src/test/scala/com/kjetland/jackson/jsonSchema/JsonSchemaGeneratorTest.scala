@@ -454,6 +454,10 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/polymorphismArray/type").asText() == "array")
       assertChild1(schema, "/properties/polymorphismArray/items/oneOf")
       assertChild2(schema, "/properties/polymorphismArray/items/oneOf")
+
+      assert(schema.at("/properties/listOfListOfStrings/type").asText() == "array")
+      assert(schema.at("/properties/listOfListOfStrings/items/type").asText() == "array")
+      assert(schema.at("/properties/listOfListOfStrings/items/items/type").asText() == "string")
     }
 
     doTest( testData.pojoWithArrays, testData.pojoWithArrays.getClass, jsonSchemaGenerator)
