@@ -2,7 +2,7 @@ Change version in build.sbt and multiple places in README.md
 
 Clean and test cross scala version
 
-    sbt clean; sbt +test;
+    sbt clean +test
 
 Commit
     
@@ -13,6 +13,10 @@ Deploy to maven central:
 
     sbt +publish-signed
     
+
+Check and publish artifact
+    
+    https://oss.sonatype.org/
     
 push
 push --tag
