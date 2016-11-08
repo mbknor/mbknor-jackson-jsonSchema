@@ -4,7 +4,7 @@ lazy val commonSettings = Seq(
   organizationName := "mbknor",
   version := "1.0.10-SNAPSHOT",
   scalaVersion := "2.11.8",
-  crossScalaVersions := Seq("2.10.4", "2.11.8"),
+  crossScalaVersions := Seq("2.10.4", "2.11.8", "2.12.0"),
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
