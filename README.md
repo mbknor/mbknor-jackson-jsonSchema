@@ -1,6 +1,6 @@
 Jackson jsonSchema Generator
 ===================================
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.kjetland/mbknor-jackson-jsonschema_2.11/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cmbknor-jackson-jsonSchema)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.kjetland/mbknor-jackson-jsonschema_2.12/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cmbknor-jackson-jsonSchema)
 
 This projects aims to do a better job than the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)
 in generating jsonSchema from your POJOs using Jackson @Annotations.
@@ -42,7 +42,7 @@ This project publishes artifacts to central maven repo.
 
 The project is also compiled using Java 8. This means that you also need to use Java 8.
 
-Artifacts for both Scala 2.10 and 2.11 is now available (Thanks to [@bbyk](https://github.com/bbyk) for adding crossBuild functionality). 
+Artifacts for both Scala 2.10, 2.11 and 2.12 is now available (Thanks to [@bbyk](https://github.com/bbyk) for adding crossBuild functionality). 
 
 Using Maven
 -----------------
@@ -51,7 +51,7 @@ Add this to you pom.xml:
 
     <dependency>
         <groupId>com.kjetland</groupId>
-        <artifactId>mbknor-jackson-jsonschema_2.11</artifactId>
+        <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
         <version>1.0.10</version>
     </dependency>    
 
