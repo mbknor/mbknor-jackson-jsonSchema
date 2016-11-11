@@ -1,4 +1,7 @@
-Change version in build.sbt and multiple places in README.md
+Change version in 
+
+* build.sbt
+* and multiple places in README.md
 
 Clean and test cross scala version
 
