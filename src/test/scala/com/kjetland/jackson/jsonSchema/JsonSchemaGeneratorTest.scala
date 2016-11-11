@@ -3,7 +3,7 @@ package com.kjetland.jackson.jsonSchema
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.{Optional, TimeZone}
-import javax.validation.constraints.{Pattern, Max, Min, NotNull, Size}
+import javax.validation.constraints.{Max, Min, NotNull, Pattern, Size}
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo, JsonValue}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -15,6 +15,7 @@ import com.fasterxml.jackson.datatype.joda.JodaModule
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
+import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDefault
 import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import org.scalatest.{FunSuite, Matchers}
@@ -213,6 +214,15 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   test("Generate schema for regular class which has a property of class annotated with @JsonTypeInfo") {
 
+    def assertDefaultValues(schema:JsonNode): Unit ={
+      assert( schema.at("/properties/stringWithDefault/type").asText() == "string" )
+      assert( schema.at("/properties/stringWithDefault/default").asText() == "x" )
+      assert( schema.at("/properties/intWithDefault/type").asText() == "integer" )
+      assert( schema.at("/properties/intWithDefault/default").asInt() == 12 )
+      assert( schema.at("/properties/booleanWithDefault/type").asText() == "boolean" )
+      assert( schema.at("/properties/booleanWithDefault/default").asBoolean() == true )
+    }
+
     // Java
     {
       val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoWithParent)
@@ -220,6 +230,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assert(false == schema.at("/additionalProperties").asBoolean())
       assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
+      assertDefaultValues(schema)
+
 
       assertChild1(schema, "/properties/child/oneOf")
       assertChild2(schema, "/properties/child/oneOf")
@@ -233,6 +245,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assert(false == schema.at("/additionalProperties").asBoolean())
       assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
+      assertDefaultValues(schema)
 
       assertChild1(schema, "/properties/child/oneOf", html5Checks = true)
       assertChild2(schema, "/properties/child/oneOf", html5Checks = true)
@@ -247,6 +260,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assert(false == schema.at("/additionalProperties").asBoolean())
       assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
+      assertDefaultValues(schema)
 
       assertChild1(schema, "/properties/child/oneOf", "com.kjetland.jackson.jsonSchema.testData.Child1", false)
       assertChild2(schema, "/properties/child/oneOf", "com.kjetland.jackson.jsonSchema.testData.Child2", false)
@@ -260,6 +274,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assert(false == schema.at("/additionalProperties").asBoolean())
       assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
+      assertDefaultValues(schema)
 
       assertChild1(schema, "/properties/child/oneOf", "Child1Scala")
       assertChild2(schema, "/properties/child/oneOf", "Child2Scala")
@@ -706,10 +721,13 @@ trait TestData {
     val p = new PojoWithParent
     p.pojoValue = true
     p.child = child1
+    p.stringWithDefault = "y"
+    p.intWithDefault = 13
+    p.booleanWithDefault = true
     p
   }
 
-  val pojoWithParentScala = PojoWithParentScala(true, child1Scala)
+  val pojoWithParentScala = PojoWithParentScala(true, child1Scala, "y", 13, true)
 
   val classNotExtendingAnything = {
     val o = new ClassNotExtendingAnything
@@ -814,7 +832,18 @@ case class Child1Scala
 
 case class Child2Scala(parentString:String, child2int:Int) extends ParentScala
 
-case class PojoWithParentScala(pojoValue:Boolean, child:ParentScala)
+case class PojoWithParentScala
+(
+  pojoValue:Boolean,
+  child:ParentScala,
+
+  @JsonSchemaDefault("x")
+  stringWithDefault:String,
+  @JsonSchemaDefault("12")
+  intWithDefault:Int,
+  @JsonSchemaDefault("true")
+  booleanWithDefault:Boolean
+)
 
 case class ManyPrimitivesScala(_string:String, _integer:Int, _boolean:Boolean, _double:Double)
 

@@ -1,9 +1,20 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
+import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDefault;
+
 public class PojoWithParent {
 
     public Boolean pojoValue;
     public Parent child;
+
+    @JsonSchemaDefault("x")
+    public String stringWithDefault;
+
+    @JsonSchemaDefault("12")
+    public int intWithDefault;
+
+    @JsonSchemaDefault("true")
+    public boolean booleanWithDefault;
 
     @Override
     public boolean equals(Object o) {
@@ -12,8 +23,11 @@ public class PojoWithParent {
 
         PojoWithParent that = (PojoWithParent) o;
 
+        if (intWithDefault != that.intWithDefault) return false;
+        if (booleanWithDefault != that.booleanWithDefault) return false;
         if (pojoValue != null ? !pojoValue.equals(that.pojoValue) : that.pojoValue != null) return false;
-        return child != null ? child.equals(that.child) : that.child == null;
+        if (child != null ? !child.equals(that.child) : that.child != null) return false;
+        return stringWithDefault != null ? stringWithDefault.equals(that.stringWithDefault) : that.stringWithDefault == null;
 
     }
 
@@ -21,6 +35,9 @@ public class PojoWithParent {
     public int hashCode() {
         int result = pojoValue != null ? pojoValue.hashCode() : 0;
         result = 31 * result + (child != null ? child.hashCode() : 0);
+        result = 31 * result + (stringWithDefault != null ? stringWithDefault.hashCode() : 0);
+        result = 31 * result + intWithDefault;
+        result = 31 * result + (booleanWithDefault ? 1 : 0);
         return result;
     }
 }

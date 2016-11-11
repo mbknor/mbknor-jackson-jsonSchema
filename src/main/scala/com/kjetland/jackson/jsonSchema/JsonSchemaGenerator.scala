@@ -4,7 +4,7 @@ import java.lang.reflect.{Field, Method, ParameterizedType}
 import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime}
 import java.util
 import java.util.Optional
-import javax.validation.constraints.{Pattern, Max, Min, NotNull, Size}
+import javax.validation.constraints.{Max, Min, NotNull, Pattern, Size}
 
 import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
@@ -14,7 +14,7 @@ import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.introspect.{AnnotatedClass, JacksonAnnotationIntrospector}
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
-import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle}
+import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDefault, JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle}
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
@@ -239,6 +239,12 @@ class JsonSchemaGenerator
               node.put("pattern", pattern.regexp())
           }
 
+          // Look for @JsonSchemaDefault
+          Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
+            defaultValue =>
+              node.put("default", defaultValue.value())
+          }
+
           // Look for @Size
           Option(p.getAnnotation(classOf[Size]))
               .map {
@@ -322,6 +328,12 @@ class JsonSchemaGenerator
             max =>
               node.put("maximum", max.value())
           }
+
+          // Look for @JsonSchemaDefault
+          Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
+            defaultValue =>
+              node.put("default", defaultValue.value().toLong )
+          }
       }
 
       new JsonNumberFormatVisitor  with EnumSupport {
@@ -361,6 +373,12 @@ class JsonSchemaGenerator
             max =>
               node.put("maximum", max.value())
           }
+
+          // Look for @JsonSchemaDefault
+          Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
+            defaultValue =>
+              node.put("default", defaultValue.value().toInt)
+          }
       }
 
 
@@ -383,6 +401,15 @@ class JsonSchemaGenerator
       l("expectBooleanFormat")
 
       node.put("type", "boolean")
+
+      currentProperty.map {
+        p =>
+          // Look for @JsonSchemaDefault
+          Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
+            defaultValue =>
+              node.put("default", defaultValue.value().toBoolean)
+          }
+      }
 
       new JsonBooleanFormatVisitor with EnumSupport {
         val _node = node

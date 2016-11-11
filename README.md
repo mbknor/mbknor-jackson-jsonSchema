@@ -11,7 +11,11 @@ Current version: *1.0.9*
 
 * JSON Schema Draft v4
 * Supports polymorphism (**@JsonTypeInfo**, **MixIn**, and **registerSubtypes()**) using JsonSchema's **oneOf**-feature.
-* Supports schema customization using **@JsonSchemaDescription**, **@JsonSchemaFormat** and **@JsonSchemaTitle**
+* Supports schema customization using:
+  - **@JsonSchemaDescription**
+  - **@JsonSchemaFormat**
+  - **@JsonSchemaTitle**
+  - **@JsonSchemaDefault**
 * Supports many Javax-validation @Annotations
 * Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor)
   - (Must be configured to use this mode)
