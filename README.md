@@ -59,7 +59,7 @@ Add this to you sbt build-config:
     "com.kjetland" % "mbknor-jackson-jsonschema" %% "1.0.9"
 
 
-Code
+Code - Using Scala
 -------------------------------
 
 This is how to generate jsonSchema in code using Scala:
@@ -102,7 +102,8 @@ Example:
 
 PS: Scala Option combined with Polymorphism does not work in jackson-scala-module and therefor not this project either.
 
-And using Java:
+Code - Using Java
+-------------------------
 
 ```java
     ObjectMapper objectMapper = new ObjectMapper();
