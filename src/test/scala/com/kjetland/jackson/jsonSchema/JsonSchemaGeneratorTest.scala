@@ -28,6 +28,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   val _objectMapperScala = new ObjectMapper()
   _objectMapperScala.registerModule(new DefaultScalaModule)
 
+  val mixinModule = new MixinModule
+
   List(_objectMapper, _objectMapperScala).foreach {
     om =>
       val simpleModule = new SimpleModule()
@@ -40,7 +42,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       om.registerModule(new JodaModule)
 
       // For the mixin-test
-      om.registerModule( new MixinModule)
+      om.registerModule( mixinModule)
 
       om.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
       om.setTimeZone(TimeZone.getDefault())

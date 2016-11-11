@@ -24,7 +24,7 @@ Current version: *1.0.9*
 **Benefits**
 
 * Simple implementation - Just [one file](https://github.com/mbknor/mbknor-jackson-jsonSchema/blob/master/src/main/scala/com/kjetland/jackson/jsonSchema/JsonSchemaGenerator.scala)  (for now..) 
-* Implemented in Scala 
+* Implemented in Scala (*Built for 2.10, 2.11 and 2.12*)
 * Easy to fix and add functionality
 
 
