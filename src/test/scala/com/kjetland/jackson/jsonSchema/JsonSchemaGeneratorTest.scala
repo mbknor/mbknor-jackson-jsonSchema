@@ -20,7 +20,7 @@ import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import org.scalatest.{FunSuite, Matchers}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 
 class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
@@ -135,7 +135,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   def getArrayNodeAsListOfStrings(node:JsonNode):List[String] = {
     node match {
       case x:MissingNode => List()
-      case x:ArrayNode   => x.toList.map(_.asText())
+      case x:ArrayNode   => x.asScala.toList.map(_.asText())
     }
   }
 
@@ -145,7 +145,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   def getNodeViaArrayOfRefs(root:JsonNode, pathToArrayOfRefs:String, definitionName:String):JsonNode = {
     val nodeWhereArrayOfRefsIs:ArrayNode = root.at(pathToArrayOfRefs).asInstanceOf[ArrayNode]
-    val arrayItemNodes = nodeWhereArrayOfRefsIs.iterator().toList
+    val arrayItemNodes = nodeWhereArrayOfRefsIs.iterator().asScala.toList
     val ref = arrayItemNodes.map(_.get("$ref").asText()).find( _.endsWith(s"/$definitionName")).get
     // use ref to look the node up
     val fixedRef = ref.substring(1) // Removing starting #
@@ -426,7 +426,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.pojoWithCustomSerializer)
     val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoWithCustomSerializer.getClass, Some(jsonNode))
-    assert( schema.asInstanceOf[ObjectNode].fieldNames().toList == List("$schema", "title")) // Emptyt schema due to custom serializer
+    assert( schema.asInstanceOf[ObjectNode].fieldNames().asScala.toList == List("$schema", "title")) // Emptyt schema due to custom serializer
   }
 
   test("object with property using custom serializer not overriding JsonSerializer.acceptJsonFormatVisitor") {
@@ -434,7 +434,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.objectWithPropertyWithCustomSerializer)
     val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.objectWithPropertyWithCustomSerializer.getClass, Some(jsonNode))
     assert( schema.at("/properties/s/type").asText() == "string")
-    assert( schema.at("/properties/child").asInstanceOf[ObjectNode].fieldNames().toList == List())
+    assert( schema.at("/properties/child").asInstanceOf[ObjectNode].fieldNames().asScala.toList == List())
   }
 
 
@@ -688,7 +688,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 }
 
 trait TestData {
-  import scala.collection.JavaConversions._
+  import scala.collection.JavaConverters._
   val child1 = {
     val c = new Child1()
     c.parentString = "pv"
@@ -749,10 +749,10 @@ trait TestData {
   val pojoWithArrays = new PojoWithArrays(
     Array(1,2,3),
     Array("a1","a2","a3"),
-    List("l1", "l2", "l3"),
-    List(child1, child2),
+    List("l1", "l2", "l3").asJava,
+    List(child1, child2).asJava,
     List(child1, child2).toArray,
-    List(classNotExtendingAnything, classNotExtendingAnything),
+    List(classNotExtendingAnything, classNotExtendingAnything).asJava,
     PojoWithArrays._listOfListOfStringsValues // It was difficult to construct this from scala :)
   )
 
@@ -766,12 +766,12 @@ trait TestData {
     List(List("l11","l12"), List("l21"))
   )
 
-  val recursivePojo = new RecursivePojo("t1", List(new RecursivePojo("c1", null)))
+  val recursivePojo = new RecursivePojo("t1", List(new RecursivePojo("c1", null)).asJava)
 
   val pojoUsingMaps = new PojoUsingMaps(
-      Map[String, Integer]("a" -> 1, "b" -> 2),
-      Map("x" -> "y", "z" -> "w"),
-      Map[String, Parent]("1" -> child1, "2" -> child2)
+      Map[String, Integer]("a" -> 1, "b" -> 2).asJava,
+      Map("x" -> "y", "z" -> "w").asJava,
+      Map[String, Parent]("1" -> child1, "2" -> child2).asJava
     )
 
   val pojoUsingFormat = new PojoUsingFormat("test@example.com", true, OffsetDateTime.now(), OffsetDateTime.now())

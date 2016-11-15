@@ -126,7 +126,7 @@ class JsonSchemaGenerator
   // Java API
   def this(rootObjectMapper: ObjectMapper, config:JsonSchemaConfig) = this(rootObjectMapper, false, config)
 
-  import scala.collection.JavaConversions._
+  import scala.collection.JavaConverters._
 
   val log = LoggerFactory.getLogger(getClass)
 
@@ -157,7 +157,7 @@ class JsonSchemaGenerator
       val enumValuesNode = JsonNodeFactory.instance.arrayNode()
       _node.set("enum", enumValuesNode)
 
-      enums.toSet[String].foreach {
+      enums.asScala.toSet[String].foreach {
         enumValue =>
           enumValuesNode.add(enumValue)
       }
@@ -207,7 +207,7 @@ class JsonSchemaGenerator
           var retryCount = 0
           var shortRef = getDefinitionName(clazz)
           var longRef = "#/definitions/" + shortRef
-          while( class2Ref.values.contains(longRef)) {
+          while( class2Ref.values.toList.contains(longRef)) {
             retryCount = retryCount + 1
             shortRef = clazz.getSimpleName + "_" + retryCount
             longRef = "#/definitions/"+clazz.getSimpleName + "_" + retryCount
@@ -501,7 +501,7 @@ class JsonSchemaGenerator
           val propertyName = jsonTypeInfo.property()
 
           // Must find out what this current class should be called
-          val subTypeName: String = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).toList
+          val subTypeName: String = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
             .filter(_.getType == _type.getRawClass)
             .find(p => true) // find first
             .get.getName
@@ -514,7 +514,7 @@ class JsonSchemaGenerator
     override def expectObjectFormat(_type: JavaType) = {
 
       val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
-      val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).toList
+      val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
       val subTypes: List[Class[_]] = resolvedSubTypes.map( _.getType)
         .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
 
