@@ -30,9 +30,9 @@ object JsonSchemaConfig {
     usePropertyOrdering = false,
     hidePolymorphismTypeProperty = false,
     disableWarnings = false,
-    useImprovedDateFormatMapping = false,
     useMinLengthForNotNull = false,
-    useTypeIdForDefinitionName = false
+    useTypeIdForDefinitionName = false,
+    customType2FormatMapping = Map()
   )
 
   /**
@@ -49,10 +49,46 @@ object JsonSchemaConfig {
     usePropertyOrdering = true,
     hidePolymorphismTypeProperty = true,
     disableWarnings = false,
-    useImprovedDateFormatMapping = true,
     useMinLengthForNotNull = true,
-    useTypeIdForDefinitionName = false
+    useTypeIdForDefinitionName = false,
+    customType2FormatMapping = Map[String,String](
+      // Java7 dates
+      "java.time.LocalDateTime" -> "datetime-local",
+      "java.time.OffsetDateTime" -> "datetime",
+      "java.time.LocalDate" -> "date",
+
+      // Joda-dates
+      "org.joda.time.LocalDate" -> "date"
+    )
   )
+
+  // Java-API
+  def create(
+              autoGenerateTitleForProperties:Boolean,
+              defaultArrayFormat:Optional[String],
+              useOneOfForOption:Boolean,
+              usePropertyOrdering:Boolean,
+              hidePolymorphismTypeProperty:Boolean,
+              disableWarnings:Boolean,
+              useMinLengthForNotNull:Boolean,
+              useTypeIdForDefinitionName:Boolean,
+              customType2FormatMapping:java.util.Map[String, String]
+            ):JsonSchemaConfig = {
+
+    import scala.collection.JavaConverters._
+
+    JsonSchemaConfig(
+      autoGenerateTitleForProperties,
+      Option(defaultArrayFormat.orElse(null)),
+      useOneOfForOption,
+      usePropertyOrdering,
+      hidePolymorphismTypeProperty,
+      disableWarnings,
+      useMinLengthForNotNull,
+      useTypeIdForDefinitionName,
+      customType2FormatMapping.asScala.toMap
+    )
+  }
 
 }
 
@@ -64,9 +100,9 @@ case class JsonSchemaConfig
   usePropertyOrdering:Boolean,
   hidePolymorphismTypeProperty:Boolean,
   disableWarnings:Boolean,
-  useImprovedDateFormatMapping:Boolean,
   useMinLengthForNotNull:Boolean,
-  useTypeIdForDefinitionName:Boolean
+  useTypeIdForDefinitionName:Boolean,
+  customType2FormatMapping:Map[String, String]
 )
 
 
@@ -520,7 +556,7 @@ class JsonSchemaGenerator
 
             // If class is annotated with JsonSchemaFormat, we should add it
             val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
-            Option(ac.getAnnotations.get(classOf[JsonSchemaFormat])).map(_.value()).foreach {
+            resolvePropertyFormat(_type, objectMapper).foreach {
               format =>
                 setFormat(thisObjectNode, format)
             }
@@ -756,15 +792,23 @@ class JsonSchemaGenerator
     s.substring(0,1).toUpperCase() + s.substring(1)
   }
 
+  def resolvePropertyFormat(_type: JavaType, objectMapper:ObjectMapper):Option[String] = {
+    val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
+    resolvePropertyFormat(Option(ac.getAnnotation(classOf[JsonSchemaFormat])), _type.getRawClass.getName)
+  }
+
   def resolvePropertyFormat(prop: BeanProperty):Option[String] = {
     // Prefer format specified in annotation
-    Option(prop.getAnnotation(classOf[JsonSchemaFormat])).map {
+    resolvePropertyFormat(Option(prop.getAnnotation(classOf[JsonSchemaFormat])), prop.getType.getRawClass.getName)
+  }
+
+  def resolvePropertyFormat(jsonSchemaFormatAnnotation:Option[JsonSchemaFormat], rawClassName:String):Option[String] = {
+    // Prefer format specified in annotation
+    jsonSchemaFormatAnnotation.map {
       jsonSchemaFormat =>
         jsonSchemaFormat.value()
     }.orElse {
-      if( config.useImprovedDateFormatMapping ) {
-        dateFormatMapping.get(prop.getType.getRawClass.getName)
-      } else None
+      config.customType2FormatMapping.get(rawClassName)
     }
   }
 

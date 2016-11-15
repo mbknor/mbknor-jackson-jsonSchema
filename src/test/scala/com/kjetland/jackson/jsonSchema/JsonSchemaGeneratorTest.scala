@@ -55,17 +55,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   val jsonSchemaGeneratorScala = new JsonSchemaGenerator(_objectMapperScala, debug = true)
   val jsonSchemaGeneratorScalaHTML5 = new JsonSchemaGenerator(_objectMapperScala, debug = true, config = JsonSchemaConfig.html5EnabledSchema)
 
-  val vanillaJsonSchemaDraft4WithIds = JsonSchemaConfig(
-    autoGenerateTitleForProperties = true,
-    defaultArrayFormat = Some("table"),
-    useOneOfForOption = true,
-    usePropertyOrdering = true,
-    hidePolymorphismTypeProperty = true,
-    disableWarnings = false,
-    useImprovedDateFormatMapping = true,
-    useMinLengthForNotNull = true,
-    useTypeIdForDefinitionName = true
-  )
+  val vanillaJsonSchemaDraft4WithIds = JsonSchemaConfig.html5EnabledSchema.copy(useTypeIdForDefinitionName = true)
   val jsonSchemaGeneratorWithIds = new JsonSchemaGenerator(_objectMapperScala, debug = true, vanillaJsonSchemaDraft4WithIds)
 
   val testData = new TestData{}

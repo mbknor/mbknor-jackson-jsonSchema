@@ -20,6 +20,8 @@ Current version: *1.0.10*
 * Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor)
   - (Must be configured to use this mode)
   - Special handling of Option-/Optional-properties using oneOf.
+* Supports custom Class-to-format-Mapping
+    
 
 **Benefits**
 
@@ -86,6 +88,18 @@ This is how to generate jsonSchema used for generating HTML5 GUI using [json-edi
     val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
 ```
 
+This is how to generate jsonSchema using custom type-to-format-mapping using Scala:
+
+```scala
+    val objectMapper = new ObjectMapper
+    val config:JsonSchemaConfig = JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(
+      customType2FormatMapping = Map( "java.time.OffsetDateTime" -> "date-time-ABC-Special" )
+    )
+    val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config = config)
+    val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
+    
+    val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
+```
 
 **Note about Scala and Option[Int]**:
 
@@ -115,6 +129,11 @@ Code - Using Java
     
     // If using JsonSchema to generate HTML5 GUI:
     // JsonSchemaGenerator html5 = new JsonSchemaGenerator(objectMapper, JsonSchemaConfig.html5EnabledSchema() );
+    
+    // If you want to confioure it manually:
+    // JsonSchemaConfig config = JsonSchemaConfig.create(...);
+    // JsonSchemaGenerator generator = new JsonSchemaGenerator(objectMapper, config);
+               
     
     JsonNode jsonSchema = jsonSchemaGenerator.generateJsonSchema(YourPOJO.class);
     
