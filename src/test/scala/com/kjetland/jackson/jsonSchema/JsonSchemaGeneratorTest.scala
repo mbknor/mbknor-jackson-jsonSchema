@@ -162,6 +162,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   test("Generate scheme for plain class not using @JsonTypeInfo") {
 
+    val enumList = List("C","B","A")
+
     {
 
       val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.classNotExtendingAnything)
@@ -171,7 +173,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert( schema.at("/properties/someString/type").asText() == "string")
 
       assert( schema.at("/properties/myEnum/type").asText() == "string")
-      assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == List("A","B","C"))
+      assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == enumList)
     }
 
     {
@@ -183,8 +185,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert( schema.at("/properties/someString/type").asText() == "string")
 
       assert( schema.at("/properties/myEnum/type").asText() == "string")
-      assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == List("A","B","C"))
-      assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnumO/enum")) == List("A","B","C"))
+      assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == enumList)
+      assert( getArrayNodeAsListOfStrings(schema.at("/properties/myEnumO/enum")) == enumList)
     }
 
   }
@@ -349,7 +351,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(getRequiredList(schema).contains("_doublePrimitive")) // Must be required since it must have a value - not null
 
       assert(schema.at("/properties/myEnum/type").asText() == "string")
-      assert(getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == List("A", "B", "C"))
+      assert(getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == List("C", "B", "A"))
     }
 
     // scala
