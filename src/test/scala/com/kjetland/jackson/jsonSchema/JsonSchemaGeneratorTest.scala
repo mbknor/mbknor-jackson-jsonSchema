@@ -525,6 +525,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     assert( schema.at("/properties/dateTime/type").asText() == "string")
     assert( schema.at("/properties/dateTime/format").asText() == "date-time")
+    assert( schema.at("/properties/dateTime/description").asText() == "This is description from @JsonPropertyDescription")
     assert( schemaHTML5Date.at("/properties/dateTime/format").asText() == "datetime")
 
 

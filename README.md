@@ -12,7 +12,7 @@ Current version: *1.0.10*
 * JSON Schema Draft v4
 * Supports polymorphism (**@JsonTypeInfo**, **MixIn**, and **registerSubtypes()**) using JsonSchema's **oneOf**-feature.
 * Supports schema customization using:
-  - **@JsonSchemaDescription**
+  - **@JsonSchemaDescription**/**@JsonPropertyDescription**
   - **@JsonSchemaFormat**
   - **@JsonSchemaTitle**
   - **@JsonSchemaDefault**

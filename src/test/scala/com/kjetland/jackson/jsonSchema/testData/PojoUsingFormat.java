@@ -1,5 +1,6 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDescription;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaFormat;
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaTitle;
@@ -19,6 +20,7 @@ public class PojoUsingFormat {
     @JsonSchemaFormat("checkbox")
     public Boolean choice;
 
+    @JsonPropertyDescription("This is description from @JsonPropertyDescription")
     public OffsetDateTime dateTime;
 
     @JsonSchemaFormat("text")

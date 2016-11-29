@@ -6,7 +6,7 @@ import java.util
 import java.util.Optional
 import javax.validation.constraints.{Max, Min, NotNull, Pattern, Size}
 
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter
@@ -562,10 +562,12 @@ class JsonSchemaGenerator
             }
 
             // If class is annotated with JsonSchemaDescription, we should add it
-            Option(ac.getAnnotations.get(classOf[JsonSchemaDescription])).map(_.value()).foreach {
-              description =>
-                thisObjectNode.put("description", description)
-            }
+            Option(ac.getAnnotations.get(classOf[JsonSchemaDescription])).map(_.value())
+              .orElse(Option(ac.getAnnotations.get(classOf[JsonPropertyDescription])).map(_.value))
+              .foreach {
+                description: String =>
+                  thisObjectNode.put("description", description)
+              }
 
             // If class is annotated with JsonSchemaTitle, we should add it
             Option(ac.getAnnotations.get(classOf[JsonSchemaTitle])).map(_.value()).foreach {
@@ -709,11 +711,12 @@ class JsonSchemaGenerator
 
                 // Optionally add description
                 prop.flatMap {
-                  p:BeanProperty =>
-                    Option(p.getAnnotation(classOf[JsonSchemaDescription]))
+                  p: BeanProperty =>
+                    Option(p.getAnnotation(classOf[JsonSchemaDescription])).map(_.value())
+                      .orElse(Option(p.getAnnotation(classOf[JsonPropertyDescription])).map(_.value()))
                 }.map {
-                  jsonSchemaDescription =>
-                    thisPropertyNode.meta.put("description", jsonSchemaDescription.value())
+                  description =>
+                    thisPropertyNode.meta.put("description", description)
                 }
 
                 // Optionally add title
