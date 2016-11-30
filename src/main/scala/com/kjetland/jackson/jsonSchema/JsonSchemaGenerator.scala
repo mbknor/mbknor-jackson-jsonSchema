@@ -157,7 +157,7 @@ class JsonSchemaGenerator
       val enumValuesNode = JsonNodeFactory.instance.arrayNode()
       _node.set("enum", enumValuesNode)
 
-      enums.asScala.toSet[String].foreach {
+      enums.asScala.foreach {
         enumValue =>
           enumValuesNode.add(enumValue)
       }
