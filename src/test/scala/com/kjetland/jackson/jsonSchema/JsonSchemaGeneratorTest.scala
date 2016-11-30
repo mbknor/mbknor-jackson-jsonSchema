@@ -18,6 +18,7 @@ import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDefault
 import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
+import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
 import org.scalatest.{FunSuite, Matchers}
 
 import scala.collection.JavaConverters._
@@ -686,6 +687,10 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assertChild1(schema, "/oneOf", defName = "MixinChild1")
       assertChild2(schema, "/oneOf", defName = "MixinChild2")
     }
+  }
+
+  test("issue 24") {
+    val entityWrapperSchema = jsonSchemaGenerator.generateJsonSchema(classOf[EntityWrapper])
   }
 
 }
