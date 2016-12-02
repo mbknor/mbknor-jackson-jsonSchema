@@ -180,7 +180,20 @@ class JsonSchemaGenerator
     case class WorkInProgress(classInProgress:Class[_], nodeInProgress:ObjectNode)
 
     // Used when 'combining' multiple invocations to getOrCreateDefinition when processing polymorphism.
-    var workInProgress:Option[WorkInProgress] = None
+    private var workInProgress:Option[WorkInProgress] = None
+
+    private var workInProgressStack = List[Option[WorkInProgress]]()
+
+    def pushq(): Unit ={
+      workInProgressStack = workInProgress :: workInProgressStack
+      workInProgress = None
+    }
+
+    def popworkInProgress(): Unit ={
+      workInProgress = workInProgressStack.head
+      workInProgressStack = workInProgressStack.tail
+    }
+
 
     def getDefinitionName (clazz:Class[_]) = { if (config.useTypeIdForDefinitionName) clazz.getName else clazz.getSimpleName }
 
@@ -683,7 +696,9 @@ class JsonSchemaGenerator
                   objectMapper.acceptJsonFormatVisitor(optionType, childVisitor)
 
                 } else {
+                  definitionsHandler.pushWorkInProgress()
                   objectMapper.acceptJsonFormatVisitor(propertyType, childVisitor)
+                  definitionsHandler.popworkInProgress()
                 }
 
                 // Check if we should set this property as required
