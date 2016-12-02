@@ -3,7 +3,7 @@ package com.kjetland.jackson.jsonSchema
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.{Optional, TimeZone}
-import javax.validation.constraints.{Max, Min, NotNull, Pattern, Size}
+import javax.validation.constraints._
 
 import com.fasterxml.jackson.annotation.{JsonProperty, JsonSubTypes, JsonTypeInfo, JsonValue}
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -18,6 +18,7 @@ import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDefault
 import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
+import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
 import org.scalatest.{FunSuite, Matchers}
 
@@ -801,95 +802,22 @@ trait TestData {
 }
 
 
-case class PojoWithArraysScala
-(
-  intArray1:Option[List[Integer]], // We never use array in scala - use list instead to make it compatible with PojoWithArrays (java)
-  stringArray:List[String], // We never use array in scala - use list instead to make it compatible with PojoWithArrays (java)
-  stringList:List[String],
-  polymorphismList:List[Parent],
-  polymorphismArray:List[Parent], // We never use array in scala - use list instead to make it compatible with PojoWithArrays (java)
-  regularObjectList:List[ClassNotExtendingAnything],
-  listOfListOfStrings:List[List[String]]
-)
-
-case class ClassNotExtendingAnythingScala(someString:String, myEnum: MyEnum, myEnumO: Option[MyEnum])
-
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-@JsonSubTypes(Array(new JsonSubTypes.Type(value = classOf[Child1Scala], name = "child1"), new JsonSubTypes.Type(value = classOf[Child2Scala], name = "child2")))
-trait ParentScala
-
-case class Child1Scala
-(
-  parentString:String,
-  child1String:String,
-
-  @JsonProperty("_child1String2")
-  child1String2:String,
-
-  @JsonProperty(value = "_child1String3", required = true)
-  child1String3:String
-) extends ParentScala
-
-case class Child2Scala(parentString:String, child2int:Int) extends ParentScala
-
-case class PojoWithParentScala
-(
-  pojoValue:Boolean,
-  child:ParentScala,
-
-  @JsonSchemaDefault("x")
-  stringWithDefault:String,
-  @JsonSchemaDefault("12")
-  intWithDefault:Int,
-  @JsonSchemaDefault("true")
-  booleanWithDefault:Boolean
-)
-
-case class ManyPrimitivesScala(_string:String, _integer:Int, _boolean:Boolean, _double:Double)
-
-case class PojoUsingOptionScala(
-                                 _string:Option[String],
-                                 @JsonDeserialize(contentAs = classOf[Int])     _integer:Option[Int],
-                                 @JsonDeserialize(contentAs = classOf[Boolean]) _boolean:Option[Boolean],
-                                 @JsonDeserialize(contentAs = classOf[Double])  _double:Option[Double],
-                                 child1:Option[Child1Scala],
-                                 optionalList:Option[List[ClassNotExtendingAnythingScala]]
-                                 //, parent:Option[ParentScala] - Not using this one: jackson-scala-module does not support Option combined with Polymorphism
-                               )
-
-case class ManyDates
-(
-  javaLocalDateTime:LocalDateTime,
-  javaOffsetDateTime:OffsetDateTime,
-  javaLocalDate:LocalDate,
-  jodaLocalDate:org.joda.time.LocalDate
-)
-
-case class ClassUsingValidation
-(
-  @NotNull
-  stringUsingNotNull:String,
-
-  @Size(min=1, max=20)
-  stringUsingSize:String,
-
-  @Size(min=1)
-  stringUsingSizeOnlyMin:String,
-
-  @Size(max=30)
-  stringUsingSizeOnlyMax:String,
-
-  @Pattern(regexp = "_stringUsingPatternA|_stringUsingPatternB")
-  stringUsingPattern:String,
-
-  @Min(1)
-  intMin:Int,
-  @Max(10)
-  intMax:Int,
-  @Min(1)
-  doubleMin:Double,
-  @Max(10)
-  doubleMax:Double
 
 
-)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
