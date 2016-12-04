@@ -184,7 +184,7 @@ class JsonSchemaGenerator
 
     private var workInProgressStack = List[Option[WorkInProgress]]()
 
-    def pushq(): Unit ={
+    def pushWorkInProgress(): Unit ={
       workInProgressStack = workInProgress :: workInProgressStack
       workInProgress = None
     }
