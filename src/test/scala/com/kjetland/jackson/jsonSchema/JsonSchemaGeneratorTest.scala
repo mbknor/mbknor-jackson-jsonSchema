@@ -498,13 +498,14 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingMaps.getClass, Some(jsonNode))
 
     assert( schema.at("/properties/string2Integer/type").asText() == "object")
-    assert( schema.at("/properties/string2Integer/additionalProperties").asBoolean() == true)
+    assert( schema.at("/properties/string2Integer/additionalProperties/type").asText() == "integer")
 
     assert( schema.at("/properties/string2String/type").asText() == "object")
-    assert( schema.at("/properties/string2String/additionalProperties").asBoolean() == true)
+    assert( schema.at("/properties/string2String/additionalProperties/type").asText() == "string")
 
     assert( schema.at("/properties/string2PojoUsingJsonTypeInfo/type").asText() == "object")
-    assert( schema.at("/properties/string2PojoUsingJsonTypeInfo/additionalProperties").asBoolean() == true)
+    assert( schema.at("/properties/string2PojoUsingJsonTypeInfo/additionalProperties/oneOf/0/$ref").asText() == "#/definitions/Child1")
+    assert( schema.at("/properties/string2PojoUsingJsonTypeInfo/additionalProperties/oneOf/1/$ref").asText() == "#/definitions/Child2")
   }
 
   test("pojo Using Custom Annotations") {

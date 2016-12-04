@@ -477,7 +477,15 @@ class JsonSchemaGenerator
 
 
       node.put("type", "object")
-      node.put("additionalProperties", true)
+
+      val additionalPropsObject = JsonNodeFactory.instance.objectNode()
+      node.set("additionalProperties", additionalPropsObject)
+
+      definitionsHandler.pushWorkInProgress()
+
+      val childVisitor = createChild(additionalPropsObject, None)
+      objectMapper.acceptJsonFormatVisitor(_type.containedType(1), childVisitor)
+      definitionsHandler.popworkInProgress()
 
 
       new JsonMapFormatVisitor with MySerializerProvider {
