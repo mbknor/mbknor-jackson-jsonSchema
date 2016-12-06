@@ -516,7 +516,7 @@ class JsonSchemaGenerator
       Option(ac.getAnnotations.get(classOf[JsonTypeInfo])).map {
         jsonTypeInfo =>
           if ( jsonTypeInfo.include() != JsonTypeInfo.As.PROPERTY) throw new Exception("We only support polymorphism using jsonTypeInfo.include() == JsonTypeInfo.As.PROPERTY. Violation in " + ac)
-          if ( jsonTypeInfo.use != JsonTypeInfo.Id.NAME) throw new Exception("We only support polymorphism using jsonTypeInfo.use == JsonTypeInfo.Id.NAME. Violation in " + ac)
+          if ( jsonTypeInfo.use != JsonTypeInfo.Id.NAME && jsonTypeInfo.use != JsonTypeInfo.Id.CLASS) throw new Exception("We only support polymorphism using jsonTypeInfo.use == JsonTypeInfo.Id.NAME or jsonTypeInfo.use == JsonTypeInfo.Id.CLASS. Violation in " + ac)
 
 
           val propertyName = jsonTypeInfo.property()
