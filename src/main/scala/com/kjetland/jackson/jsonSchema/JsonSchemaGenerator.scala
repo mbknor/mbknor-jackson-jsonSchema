@@ -476,7 +476,7 @@ class JsonSchemaGenerator
       // so that it can hold whatever the map can hold
 
 
-      node.put("type", "object")
+      //node.put("type", "object")
 
       val additionalPropsObject = JsonNodeFactory.instance.objectNode()
       node.set("additionalProperties", additionalPropsObject)
