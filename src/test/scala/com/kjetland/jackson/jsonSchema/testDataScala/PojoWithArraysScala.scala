@@ -1,8 +1,8 @@
 package com.kjetland.jackson.jsonSchema.testDataScala
 
+import com.kjetland.jackson.jsonSchema.testData.polymorphism1.Parent
 import javax.validation.constraints.{NotNull, Size}
-
-import com.kjetland.jackson.jsonSchema.testData.{ClassNotExtendingAnything, MyEnum, Parent}
+import com.kjetland.jackson.jsonSchema.testData.{ClassNotExtendingAnything, MyEnum}
 
 case class PojoWithArraysScala
 (

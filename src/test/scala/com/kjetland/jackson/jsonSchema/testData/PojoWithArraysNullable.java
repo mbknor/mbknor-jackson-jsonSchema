@@ -1,6 +1,7 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
-import javax.validation.constraints.NotNull;
+import com.kjetland.jackson.jsonSchema.testData.polymorphism1.Parent;
+
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;

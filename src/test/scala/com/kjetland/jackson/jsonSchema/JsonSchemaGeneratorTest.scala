@@ -14,6 +14,8 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.{Child21, Child22, Parent2}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
 import org.scalatest.{FunSuite, Matchers}
@@ -293,8 +295,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
       assertDefaultValues(schema)
 
-      assertChild1(schema, "/properties/child/oneOf", "com.kjetland.jackson.jsonSchema.testData.Child1")
-      assertChild2(schema, "/properties/child/oneOf", "com.kjetland.jackson.jsonSchema.testData.Child2")
+      assertChild1(schema, "/properties/child/oneOf", "com.kjetland.jackson.jsonSchema.testData.polymorphism1.Child1")
+      assertChild2(schema, "/properties/child/oneOf", "com.kjetland.jackson.jsonSchema.testData.polymorphism1.Child2")
     }
 
     // Using fully-qualified class names and nullable types
@@ -306,8 +308,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assertNullableType(schema, "/properties/pojoValue", "boolean")
       assertNullableDefaultValues(schema)
 
-      assertNullableChild1(schema, "/properties/child/oneOf/1/oneOf", "com.kjetland.jackson.jsonSchema.testData.Child1")
-      assertNullableChild2(schema, "/properties/child/oneOf/1/oneOf", "com.kjetland.jackson.jsonSchema.testData.Child2")
+      assertNullableChild1(schema, "/properties/child/oneOf/1/oneOf", "com.kjetland.jackson.jsonSchema.testData.polymorphism1.Child1")
+      assertNullableChild2(schema, "/properties/child/oneOf/1/oneOf", "com.kjetland.jackson.jsonSchema.testData.polymorphism1.Child2")
     }
     
     // Scala
@@ -324,9 +326,9 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
   }
 
-  def assertChild1(node:JsonNode, path:String, defName:String = "Child1", html5Checks:Boolean = false): Unit ={
+  def assertChild1(node:JsonNode, path:String, defName:String = "Child1", typeParamName:String = "type", typeName:String = "child1", html5Checks:Boolean = false): Unit ={
     val child1 = getNodeViaArrayOfRefs(node, path, defName)
-    assertJsonSubTypesInfo(child1, "type", "child1", html5Checks)
+    assertJsonSubTypesInfo(child1, typeParamName, typeName, html5Checks)
     assert(child1.at("/properties/parentString/type").asText() == "string")
     assert(child1.at("/properties/child1String/type").asText() == "string")
     assert(child1.at("/properties/_child1String2/type").asText() == "string")
@@ -344,9 +346,9 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(getRequiredList(child1).contains("_child1String3"))
   }
 
-  def assertChild2(node:JsonNode, path:String, defName:String = "Child2", html5Checks:Boolean = false): Unit ={
+  def assertChild2(node:JsonNode, path:String, defName:String = "Child2", typeParamName:String = "type", typeName:String = "child2", html5Checks:Boolean = false): Unit ={
     val child2 = getNodeViaArrayOfRefs(node, path, defName)
-    assertJsonSubTypesInfo(child2, "type", "child2", html5Checks)
+    assertJsonSubTypesInfo(child2, typeParamName, typeName, html5Checks)
     assert(child2.at("/properties/parentString/type").asText() == "string")
     assert(child2.at("/properties/child2int/type").asText() == "integer")
   }
@@ -369,7 +371,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     Option(getRequiredList(node)).map(xs => assert(!xs.contains(path.split('/').last)))
   }
 
-  test("Generate schema for super class annotated with @JsonTypeInfo") {
+  test("Generate schema for super class annotated with @JsonTypeInfo - use = JsonTypeInfo.Id.NAME") {
 
     // Java
     {
@@ -404,6 +406,20 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assertChild2(schema, "/oneOf", "Child2Scala")
     }
 
+  }
+
+  test("Generate schema for super class annotated with @JsonTypeInfo - use = JsonTypeInfo.Id.CLASS") {
+
+    // Java
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child21)
+      assertToFromJson(jsonSchemaGenerator, testData.child21, classOf[Parent2])
+
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, classOf[Parent2], Some(jsonNode))
+
+      assertChild1(schema, "/oneOf", "Child21", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.Child21")
+      assertChild2(schema, "/oneOf", "Child22", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.Child22")
+    }
   }
 
   test("primitives") {
@@ -1021,18 +1037,12 @@ trait TestData {
     c.child1String3 = "cs3"
     c
   }
-
-  val child1Scala = Child1Scala("pv", "cs", "cs2", "cs3")
-
   val child2 = {
     val c = new Child2()
     c.parentString = "pv"
     c.child2int = 12
     c
   }
-
-  val child2Scala = Child2Scala("pv", 12)
-
   val pojoWithParent = {
     val p = new PojoWithParent
     p.pojoValue = true
@@ -1043,6 +1053,23 @@ trait TestData {
     p
   }
 
+  val child21 = {
+    val c = new Child21()
+    c.parentString = "pv"
+    c.child1String = "cs"
+    c.child1String2 = "cs2"
+    c.child1String3 = "cs3"
+    c
+  }
+  val child22 = {
+    val c = new Child22()
+    c.parentString = "pv"
+    c.child2int = 12
+    c
+  }
+
+  val child2Scala = Child2Scala("pv", 12)
+  val child1Scala = Child1Scala("pv", "cs", "cs2", "cs3")
   val pojoWithParentScala = PojoWithParentScala(true, child1Scala, "y", 13, true)
 
   val classNotExtendingAnything = {

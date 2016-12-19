@@ -1,8 +1,8 @@
-package com.kjetland.jackson.jsonSchema.testData;
+package com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-public class Child1 extends Parent {
+public class Child21 extends Parent2 {
 
     public String child1String;
 
@@ -15,10 +15,10 @@ public class Child1 extends Parent {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Child1)) return false;
+        if (!(o instanceof Child21)) return false;
         if (!super.equals(o)) return false;
 
-        Child1 child1 = (Child1) o;
+        Child21 child1 = (Child21) o;
 
         if (child1String != null ? !child1String.equals(child1.child1String) : child1.child1String != null)
             return false;

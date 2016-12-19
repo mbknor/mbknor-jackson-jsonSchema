@@ -8,10 +8,12 @@ import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, 
 import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.databind.introspect.AnnotatedClass
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
+import com.fasterxml.jackson.databind.introspect.AnnotatedClass
+import com.fasterxml.jackson.databind.jsontype.NamedType
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import com.kjetland.jackson.jsonSchema.annotations._
+import org.reflections.Reflections
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
@@ -580,40 +582,69 @@ class JsonSchemaGenerator
       Option(ac.getAnnotations.get(classOf[JsonTypeInfo])).map {
         jsonTypeInfo =>
           if ( jsonTypeInfo.include() != JsonTypeInfo.As.PROPERTY) throw new Exception("We only support polymorphism using jsonTypeInfo.include() == JsonTypeInfo.As.PROPERTY")
-          if ( jsonTypeInfo.use != JsonTypeInfo.Id.NAME) throw new Exception("We only support polymorphism using jsonTypeInfo.use == JsonTypeInfo.Id.NAME")
-
 
           val propertyName = jsonTypeInfo.property()
 
           // Must find out what this current class should be called
-          val subTypeName: String = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
-            .filter(_.getType == _type.getRawClass)
-            .find(p => true) // find first
-            .get.getName
+
+          val subTypeName:String = jsonTypeInfo.use match {
+            case JsonTypeInfo.Id.NAME =>
+              objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
+                .filter(_.getType == _type.getRawClass)
+                .find(p => true) // find first
+                .get.getName
+
+            case JsonTypeInfo.Id.CLASS => _type.getRawClass.getName
+            case JsonTypeInfo.Id.MINIMAL_CLASS => "." + _type.getRawClass.getName
+            case x => throw new Exception(s"Polymorphism using jsonTypeInfo.use == $x not supported")
+          }
 
           PolymorphismInfo(propertyName, subTypeName)
       }
 
     }
 
-    override def expectObjectFormat(_type: JavaType) = {
+    private def extractSubTypes(_type: JavaType):List[Class[_]] = {
 
       val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
 
-      // First we try to resolve types via manually finding annotations (if success, it will preserve the order), if not we fallback to use collectAndResolveSubtypesByClass()
-      val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
-        ann: JsonSubTypes =>
-          // We found it via @JsonSubTypes-annotation
-          ann.value().map {
-            t: JsonSubTypes.Type => t.value()
-          }.toList
-      }.getOrElse {
-        // We did not find it via @JsonSubTypes-annotation (Probably since it is using mixin's) => Must fallback to using collectAndResolveSubtypesByClass
-        val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
-        resolvedSubTypes.map( _.getType)
-          .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
-      }
+      Option(ac.getAnnotation(classOf[JsonTypeInfo])).map {
+        jsonTypeInfo: JsonTypeInfo =>
 
+          jsonTypeInfo.use() match {
+            case JsonTypeInfo.Id.NAME =>
+              // First we try to resolve types via manually finding annotations (if success, it will preserve the order), if not we fallback to use collectAndResolveSubtypesByClass()
+              val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
+                ann: JsonSubTypes =>
+                  // We found it via @JsonSubTypes-annotation
+                  ann.value().map {
+                    t: JsonSubTypes.Type => t.value()
+                  }.toList
+              }.getOrElse {
+                // We did not find it via @JsonSubTypes-annotation (Probably since it is using mixin's) => Must fallback to using collectAndResolveSubtypesByClass
+                val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
+                resolvedSubTypes.map( _.getType)
+                  .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
+              }
+
+              subTypes
+
+            case JsonTypeInfo.Id.CLASS =>
+              // Just find all subclasses
+              new Reflections().getSubTypesOf(_type.getRawClass).asScala.toList
+            case JsonTypeInfo.Id.MINIMAL_CLASS =>
+              // Just find all subclasses
+              new Reflections().getSubTypesOf(_type.getRawClass).asScala.toList
+
+            case x => throw new Exception("We do not support @jsonTypeInfo.use = " + x)
+          }
+
+      }.getOrElse(List())
+    }
+
+    override def expectObjectFormat(_type: JavaType) = {
+
+      val subTypes: List[Class[_]] = extractSubTypes(_type)
 
       // Check if we have subtypes
       if (subTypes.nonEmpty) {
@@ -699,7 +730,7 @@ class JsonSchemaGenerator
                 a.strings().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
                 a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
                 a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
-                
+
                 merge(thisObjectNode, injectJsonNode)
             }
 
@@ -907,7 +938,7 @@ class JsonSchemaGenerator
                     a.strings().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
                     a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
                     a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
-                    
+
                     merge(thisPropertyNode.meta, injectJsonNode)
                 }
               }

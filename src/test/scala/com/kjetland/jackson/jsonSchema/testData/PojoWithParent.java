@@ -1,6 +1,7 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDefault;
+import com.kjetland.jackson.jsonSchema.testData.polymorphism1.Parent;
 
 public class PojoWithParent {
 

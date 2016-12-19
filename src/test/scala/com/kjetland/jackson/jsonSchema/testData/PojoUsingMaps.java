@@ -1,5 +1,7 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
+import com.kjetland.jackson.jsonSchema.testData.polymorphism1.Parent;
+
 import java.util.Map;
 
 public class PojoUsingMaps {

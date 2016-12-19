@@ -1,5 +1,7 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
+import com.kjetland.jackson.jsonSchema.testData.polymorphism1.Child1;
+
 import java.util.List;
 import java.util.Optional;
 
