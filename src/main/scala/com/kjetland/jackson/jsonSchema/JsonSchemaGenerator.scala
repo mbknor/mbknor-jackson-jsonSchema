@@ -535,9 +535,21 @@ class JsonSchemaGenerator
     override def expectObjectFormat(_type: JavaType) = {
 
       val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
-      val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
-      val subTypes: List[Class[_]] = resolvedSubTypes.map( _.getType)
-        .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
+
+      // First we try to resolve types via manually finding annotations (if success, it will preserve the order), if not we fallback to use collectAndResolveSubtypesByClass()
+      val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
+        ann: JsonSubTypes =>
+          // We found it via @JsonSubTypes-annotation
+          ann.value().map {
+            t: JsonSubTypes.Type => t.value()
+          }.toList
+      }.getOrElse {
+        // We did not find it via @JsonSubTypes-annotation (Probably since it is using mixin's) => Must fallback to using collectAndResolveSubtypesByClass
+        val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
+        resolvedSubTypes.map( _.getType)
+          .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
+      }
+
 
       if (subTypes.nonEmpty) {
         //l(s"polymorphism - subTypes: $subTypes")

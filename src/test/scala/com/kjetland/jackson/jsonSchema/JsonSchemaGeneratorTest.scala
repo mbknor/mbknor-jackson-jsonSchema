@@ -695,6 +695,12 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val entityWrapperSchema = jsonSchemaGenerator.generateJsonSchema(classOf[EntityWrapper])
   }
 
+  test("Polymorphism oneOf-ordering") {
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, classOf[PolymorphismOrderingParentScala], None)
+    val oneOfList:List[String] = schema.at("/oneOf").asInstanceOf[ArrayNode].iterator().asScala.toList.map(_.at("/$ref").asText)
+    assert( List("#/definitions/PolymorphismOrderingChild3", "#/definitions/PolymorphismOrderingChild1", "#/definitions/PolymorphismOrderingChild4", "#/definitions/PolymorphismOrderingChild2") == oneOfList)
+  }
+
 }
 
 trait TestData {
