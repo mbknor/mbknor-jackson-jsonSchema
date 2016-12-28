@@ -22,7 +22,7 @@ lazy val commonSettings = Seq(
     else
       Some("releases" at nexus + "service/local/staging/deploy/maven2")
   },
-  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
+  credentials += Credentials(Path.userHome / ".ivy2" / ".credentials_sonatype"),
   homepage := Some(url("https://github.com/mbknor/mbknor-jackson-jsonSchema")),
   licenses := Seq("MIT" -> url("https://github.com/mbknor/mbknor-jackson-jsonSchema/blob/master/LICENSE.txt")),
   startYear := Some(2016),
