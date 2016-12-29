@@ -476,7 +476,7 @@ class JsonSchemaGenerator
       // so that it can hold whatever the map can hold
 
 
-      node.put("type", "object")
+      //node.put("type", "object")
 
       val additionalPropsObject = JsonNodeFactory.instance.objectNode()
       node.set("additionalProperties", additionalPropsObject)
@@ -515,8 +515,8 @@ class JsonSchemaGenerator
       val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
       Option(ac.getAnnotations.get(classOf[JsonTypeInfo])).map {
         jsonTypeInfo =>
-          if ( jsonTypeInfo.include() != JsonTypeInfo.As.PROPERTY) throw new Exception("We only support polymorphism using jsonTypeInfo.include() == JsonTypeInfo.As.PROPERTY")
-          if ( jsonTypeInfo.use != JsonTypeInfo.Id.NAME) throw new Exception("We only support polymorphism using jsonTypeInfo.use == JsonTypeInfo.Id.NAME")
+          if ( jsonTypeInfo.include() != JsonTypeInfo.As.PROPERTY) throw new Exception("We only support polymorphism using jsonTypeInfo.include() == JsonTypeInfo.As.PROPERTY. Violation in " + ac)
+          if ( jsonTypeInfo.use != JsonTypeInfo.Id.NAME && jsonTypeInfo.use != JsonTypeInfo.Id.CLASS) throw new Exception("We only support polymorphism using jsonTypeInfo.use == JsonTypeInfo.Id.NAME or jsonTypeInfo.use == JsonTypeInfo.Id.CLASS. Violation in " + ac)
 
 
           val propertyName = jsonTypeInfo.property()
