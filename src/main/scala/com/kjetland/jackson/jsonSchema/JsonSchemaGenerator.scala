@@ -1,18 +1,15 @@
 package com.kjetland.jackson.jsonSchema
 
-import java.lang.reflect.{Field, Method, ParameterizedType}
-import java.time.{LocalDate, LocalDateTime, LocalTime, OffsetDateTime}
 import java.util
 import java.util.Optional
-import javax.validation.constraints.{Max, Min, NotNull, Pattern, Size}
+import javax.validation.constraints._
 
 import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
-import com.fasterxml.jackson.databind.jsonFormatVisitors._
-import com.fasterxml.jackson.databind.ser.BeanPropertyWriter
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.databind.introspect.{AnnotatedClass, JacksonAnnotationIntrospector}
+import com.fasterxml.jackson.databind.introspect.AnnotatedClass
+import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDefault, JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle}
 import org.slf4j.LoggerFactory
@@ -27,6 +24,7 @@ object JsonSchemaConfig {
     autoGenerateTitleForProperties = false,
     defaultArrayFormat = None,
     useOneOfForOption = false,
+    useOneOfForNullables = false,
     usePropertyOrdering = false,
     hidePolymorphismTypeProperty = false,
     disableWarnings = false,
@@ -40,12 +38,12 @@ object JsonSchemaConfig {
     *
     * autoGenerateTitleForProperties - If property is named "someName", we will add {"title": "Some Name"}
     * defaultArrayFormat - this will result in a better gui than te default one.
-
     */
   val html5EnabledSchema = JsonSchemaConfig(
     autoGenerateTitleForProperties = true,
     defaultArrayFormat = Some("table"),
     useOneOfForOption = true,
+    useOneOfForNullables = false,
     usePropertyOrdering = true,
     hidePolymorphismTypeProperty = true,
     disableWarnings = false,
@@ -62,11 +60,34 @@ object JsonSchemaConfig {
     )
   )
 
+  /**
+    * This configuration is exactly like the vanilla JSON schema generator, except that "nullables" have been turned on:
+    * `useOneOfForOption` and `useOneForNullables` have both been set to `true`.  With this configuration you can either
+    * use `Optional` or `Option`, or a standard nullable Java type and get back a schema that allows nulls.
+    *
+    *
+    * If you need to mix nullable and non-nullable types, you may override the nullability of the type by either setting
+    * a `NotNull` annotation on the given property, or setting the `required` attribute of the `JsonProperty` annotation.
+    */
+  val nullableJsonSchemaDraft4 = JsonSchemaConfig (
+    autoGenerateTitleForProperties = false,
+    defaultArrayFormat = None,
+    useOneOfForOption = true,
+    useOneOfForNullables = true,
+    usePropertyOrdering = false,
+    hidePolymorphismTypeProperty = false,
+    disableWarnings = false,
+    useMinLengthForNotNull = false,
+    useTypeIdForDefinitionName = false,
+    customType2FormatMapping = Map()
+  )
+
   // Java-API
   def create(
               autoGenerateTitleForProperties:Boolean,
               defaultArrayFormat:Optional[String],
               useOneOfForOption:Boolean,
+              useOneOfForNullables:Boolean,
               usePropertyOrdering:Boolean,
               hidePolymorphismTypeProperty:Boolean,
               disableWarnings:Boolean,
@@ -81,6 +102,7 @@ object JsonSchemaConfig {
       autoGenerateTitleForProperties,
       Option(defaultArrayFormat.orElse(null)),
       useOneOfForOption,
+      useOneOfForNullables,
       usePropertyOrdering,
       hidePolymorphismTypeProperty,
       disableWarnings,
@@ -97,6 +119,7 @@ case class JsonSchemaConfig
   autoGenerateTitleForProperties:Boolean,
   defaultArrayFormat:Option[String],
   useOneOfForOption:Boolean,
+  useOneOfForNullables:Boolean,
   usePropertyOrdering:Boolean,
   hidePolymorphismTypeProperty:Boolean,
   disableWarnings:Boolean,
@@ -656,10 +679,20 @@ class JsonSchemaGenerator
                   return
                 }
 
-
                 // Need to check for Option/Optional-special-case before we know what node to use here.
-
                 case class PropertyNode(main:ObjectNode, meta:ObjectNode)
+
+                // Check if we should set this property as required
+                val rawClass = propertyType.getRawClass
+                val requiredProperty:Boolean = if (rawClass.isPrimitive) {
+                  // primitive types MUST have a value
+                  true
+                } else if(jsonPropertyRequired || prop.isDefined && prop.get.getAnnotation(classOf[NotNull]) != null) {
+                  // Has a @JsonProperty has "required" set to true, or is marked @NotNull
+                  true
+                } else {
+                  false
+                }
 
                 val thisPropertyNode:PropertyNode = {
                   val thisPropertyNode = JsonNodeFactory.instance.objectNode()
@@ -670,37 +703,36 @@ class JsonSchemaGenerator
                     nextPropertyOrderIndex = nextPropertyOrderIndex + 1
                   }
 
-                  // Check for Option/Optional-special-case
-                  if ( config.useOneOfForOption &&
-                    (    classOf[Option[_]].isAssignableFrom(propertyType.getRawClass)
-                      || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass)) ) {
-                    // Need to special-case for property using Option/Optional
-                    // Should insert oneOf between 'real one' and 'null'
+                  // Figure out if the type is considered optional by either the Java or Scala.
+                  val optionalType:Boolean = classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) ||
+                                             classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass)
+
+                  // If the property is not required, and our configuration allows it, let's go ahead and mark the type as nullable.
+                  if (!requiredProperty && ((config.useOneOfForOption && optionalType) ||
+                                            (config.useOneOfForNullables && !optionalType))) {
+                    // We support this type being null, insert a oneOf consisting of a sentinel "null" and the real type.
                     val oneOfArray = JsonNodeFactory.instance.arrayNode()
                     thisPropertyNode.set("oneOf", oneOfArray)
 
-
-                    // Create the one used when Option is empty
+                    // Create our sentinel "null" value for the case no value is provided.
                     val oneOfNull = JsonNodeFactory.instance.objectNode()
                     oneOfNull.put("type", "null")
                     oneOfNull.put("title", "Not included")
                     oneOfArray.add(oneOfNull)
 
-                    // Create the one used when Option is defined with the real value
+                    // If our nullable/optional type has a value, it'll be this.
                     val oneOfReal = JsonNodeFactory.instance.objectNode()
                     oneOfArray.add(oneOfReal)
 
                     // Return oneOfReal which, from now on, will be used as the node representing this property
                     PropertyNode(oneOfReal, thisPropertyNode)
-
                   } else {
-                    // Not special-casing - using thisPropertyNode as is
+                    // Our type must not be null: primitives, @NotNull annotations, @JsonProperty annotations marked required etc.
                     PropertyNode(thisPropertyNode, thisPropertyNode)
                   }
                 }
 
                 // Continue processing this property
-
                 val childVisitor = createChild(thisPropertyNode.main, currentProperty = prop)
 
                 if( (classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass) ) && propertyType.containedTypeCount() >= 1) {
@@ -721,24 +753,6 @@ class JsonSchemaGenerator
                   definitionsHandler.popworkInProgress()
                 }
 
-                // Check if we should set this property as required
-                val rawClass = propertyType.getRawClass
-                val requiredProperty:Boolean = if ( rawClass.isPrimitive ) {
-                  // primitive boolean MUST have a value
-                  true
-                } else if( jsonPropertyRequired) {
-                  // @JsonPropertyRequired is set to true
-                  true
-                } else if(prop.isDefined && prop.get.getAnnotation(classOf[NotNull]) != null) {
-                  true
-                } else {
-                  false
-                }
-
-                if ( requiredProperty) {
-                  getRequiredArrayNode(thisObjectNode).add(propertyName)
-                }
-
                 prop.flatMap( resolvePropertyFormat(_) ).foreach {
                   format =>
                     setFormat(thisPropertyNode.main, format)
@@ -752,6 +766,11 @@ class JsonSchemaGenerator
                 }.map {
                   description =>
                     thisPropertyNode.meta.put("description", description)
+                }
+
+                // If this property is required, add it to our array of required properties.
+                if (requiredProperty) {
+                  getRequiredArrayNode(thisObjectNode).add(propertyName)
                 }
 
                 // Optionally add title

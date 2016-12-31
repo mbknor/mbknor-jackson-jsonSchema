@@ -1,8 +1,6 @@
 package com.kjetland.jackson.jsonSchema;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import scala.None;
-import scala.Option;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
@@ -27,7 +25,7 @@ public class UseItFromJavaTest {
         Map<String,String> customMapping = new HashMap<>();
         customMapping.put(OffsetDateTime.class.getName(), "date-time");
         JsonSchemaConfig config = JsonSchemaConfig.create(
-                true, Optional.of("A"), true, true, true, true, true, true, customMapping);
+                true, Optional.of("A"), true, true, true, true, true, true, true, customMapping);
         JsonSchemaGenerator g2 = new JsonSchemaGenerator(objectMapper, config);
     }
 

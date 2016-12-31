@@ -22,11 +22,11 @@ Current version: *1.0.11*
   - (Must be configured to use this mode)
   - Special handling of Option-/Optional-properties using oneOf.
 * Supports custom Class-to-format-Mapping
-    
+
 
 **Benefits**
 
-* Simple implementation - Just [one file](https://github.com/mbknor/mbknor-jackson-jsonSchema/blob/master/src/main/scala/com/kjetland/jackson/jsonSchema/JsonSchemaGenerator.scala)  (for now..) 
+* Simple implementation - Just [one file](https://github.com/mbknor/mbknor-jackson-jsonSchema/blob/master/src/main/scala/com/kjetland/jackson/jsonSchema/JsonSchemaGenerator.scala)  (for now..)
 * Implemented in Scala (*Built for 2.10, 2.11 and 2.12*)
 * Easy to fix and add functionality
 
@@ -36,7 +36,7 @@ Project status
 We're currently using this codebase in an ongoing (not yet released) project at work,
 and we're improving the jsonSchema-generating code when we finds issues and/or features we need that not yet is supported.
 
-I would really appreciate it if other developers wanted to start using and contributing improvements and features. 
+I would really appreciate it if other developers wanted to start using and contributing improvements and features.
 
 Dependency
 ===================
@@ -45,11 +45,11 @@ This project publishes artifacts to central maven repo.
 
 The project is also compiled using Java 8. This means that you also need to use Java 8.
 
-Artifacts for both Scala 2.10, 2.11 and 2.12 is now available (Thanks to [@bbyk](https://github.com/bbyk) for adding crossBuild functionality). 
+Artifacts for both Scala 2.10, 2.11 and 2.12 is now available (Thanks to [@bbyk](https://github.com/bbyk) for adding crossBuild functionality).
 
 Using Maven
 -----------------
- 
+
 Add this to you pom.xml:
 
     <dependency>
@@ -60,7 +60,7 @@ Add this to you pom.xml:
 
 Using sbt
 ------------
- 
+
 Add this to you sbt build-config:
 
     "com.kjetland" % "mbknor-jackson-jsonschema" %% "1.0.11"
@@ -75,17 +75,17 @@ This is how to generate jsonSchema in code using Scala:
     val objectMapper = new ObjectMapper
     val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper)
     val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
-    
+
     val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
 ```
 
-This is how to generate jsonSchema used for generating HTML5 GUI using [json-editor](https://github.com/jdorn/json-editor): 
+This is how to generate jsonSchema used for generating HTML5 GUI using [json-editor](https://github.com/jdorn/json-editor):
 
 ```scala
     val objectMapper = new ObjectMapper
     val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config = JsonSchemaConfig.html5EnabledSchema)
     val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
-    
+
     val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
 ```
 
@@ -98,14 +98,14 @@ This is how to generate jsonSchema using custom type-to-format-mapping using Sca
     )
     val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config = config)
     val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
-    
+
     val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
 ```
 
 **Note about Scala and Option[Int]**:
 
 Due to Java's Type Erasure it impossible to resolve the type T behind Option[T] when T is Int, Boolean, Double.
-Ass a workaround, you have to use the *@JsonDeserialize*-annotation in such cases.
+As a workaround, you have to use the *@JsonDeserialize*-annotation in such cases.
 See https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges for more info.
 
 Example:
@@ -127,25 +127,52 @@ Code - Using Java
 ```java
     ObjectMapper objectMapper = new ObjectMapper();
     JsonSchemaGenerator jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper);
-    
+
     // If using JsonSchema to generate HTML5 GUI:
     // JsonSchemaGenerator html5 = new JsonSchemaGenerator(objectMapper, JsonSchemaConfig.html5EnabledSchema() );
-    
+
     // If you want to confioure it manually:
     // JsonSchemaConfig config = JsonSchemaConfig.create(...);
     // JsonSchemaGenerator generator = new JsonSchemaGenerator(objectMapper, config);
-               
-    
+
+
     JsonNode jsonSchema = jsonSchemaGenerator.generateJsonSchema(YourPOJO.class);
-    
+
     String jsonSchemaAsString = objectMapper.writeValueAsString(jsonSchema);
+```
+
+**Nullable types**
+
+Out of the box, the generator does not support nullable types. There is a preconfigured `JsonSchemaGenerator` configuration shortcut that can be used to enable them:
+
+```java
+JsonSchemaConfig config = JsonSchemaConfig.nullableJsonSchemaDraft4();
+JsonSchemaGenerator generator = new JsonSchemaGenerator(objectMapper, config);
+```
+
+Under the hood `nullableJsonSchemaDraft4` toggles the `useOneOfForOption` and `useOneOfForNullables` properties on `JsonSchemaConfig`.
+
+When support is enabled, the following types may be made nullable:
+ - Use `Optional<T>` (or Scala's `Option`)
+ - Use a non-optional, non-primitive type (IE: `String`, `Boolean`, `Integer` etc) 
+
+If you've otherwise enabled support for nullable types, but need to suppress this at a per-property level, you can do this like so:
+
+```java
+// A standard validation @NotNull annotation.
+@NotNull
+public String foo;
+
+// Using the Jackson @JsonProperty annotation, specifying the attribute as required.
+@JsonProperty(required = true)
+public String bar;
 ```
 
 Backstory
 --------------
 
 
-At work we've been using the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema) 
+At work we've been using the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)
 to generate schemas used when rendering dynamic GUI using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor).
 
 Recently we needed to support POJO's using polymorphism like this:
@@ -159,12 +186,12 @@ Recently we needed to support POJO's using polymorphism like this:
             @JsonSubTypes.Type(value = Child1.class, name = "child1"),
             @JsonSubTypes.Type(value = Child2.class, name = "child2") })
     public abstract class Parent {
-    
+
         public String parentString;
-        
+
     }
 ```
-    
+
 This is not supported by the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema).
 I have spent many hours trying to figure out how to modify/improve it without any luck,
 and since it is implemented in such a complicated way, I decided to instead write my own
