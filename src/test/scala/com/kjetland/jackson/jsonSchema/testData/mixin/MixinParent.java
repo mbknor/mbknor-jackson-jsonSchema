@@ -1,8 +1,5 @@
 package com.kjetland.jackson.jsonSchema.testData.mixin;
 
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-
 public abstract class MixinParent {
 
     public String parentString;
