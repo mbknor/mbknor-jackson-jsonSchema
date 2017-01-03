@@ -30,7 +30,8 @@ object JsonSchemaConfig {
     disableWarnings = false,
     useMinLengthForNotNull = false,
     useTypeIdForDefinitionName = false,
-    customType2FormatMapping = Map()
+    customType2FormatMapping = Map(),
+    useMultipleEditorSelectViaProperty = false
   )
 
   /**
@@ -57,7 +58,8 @@ object JsonSchemaConfig {
 
       // Joda-dates
       "org.joda.time.LocalDate" -> "date"
-    )
+    ),
+    useMultipleEditorSelectViaProperty = true
   )
 
   /**
@@ -79,7 +81,8 @@ object JsonSchemaConfig {
     disableWarnings = false,
     useMinLengthForNotNull = false,
     useTypeIdForDefinitionName = false,
-    customType2FormatMapping = Map()
+    customType2FormatMapping = Map(),
+    useMultipleEditorSelectViaProperty = false
   )
 
   // Java-API
@@ -93,7 +96,8 @@ object JsonSchemaConfig {
               disableWarnings:Boolean,
               useMinLengthForNotNull:Boolean,
               useTypeIdForDefinitionName:Boolean,
-              customType2FormatMapping:java.util.Map[String, String]
+              customType2FormatMapping:java.util.Map[String, String],
+              useMultipleEditorSelectViaProperty:Boolean
             ):JsonSchemaConfig = {
 
     import scala.collection.JavaConverters._
@@ -108,7 +112,8 @@ object JsonSchemaConfig {
       disableWarnings,
       useMinLengthForNotNull,
       useTypeIdForDefinitionName,
-      customType2FormatMapping.asScala.toMap
+      customType2FormatMapping.asScala.toMap,
+      useMultipleEditorSelectViaProperty
     )
   }
 
@@ -125,7 +130,8 @@ case class JsonSchemaConfig
   disableWarnings:Boolean,
   useMinLengthForNotNull:Boolean,
   useTypeIdForDefinitionName:Boolean,
-  customType2FormatMapping:Map[String, String]
+  customType2FormatMapping:Map[String, String],
+  useMultipleEditorSelectViaProperty:Boolean // https://github.com/jdorn/json-editor/issues/709
 )
 
 
@@ -641,6 +647,8 @@ class JsonSchemaGenerator
                 thisObjectNode.put("title", pi.subTypeName)
 
                 // must inject the 'type'-param and value as enum with only one possible value
+                // This is done to make sure the json generated from the schema using this oneOf
+                // contains the correct "type info"
                 val enumValuesNode = JsonNodeFactory.instance.arrayNode()
                 enumValuesNode.add(pi.subTypeName)
 
@@ -659,6 +667,19 @@ class JsonSchemaGenerator
                 propertiesNode.set(pi.typePropertyName, enumObjectNode)
 
                 getRequiredArrayNode(thisObjectNode).add(pi.typePropertyName)
+
+                if(config.useMultipleEditorSelectViaProperty) {
+                  // https://github.com/jdorn/json-editor/issues/709
+                  // Generate info to help generated editor to select correct oneOf-type
+                  // when populating the gui/schema with existing data
+                  val multipleEditorSelectViaPropertyNode = JsonNodeFactory.instance.objectNode()
+                  multipleEditorSelectViaPropertyNode.put("property", pi.typePropertyName)
+                  multipleEditorSelectViaPropertyNode.put("value", pi.subTypeName)
+
+                  val objectOptionsNode = JsonNodeFactory.instance.objectNode()
+                  objectOptionsNode.set("multiple_editor_select_via_property", multipleEditorSelectViaPropertyNode)
+                  thisObjectNode.set("options", objectOptionsNode)
+                }
 
             }
 

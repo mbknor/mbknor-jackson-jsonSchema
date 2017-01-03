@@ -53,7 +53,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   val jsonSchemaGeneratorScala = new JsonSchemaGenerator(_objectMapperScala, debug = true)
   val jsonSchemaGeneratorScalaHTML5 = new JsonSchemaGenerator(_objectMapperScala, debug = true, config = JsonSchemaConfig.html5EnabledSchema)
 
-  val vanillaJsonSchemaDraft4WithIds = JsonSchemaConfig.html5EnabledSchema.copy(useTypeIdForDefinitionName = true)
+  val vanillaJsonSchemaDraft4WithIds = JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(useTypeIdForDefinitionName = true)
   val jsonSchemaGeneratorWithIds = new JsonSchemaGenerator(_objectMapperScala, debug = true, vanillaJsonSchemaDraft4WithIds)
 
   val jsonSchemaGeneratorNullable = new JsonSchemaGenerator(_objectMapper, debug = true, config = JsonSchemaConfig.nullableJsonSchemaDraft4)
@@ -132,6 +132,11 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     if (html5Checks) {
       assert(node.at(s"/properties/$typeParamName/options/hidden").asBoolean())
+      assert(node.at(s"/options/multiple_editor_select_via_property/property").asText() == typeParamName)
+      assert(node.at(s"/options/multiple_editor_select_via_property/value").asText() == typeName)
+    } else {
+      assert(node.at(s"/options/multiple_editor_select_via_property/property").isInstanceOf[MissingNode])
+
     }
   }
 
@@ -746,7 +751,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1Scala")
     assert(schema.at("/properties/child1/title").asText() == "Child 1")
 
-    assertJsonSubTypesInfo(child1, "type", "child1")
+    assertJsonSubTypesInfo(child1, "type", "child1", html5Checks = true)
     assert(child1.at("/properties/parentString/type").asText() == "string")
     assert(child1.at("/properties/child1String/type").asText() == "string")
     assert(child1.at("/properties/_child1String2/type").asText() == "string")
@@ -774,7 +779,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1")
     assert(schema.at("/properties/child1/title").asText() == "Child 1")
 
-    assertJsonSubTypesInfo(child1, "type", "child1")
+    assertJsonSubTypesInfo(child1, "type", "child1", html5Checks = true)
     assert(child1.at("/properties/parentString/type").asText() == "string")
     assert(child1.at("/properties/child1String/type").asText() == "string")
     assert(child1.at("/properties/_child1String2/type").asText() == "string")
@@ -796,7 +801,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(schema.at("/properties/child1/oneOf/0/title").asText() == "Not included")
     val child1 = getNodeViaRefs(schema, schema.at("/properties/child1/oneOf/1"), "Child1")
 
-    assertJsonSubTypesInfo(child1, "type", "child1")
+    assertJsonSubTypesInfo(child1, "type", "child1", html5Checks = true)
     assertNullableType(child1, "/properties/parentString", "string")
     assertNullableType(child1, "/properties/child1String", "string")
     assertNullableType(child1, "/properties/_child1String2", "string")
