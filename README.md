@@ -6,7 +6,7 @@ Jackson jsonSchema Generator
 This projects aims to do a better job than the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)
 in generating jsonSchema from your POJOs using Jackson @Annotations.
 
-Current version: *1.0.11*
+Current version: *1.0.12*
 
 **Highlights**
 
@@ -55,7 +55,7 @@ Add this to you pom.xml:
     <dependency>
         <groupId>com.kjetland</groupId>
         <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
-        <version>1.0.11</version>
+        <version>1.0.12</version>
     </dependency>    
 
 Using sbt
@@ -63,7 +63,7 @@ Using sbt
 
 Add this to you sbt build-config:
 
-    "com.kjetland" % "mbknor-jackson-jsonschema" %% "1.0.11"
+    "com.kjetland" % "mbknor-jackson-jsonschema" %% "1.0.12"
 
 
 Code - Using Scala
