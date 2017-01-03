@@ -21,12 +21,9 @@ Check and publish artifact
     
     https://oss.sonatype.org/
     
-push
-push --tag
-
-
 change version to next snapshot in build.sbt
-commit and push
+commit
 
     
-  
+push
+push --tag  
