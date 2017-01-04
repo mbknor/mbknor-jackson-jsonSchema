@@ -756,6 +756,10 @@ class JsonSchemaGenerator
                 // Continue processing this property
                 val childVisitor = createChild(thisPropertyNode.main, currentProperty = prop)
 
+
+                // Push current work in progress since we're about to start working on a new class
+                definitionsHandler.pushWorkInProgress()
+
                 if( (classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) || classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass) ) && propertyType.containedTypeCount() >= 1) {
 
                   // Property is scala Option or Java Optional.
@@ -769,10 +773,11 @@ class JsonSchemaGenerator
                   objectMapper.acceptJsonFormatVisitor(optionType, childVisitor)
 
                 } else {
-                  definitionsHandler.pushWorkInProgress()
                   objectMapper.acceptJsonFormatVisitor(propertyType, childVisitor)
-                  definitionsHandler.popworkInProgress()
                 }
+
+                // Pop back the work we were working on..
+                definitionsHandler.popworkInProgress()
 
                 prop.flatMap( resolvePropertyFormat(_) ).foreach {
                   format =>

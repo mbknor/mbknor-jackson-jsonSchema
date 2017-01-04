@@ -937,6 +937,13 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(schema.at("/properties/notNullBooleanObject/type").asText() == "boolean")
     assert(getRequiredList(schema).contains("notNullBooleanObject"))
   }
+
+  test("nestedPolymorphism") {
+    val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.nestedPolymorphism)
+    assertToFromJson(jsonSchemaGeneratorScala, testData.nestedPolymorphism, classOf[NestedPolymorphism1Base])
+
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, classOf[NestedPolymorphism1Base], Some(jsonNode))
+  }
 }
 
 trait TestData {
@@ -1047,4 +1054,6 @@ trait TestData {
 
   // Test the collision of @NotNull validations and null fields.
   val notNullableButNullBoolean = new PojoWithNotNull(null)
+
+  val nestedPolymorphism = NestedPolymorphism1_1("a1", NestedPolymorphism2_2("a2", Some(NestedPolymorphism3("b3"))))
 }
