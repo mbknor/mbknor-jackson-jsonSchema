@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.OffsetDateTime;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
 
@@ -25,7 +26,18 @@ public class UseItFromJavaTest {
         Map<String,String> customMapping = new HashMap<>();
         customMapping.put(OffsetDateTime.class.getName(), "date-time");
         JsonSchemaConfig config = JsonSchemaConfig.create(
-                true, Optional.of("A"), true, true, true, true, true, true, true, customMapping, false);
+                true,
+                Optional.of("A"),
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                true,
+                customMapping,
+                false,
+                new HashSet<>());
         JsonSchemaGenerator g2 = new JsonSchemaGenerator(objectMapper, config);
     }
 

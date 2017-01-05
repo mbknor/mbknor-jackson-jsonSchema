@@ -5,36 +5,28 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-public class PojoWithArrays {
+public class PojoWithArraysNullable {
 
     // It was difficult to construct this from scala :)
     public static List<List<String>> _listOfListOfStringsValues = Arrays.asList(Arrays.asList("1","2"), Arrays.asList("3"));
 
-    @NotNull
     public int[] intArray1;
-    @NotNull
     public String[] stringArray;
 
-    @NotNull
     public List<String> stringList;
 
-    @NotNull
     public List<Parent> polymorphismList;
-    @NotNull
     public Parent[] polymorphismArray;
-    @NotNull
     public List<ClassNotExtendingAnything> regularObjectList;
 
-    @NotNull
     public List<List<String>> listOfListOfStrings;
 
-    @NotNull
     public Set<MyEnum> setOfUniqueValues;
 
-    public PojoWithArrays() {
+    public PojoWithArraysNullable() {
     }
 
-    public PojoWithArrays(int[] intArray1, String[] stringArray, List<String> stringList, List<Parent> polymorphismList, Parent[] polymorphismArray, List<ClassNotExtendingAnything> regularObjectList, List<List<String>> listOfListOfStrings, Set<MyEnum> setOfUniqueValues) {
+    public PojoWithArraysNullable(int[] intArray1, String[] stringArray, List<String> stringList, List<Parent> polymorphismList, Parent[] polymorphismArray, List<ClassNotExtendingAnything> regularObjectList, List<List<String>> listOfListOfStrings, Set<MyEnum> setOfUniqueValues) {
         this.intArray1 = intArray1;
         this.stringArray = stringArray;
         this.stringList = stringList;
@@ -50,7 +42,7 @@ public class PojoWithArrays {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        PojoWithArrays that = (PojoWithArrays) o;
+        PojoWithArraysNullable that = (PojoWithArraysNullable) o;
 
         if (!Arrays.equals(intArray1, that.intArray1)) return false;
         // Probably incorrect - comparing Object[] arrays with Arrays.equals

@@ -31,7 +31,8 @@ object JsonSchemaConfig {
     useMinLengthForNotNull = false,
     useTypeIdForDefinitionName = false,
     customType2FormatMapping = Map(),
-    useMultipleEditorSelectViaProperty = false
+    useMultipleEditorSelectViaProperty = false,
+    uniqueItemClasses = Set()
   )
 
   /**
@@ -59,7 +60,12 @@ object JsonSchemaConfig {
       // Joda-dates
       "org.joda.time.LocalDate" -> "date"
     ),
-    useMultipleEditorSelectViaProperty = true
+    useMultipleEditorSelectViaProperty = true,
+    uniqueItemClasses = Set(
+      classOf[scala.collection.immutable.Set[_]],
+      classOf[scala.collection.mutable.Set[_]],
+      classOf[java.util.Set[_]]
+    )
   )
 
   /**
@@ -82,7 +88,8 @@ object JsonSchemaConfig {
     useMinLengthForNotNull = false,
     useTypeIdForDefinitionName = false,
     customType2FormatMapping = Map(),
-    useMultipleEditorSelectViaProperty = false
+    useMultipleEditorSelectViaProperty = false,
+    uniqueItemClasses = Set()
   )
 
   // Java-API
@@ -97,7 +104,8 @@ object JsonSchemaConfig {
               useMinLengthForNotNull:Boolean,
               useTypeIdForDefinitionName:Boolean,
               customType2FormatMapping:java.util.Map[String, String],
-              useMultipleEditorSelectViaProperty:Boolean
+              useMultipleEditorSelectViaProperty:Boolean,
+              uniqueItemClasses:java.util.Set[Class[_]]
             ):JsonSchemaConfig = {
 
     import scala.collection.JavaConverters._
@@ -113,7 +121,8 @@ object JsonSchemaConfig {
       useMinLengthForNotNull,
       useTypeIdForDefinitionName,
       customType2FormatMapping.asScala.toMap,
-      useMultipleEditorSelectViaProperty
+      useMultipleEditorSelectViaProperty,
+      uniqueItemClasses.asScala.toSet
     )
   }
 
@@ -131,7 +140,8 @@ case class JsonSchemaConfig
   useMinLengthForNotNull:Boolean,
   useTypeIdForDefinitionName:Boolean,
   customType2FormatMapping:Map[String, String],
-  useMultipleEditorSelectViaProperty:Boolean // https://github.com/jdorn/json-editor/issues/709
+  useMultipleEditorSelectViaProperty:Boolean, // https://github.com/jdorn/json-editor/issues/709
+  uniqueItemClasses:Set[Class[_]] // If rendering array and type is instanceOf class in this set, then we add 'uniqueItems": true' to schema - See // https://github.com/jdorn/json-editor for more info
 )
 
 
@@ -364,9 +374,17 @@ class JsonSchemaGenerator
 
       node.put("type", "array")
 
-      config.defaultArrayFormat.foreach {
-        format => setFormat(node, format)
+      if (config.uniqueItemClasses.exists( c => _type.getRawClass.isAssignableFrom(c))) {
+        // Adding '"uniqueItems": true' to be used with https://github.com/jdorn/json-editor
+        node.put("uniqueItems", true)
+        setFormat(node, "checkbox")
+      } else {
+        // Try to set default format
+        config.defaultArrayFormat.foreach {
+          format => setFormat(node, format)
+        }
       }
+
 
       val itemsNode = JsonNodeFactory.instance.objectNode()
       node.set("items", itemsNode)

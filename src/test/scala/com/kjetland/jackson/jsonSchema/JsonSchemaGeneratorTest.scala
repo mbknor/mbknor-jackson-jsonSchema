@@ -570,7 +570,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   test("pojoWithArrays") {
 
-    def doTest(pojo:Object, clazz:Class[_], g:JsonSchemaGenerator): Unit ={
+    def doTest(pojo:Object, clazz:Class[_], g:JsonSchemaGenerator, html5Checks:Boolean): Unit ={
 
       val jsonNode = assertToFromJson(g, pojo)
       val schema = generateAndValidateSchema(g, clazz, Some(jsonNode))
@@ -585,25 +585,35 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/stringList/items/type").asText() == "string")
 
       assert(schema.at("/properties/polymorphismList/type").asText() == "array")
-      assertChild1(schema, "/properties/polymorphismList/items/oneOf")
-      assertChild2(schema, "/properties/polymorphismList/items/oneOf")
+      assertChild1(schema, "/properties/polymorphismList/items/oneOf", html5Checks = html5Checks)
+      assertChild2(schema, "/properties/polymorphismList/items/oneOf", html5Checks = html5Checks)
 
       assert(schema.at("/properties/polymorphismArray/type").asText() == "array")
-      assertChild1(schema, "/properties/polymorphismArray/items/oneOf")
-      assertChild2(schema, "/properties/polymorphismArray/items/oneOf")
+      assertChild1(schema, "/properties/polymorphismArray/items/oneOf", html5Checks = html5Checks)
+      assertChild2(schema, "/properties/polymorphismArray/items/oneOf", html5Checks = html5Checks)
 
       assert(schema.at("/properties/listOfListOfStrings/type").asText() == "array")
       assert(schema.at("/properties/listOfListOfStrings/items/type").asText() == "array")
       assert(schema.at("/properties/listOfListOfStrings/items/items/type").asText() == "string")
+
+      assert(schema.at("/properties/setOfUniqueValues/type").asText() == "array")
+      assert(schema.at("/properties/setOfUniqueValues/items/type").asText() == "string")
+
+      if (html5Checks) {
+        assert(schema.at("/properties/setOfUniqueValues/uniqueItems").asText() == "true")
+        assert(schema.at("/properties/setOfUniqueValues/format").asText() == "checkbox")
+      }
     }
 
-    doTest(testData.pojoWithArrays, testData.pojoWithArrays.getClass, jsonSchemaGenerator)
-    doTest(testData.pojoWithArraysScala, testData.pojoWithArraysScala.getClass, jsonSchemaGeneratorScala)
+    doTest(testData.pojoWithArrays, testData.pojoWithArrays.getClass, jsonSchemaGenerator, html5Checks = false)
+    doTest(testData.pojoWithArraysScala, testData.pojoWithArraysScala.getClass, jsonSchemaGeneratorScala, html5Checks = false)
+    doTest(testData.pojoWithArraysScala, testData.pojoWithArraysScala.getClass, jsonSchemaGeneratorScalaHTML5, html5Checks = true)
+    doTest(testData.pojoWithArrays, testData.pojoWithArrays.getClass, jsonSchemaGeneratorScalaHTML5, html5Checks = true)
   }
 
   test("pojoWithArraysNullable") {
-    val jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.pojoWithArrays)
-    val schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.pojoWithArrays.getClass, Some(jsonNode))
+    val jsonNode = assertToFromJson(jsonSchemaGeneratorNullable, testData.pojoWithArraysNullable)
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorNullable, testData.pojoWithArraysNullable.getClass, Some(jsonNode))
 
     assertNullableType(schema, "/properties/intArray1", "array")
     assert(schema.at("/properties/intArray1/oneOf/1/items/type").asText() == "integer")
@@ -1014,7 +1024,19 @@ trait TestData {
     List(child1, child2).asJava,
     List(child1, child2).toArray,
     List(classNotExtendingAnything, classNotExtendingAnything).asJava,
-    PojoWithArrays._listOfListOfStringsValues // It was difficult to construct this from scala :)
+    PojoWithArrays._listOfListOfStringsValues, // It was difficult to construct this from scala :)
+    Set(MyEnum.B).asJava
+  )
+
+  val pojoWithArraysNullable = new PojoWithArraysNullable(
+    Array(1,2,3),
+    Array("a1","a2","a3"),
+    List("l1", "l2", "l3").asJava,
+    List(child1, child2).asJava,
+    List(child1, child2).toArray,
+    List(classNotExtendingAnything, classNotExtendingAnything).asJava,
+    PojoWithArrays._listOfListOfStringsValues, // It was difficult to construct this from scala :)
+    Set(MyEnum.B).asJava
   )
 
   val pojoWithArraysScala = PojoWithArraysScala(
@@ -1024,7 +1046,8 @@ trait TestData {
     List(child1, child2),
     List(child1, child2),
     List(classNotExtendingAnything, classNotExtendingAnything),
-    List(List("l11","l12"), List("l21"))
+    List(List("l11","l12"), List("l21")),
+    setOfUniqueValues = Set(MyEnum.B)
   )
 
   val recursivePojo = new RecursivePojo("t1", List(new RecursivePojo("c1", null)).asJava)
