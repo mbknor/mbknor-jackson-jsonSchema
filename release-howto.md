@@ -1,7 +1,6 @@
 Change version in 
 
-* build.sbt
-* and multiple places in README.md
+* version.sbt
 
 Clean and test cross scala version
 
@@ -21,7 +20,7 @@ Check and publish artifact
     
     https://oss.sonatype.org/
     
-change version to next snapshot in build.sbt
+change version to next snapshot in version.sbt
 commit
 
     
