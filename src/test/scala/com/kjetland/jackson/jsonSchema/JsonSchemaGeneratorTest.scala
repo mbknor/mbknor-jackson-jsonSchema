@@ -583,6 +583,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assert(schema.at("/properties/stringList/type").asText() == "array")
       assert(schema.at("/properties/stringList/items/type").asText() == "string")
+      assert(schema.at("/properties/stringList/minItems").asInt() == 1)
+      assert(schema.at("/properties/stringList/maxItems").asInt() == 10)
 
       assert(schema.at("/properties/polymorphismList/type").asText() == "array")
       assertChild1(schema, "/properties/polymorphismList/items/oneOf", html5Checks = html5Checks)

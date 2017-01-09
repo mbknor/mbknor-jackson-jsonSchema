@@ -1,6 +1,7 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
@@ -16,6 +17,7 @@ public class PojoWithArrays {
     public String[] stringArray;
 
     @NotNull
+    @Size(min=1, max=10)
     public List<String> stringList;
 
     @NotNull

@@ -385,6 +385,16 @@ class JsonSchemaGenerator
         }
       }
 
+      // Look for @Size
+      currentProperty.map {
+        p =>
+          Option(p.getAnnotation(classOf[Size])).map {
+            size =>
+              node.put("minItems", size.min())
+              node.put("maxItems", size.max())
+          }
+      }
+
 
       val itemsNode = JsonNodeFactory.instance.objectNode()
       node.set("items", itemsNode)
