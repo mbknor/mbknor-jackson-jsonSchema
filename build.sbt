@@ -1,3 +1,5 @@
+import ReleaseTransformations._
+import sbtrelease.ReleasePlugin.autoImport.releaseStepCommand
 
 lazy val commonSettings = Seq(
   organization := "com.kjetland",
@@ -39,7 +41,9 @@ lazy val commonSettings = Seq(
       </developers>),
   compileOrder in Test := CompileOrder.Mixed,
   javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
-  scalacOptions ++= Seq("-unchecked", "-deprecation")
+  scalacOptions ++= Seq("-unchecked", "-deprecation"),
+  releaseCrossBuild := true,
+  releasePublishArtifactsAction := PgpKeys.publishSigned.value
 )
 
 
@@ -67,3 +71,17 @@ lazy val root = (project in file("."))
   .settings(commonSettings: _*)
   .settings(libraryDependencies ++= (deps))
 
+
+releaseProcess := Seq[ReleaseStep](
+  checkSnapshotDependencies,
+  inquireVersions,
+  runTest,
+  setReleaseVersion,
+  commitReleaseVersion,
+  tagRelease,
+  publishArtifacts,
+  setNextVersion,
+  commitNextVersion,
+  pushChanges,
+  releaseStepCommand("sonatypeRelease")
+)
