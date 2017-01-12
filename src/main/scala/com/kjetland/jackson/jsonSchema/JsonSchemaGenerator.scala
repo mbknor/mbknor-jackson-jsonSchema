@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
-import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDefault, JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle}
+import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDefault, JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle, JsonSchemaValues}
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
@@ -812,6 +812,25 @@ class JsonSchemaGenerator
                     setFormat(thisPropertyNode.main, format)
                 }
 
+                // Optionally inject custom schema values
+                prop.flatMap {
+                  p: BeanProperty =>
+                    Option(p.getMember.getAnnotation(classOf[JsonSchemaValues])).map(_.stringValues())
+                }.foreach {
+                  stringValues => stringValues.foreach {
+                    stringValue => thisPropertyNode.meta.putByPath(stringValue.path(), (o, n) => o.put(n, stringValue.value()))
+                  }
+                }
+
+                prop.flatMap {
+                  p: BeanProperty =>
+                    Option(p.getMember.getAnnotation(classOf[JsonSchemaValues])).map(_.intValues())
+                }.foreach {
+                  intValues => intValues.foreach {
+                    intValue => thisPropertyNode.meta.putByPath(intValue.path(), (o, n) => o.put(n, intValue.value()))
+                  }
+                }
+
                 // Optionally add description
                 prop.flatMap {
                   p: BeanProperty =>
@@ -992,4 +1011,15 @@ class JsonSchemaGenerator
     rootNode
   }
 
+  implicit class ObjectNodeExtension(o:ObjectNode) {
+    def putByPath(path: String, f: (ObjectNode, String) => Unit) = {
+      var p = o
+
+      val split = path.split('.')
+      for (name <- split.dropRight(1)) {
+        p = Option(p.get(name)).getOrElse(p.putObject(name)).asInstanceOf[ObjectNode]
+      }
+      f(p, split.last)
+    }
+  }
 }

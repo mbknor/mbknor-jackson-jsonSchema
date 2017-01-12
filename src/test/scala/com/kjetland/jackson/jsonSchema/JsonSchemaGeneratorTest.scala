@@ -601,6 +601,14 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/setOfUniqueValues/type").asText() == "array")
       assert(schema.at("/properties/setOfUniqueValues/items/type").asText() == "string")
 
+      assert(schema.at("/properties/setOfStringsUsingPattern/type").asText() == "array")
+      assert(schema.at("/properties/setOfStringsUsingPattern/items/type").asText() == "string")
+      assert(schema.at("/properties/setOfStringsUsingPattern/items/pattern").asText() == "_stringUsingPatternA|_stringUsingPatternB")
+      
+      assert(schema.at("/properties/setOfIntsUsingMin/type").asText() == "array")
+      assert(schema.at("/properties/setOfIntsUsingMin/items/type").asText() == "integer")
+      assert(schema.at("/properties/setOfIntsUsingMin/items/minimum").asInt() == 3)
+
       if (html5Checks) {
         assert(schema.at("/properties/setOfUniqueValues/uniqueItems").asText() == "true")
         assert(schema.at("/properties/setOfUniqueValues/format").asText() == "checkbox")
@@ -1027,7 +1035,9 @@ trait TestData {
     List(child1, child2).toArray,
     List(classNotExtendingAnything, classNotExtendingAnything).asJava,
     PojoWithArrays._listOfListOfStringsValues, // It was difficult to construct this from scala :)
-    Set(MyEnum.B).asJava
+    Set(MyEnum.B).asJava,
+    Set("_stringUsingPatternA", "_stringUsingPatternB").asJava,
+    Set[Integer](5, 6).asJava
   )
 
   val pojoWithArraysNullable = new PojoWithArraysNullable(
@@ -1049,7 +1059,9 @@ trait TestData {
     List(child1, child2),
     List(classNotExtendingAnything, classNotExtendingAnything),
     List(List("l11","l12"), List("l21")),
-    setOfUniqueValues = Set(MyEnum.B)
+    setOfUniqueValues = Set(MyEnum.B),
+    setOfStringsUsingPattern = Set("_stringUsingPatternA", "_stringUsingPatternB"),
+    setOfIntsUsingMin = Set(5, 6)
   )
 
   val recursivePojo = new RecursivePojo("t1", List(new RecursivePojo("c1", null)).asJava)

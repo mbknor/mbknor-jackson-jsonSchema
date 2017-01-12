@@ -1,5 +1,9 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
+import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaIntValue;
+import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaStringValue;
+import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaValues;
+
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
 import java.util.Arrays;
@@ -33,10 +37,18 @@ public class PojoWithArrays {
     @NotNull
     public Set<MyEnum> setOfUniqueValues;
 
+    @NotNull
+    @JsonSchemaValues(stringValues = @JsonSchemaStringValue(path = "items.pattern", value = "_stringUsingPatternA|_stringUsingPatternB"))
+    public Set<String> setOfStringsUsingPattern;
+    
+    @NotNull
+    @JsonSchemaValues(intValues = {@JsonSchemaIntValue(path = "items.minimum", value = 3)})
+    public Set<Integer> setOfIntsUsingMin;
+
     public PojoWithArrays() {
     }
 
-    public PojoWithArrays(int[] intArray1, String[] stringArray, List<String> stringList, List<Parent> polymorphismList, Parent[] polymorphismArray, List<ClassNotExtendingAnything> regularObjectList, List<List<String>> listOfListOfStrings, Set<MyEnum> setOfUniqueValues) {
+    public PojoWithArrays(int[] intArray1, String[] stringArray, List<String> stringList, List<Parent> polymorphismList, Parent[] polymorphismArray, List<ClassNotExtendingAnything> regularObjectList, List<List<String>> listOfListOfStrings, Set<MyEnum> setOfUniqueValues, Set<String> setOfStringsUsingPattern, Set<Integer> setOfIntsUsingMin) {
         this.intArray1 = intArray1;
         this.stringArray = stringArray;
         this.stringList = stringList;
@@ -45,6 +57,8 @@ public class PojoWithArrays {
         this.regularObjectList = regularObjectList;
         this.listOfListOfStrings = listOfListOfStrings;
         this.setOfUniqueValues = setOfUniqueValues;
+        this.setOfStringsUsingPattern = setOfStringsUsingPattern;
+        this.setOfIntsUsingMin = setOfIntsUsingMin;
     }
 
     @Override
