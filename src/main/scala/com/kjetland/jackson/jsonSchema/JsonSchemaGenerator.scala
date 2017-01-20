@@ -629,6 +629,13 @@ class JsonSchemaGenerator
 
             val thisOneOfNode = JsonNodeFactory.instance.objectNode()
             thisOneOfNode.put("$ref", definitionInfo.ref.get)
+
+            // If class is annotated with JsonSchemaTitle, we should add it
+            Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
+              title =>
+                thisOneOfNode.put("title", title)
+            }
+
             anyOfArrayNode.add(thisOneOfNode)
 
         }

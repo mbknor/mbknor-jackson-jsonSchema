@@ -956,6 +956,16 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, classOf[NestedPolymorphism1Base], Some(jsonNode))
   }
+
+  test("PolymorphismAndTitle") {
+    val schema = jsonSchemaGeneratorScala.generateJsonSchema(classOf[PolymorphismAndTitleBase])
+
+    println("--------------------------------------------")
+    println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+
+    assert( schema.at("/oneOf/0/$ref").asText() == "#/definitions/PolymorphismAndTitle1")
+    assert( schema.at("/oneOf/0/title").asText() == "CustomTitle1")
+  }
 }
 
 trait TestData {
