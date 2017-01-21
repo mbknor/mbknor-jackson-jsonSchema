@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
-import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDefault, JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle}
+import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDefault, JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle, JsonSchemaOptions}
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
@@ -565,6 +565,13 @@ class JsonSchemaGenerator
       }
     }
 
+    private def getOptionsNode(objectNode:ObjectNode):ObjectNode = {
+      Option(objectNode.get("options")).map(_.asInstanceOf[ObjectNode]).getOrElse {
+        val o = JsonNodeFactory.instance.objectNode()
+        objectNode.set("options", o)
+        o
+      }
+    }
     case class PolymorphismInfo(typePropertyName:String, subTypeName:String)
 
     private def extractPolymorphismInfo(_type:JavaType):Option[PolymorphismInfo] = {
@@ -608,7 +615,9 @@ class JsonSchemaGenerator
       }
 
 
+      // Check if we have subtypes
       if (subTypes.nonEmpty) {
+        // We have subtypes
         //l(s"polymorphism - subTypes: $subTypes")
 
         val anyOfArrayNode = JsonNodeFactory.instance.arrayNode()
@@ -643,7 +652,7 @@ class JsonSchemaGenerator
         null // Returning null to stop jackson from visiting this object since we have done it manually
 
       } else {
-
+        // We do not have subtypes
 
         val objectBuilder:ObjectNode => Option[JsonObjectFormatVisitor] = {
           thisObjectNode:ObjectNode =>
@@ -671,6 +680,17 @@ class JsonSchemaGenerator
               title =>
                 thisObjectNode.put("title", title)
             }
+
+            // If class is annotated with JsonSchemaOptions, we should add it
+            Option(ac.getAnnotations.get(classOf[JsonSchemaOptions])).map(_.items()).foreach {
+              items =>
+                val optionsNode = getOptionsNode(thisObjectNode)
+                items.foreach {
+                  item =>
+                    optionsNode.put(item.name, item.value)
+                }
+            }
+
 
             val propertiesNode = JsonNodeFactory.instance.objectNode()
             thisObjectNode.set("properties", propertiesNode)
@@ -849,6 +869,20 @@ class JsonSchemaGenerator
                     title =>
                       thisPropertyNode.meta.put("title", title)
                   }
+
+                // Optionaly add options
+                prop.flatMap {
+                  p:BeanProperty =>
+                    Option(p.getAnnotation(classOf[JsonSchemaOptions]))
+                }.map(_.items()).foreach {
+                  items =>
+                    val optionsNode = getOptionsNode(thisPropertyNode.meta)
+                    items.foreach {
+                      item =>
+                        optionsNode.put(item.name, item.value)
+
+                    }
+                }
 
               }
 

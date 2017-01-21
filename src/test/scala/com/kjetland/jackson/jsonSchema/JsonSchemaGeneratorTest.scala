@@ -966,6 +966,32 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert( schema.at("/oneOf/0/$ref").asText() == "#/definitions/PolymorphismAndTitle1")
     assert( schema.at("/oneOf/0/title").asText() == "CustomTitle1")
   }
+
+  test("UsingJsonSchemaOptions") {
+
+    {
+      val schema = jsonSchemaGeneratorScala.generateJsonSchema(classOf[UsingJsonSchemaOptions])
+
+      println("--------------------------------------------")
+      println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+
+      assert(schema.at("/options/classOption").asText() == "classOptionValue")
+      assert(schema.at("/properties/propertyUsingOneProperty/options/o1").asText() == "v1")
+    }
+
+    {
+      val schema = jsonSchemaGeneratorScala.generateJsonSchema(classOf[UsingJsonSchemaOptionsBase])
+
+      println("--------------------------------------------")
+      println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+
+      assert(schema.at("/definitions/UsingJsonSchemaOptionsChild1/options/classOption1").asText() == "classOptionValue1")
+      assert(schema.at("/definitions/UsingJsonSchemaOptionsChild1/properties/propertyUsingOneProperty/options/o1").asText() == "v1")
+
+      assert(schema.at("/definitions/UsingJsonSchemaOptionsChild2/options/classOption2").asText() == "classOptionValue2")
+      assert(schema.at("/definitions/UsingJsonSchemaOptionsChild2/properties/propertyUsingOneProperty/options/o1").asText() == "v1")
+    }
+  }
 }
 
 trait TestData {
