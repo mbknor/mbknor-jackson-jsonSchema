@@ -992,6 +992,19 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/definitions/UsingJsonSchemaOptionsChild2/properties/propertyUsingOneProperty/options/o1").asText() == "v1")
     }
   }
+
+  test("UsingJsonSchemaInject") {
+    {
+      val schema = jsonSchemaGeneratorScala.generateJsonSchema(classOf[UsingJsonSchemaInject])
+
+      println("--------------------------------------------")
+      println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+
+      assert(schema.at("/patternProperties/^[a-zA-Z0-9]+/type").asText() == "string")
+      assert(schema.at("/properties/a/type").asText() == "string")
+      assert(schema.at("/properties/a/options/hidden").asText() == "true")
+    }
+  }
 }
 
 trait TestData {

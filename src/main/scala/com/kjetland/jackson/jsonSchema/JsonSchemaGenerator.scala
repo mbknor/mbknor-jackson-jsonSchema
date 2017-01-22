@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
-import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDefault, JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle, JsonSchemaOptions}
+import com.kjetland.jackson.jsonSchema.annotations._
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
@@ -691,6 +691,14 @@ class JsonSchemaGenerator
                 }
             }
 
+            // Optionally add JsonSchemaInject
+            Option(ac.getAnnotations.get(classOf[JsonSchemaInject])).map(_.json()).foreach {
+              json =>
+                // Must parse json
+                val injectJsonNode = objectMapper.readTree(json)
+                merge(thisObjectNode, injectJsonNode)
+            }
+
 
             val propertiesNode = JsonNodeFactory.instance.objectNode()
             thisObjectNode.set("properties", propertiesNode)
@@ -870,7 +878,7 @@ class JsonSchemaGenerator
                       thisPropertyNode.meta.put("title", title)
                   }
 
-                // Optionaly add options
+                // Optionally add options
                 prop.flatMap {
                   p:BeanProperty =>
                     Option(p.getAnnotation(classOf[JsonSchemaOptions]))
@@ -882,6 +890,17 @@ class JsonSchemaGenerator
                         optionsNode.put(item.name, item.value)
 
                     }
+                }
+
+                // Optionally add JsonSchemaInject
+                prop.flatMap {
+                  p:BeanProperty =>
+                    Option(p.getAnnotation(classOf[JsonSchemaInject]))
+                }.map(_.json()).foreach {
+                  json =>
+                    // Must parse json
+                    val injectJsonNode = objectMapper.readTree(json)
+                    merge(thisPropertyNode.meta, injectJsonNode)
                 }
 
               }
@@ -927,6 +946,27 @@ class JsonSchemaGenerator
 
     }
 
+  }
+
+  private def merge(mainNode:JsonNode, updateNode:JsonNode):Unit = {
+    val fieldNames = updateNode.fieldNames()
+    while (fieldNames.hasNext()) {
+
+      val fieldName = fieldNames.next()
+      val jsonNode = mainNode.get(fieldName)
+      // if field exists and is an embedded object
+      if (jsonNode != null && jsonNode.isObject()) {
+        merge(jsonNode, updateNode.get(fieldName))
+      }
+      else {
+        if (mainNode.isInstanceOf[ObjectNode]) {
+          // Overwrite field
+          val value = updateNode.get(fieldName)
+          mainNode.asInstanceOf[ObjectNode].set(fieldName, value)
+        }
+      }
+
+    }
   }
 
   def generateTitleFromPropertyName(propertyName:String):String = {
