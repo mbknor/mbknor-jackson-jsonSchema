@@ -11,7 +11,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
-import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaDefault, JsonSchemaDescription, JsonSchemaFormat, JsonSchemaTitle, JsonSchemaValues}
+import com.kjetland.jackson.jsonSchema.annotations._
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
@@ -565,6 +565,13 @@ class JsonSchemaGenerator
       }
     }
 
+    private def getOptionsNode(objectNode:ObjectNode):ObjectNode = {
+      Option(objectNode.get("options")).map(_.asInstanceOf[ObjectNode]).getOrElse {
+        val o = JsonNodeFactory.instance.objectNode()
+        objectNode.set("options", o)
+        o
+      }
+    }
     case class PolymorphismInfo(typePropertyName:String, subTypeName:String)
 
     private def extractPolymorphismInfo(_type:JavaType):Option[PolymorphismInfo] = {
@@ -608,7 +615,9 @@ class JsonSchemaGenerator
       }
 
 
+      // Check if we have subtypes
       if (subTypes.nonEmpty) {
+        // We have subtypes
         //l(s"polymorphism - subTypes: $subTypes")
 
         val anyOfArrayNode = JsonNodeFactory.instance.arrayNode()
@@ -629,6 +638,13 @@ class JsonSchemaGenerator
 
             val thisOneOfNode = JsonNodeFactory.instance.objectNode()
             thisOneOfNode.put("$ref", definitionInfo.ref.get)
+
+            // If class is annotated with JsonSchemaTitle, we should add it
+            Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
+              title =>
+                thisOneOfNode.put("title", title)
+            }
+
             anyOfArrayNode.add(thisOneOfNode)
 
         }
@@ -636,7 +652,7 @@ class JsonSchemaGenerator
         null // Returning null to stop jackson from visiting this object since we have done it manually
 
       } else {
-
+        // We do not have subtypes
 
         val objectBuilder:ObjectNode => Option[JsonObjectFormatVisitor] = {
           thisObjectNode:ObjectNode =>
@@ -664,6 +680,25 @@ class JsonSchemaGenerator
               title =>
                 thisObjectNode.put("title", title)
             }
+
+            // If class is annotated with JsonSchemaOptions, we should add it
+            Option(ac.getAnnotations.get(classOf[JsonSchemaOptions])).map(_.items()).foreach {
+              items =>
+                val optionsNode = getOptionsNode(thisObjectNode)
+                items.foreach {
+                  item =>
+                    optionsNode.put(item.name, item.value)
+                }
+            }
+
+            // Optionally add JsonSchemaInject
+            Option(ac.getAnnotations.get(classOf[JsonSchemaInject])).map(_.json()).foreach {
+              json =>
+                // Must parse json
+                val injectJsonNode = objectMapper.readTree(json)
+                merge(thisObjectNode, injectJsonNode)
+            }
+
 
             val propertiesNode = JsonNodeFactory.instance.objectNode()
             thisObjectNode.set("properties", propertiesNode)
@@ -862,6 +897,31 @@ class JsonSchemaGenerator
                       thisPropertyNode.meta.put("title", title)
                   }
 
+                // Optionally add options
+                prop.flatMap {
+                  p:BeanProperty =>
+                    Option(p.getAnnotation(classOf[JsonSchemaOptions]))
+                }.map(_.items()).foreach {
+                  items =>
+                    val optionsNode = getOptionsNode(thisPropertyNode.meta)
+                    items.foreach {
+                      item =>
+                        optionsNode.put(item.name, item.value)
+
+                    }
+                }
+
+                // Optionally add JsonSchemaInject
+                prop.flatMap {
+                  p:BeanProperty =>
+                    Option(p.getAnnotation(classOf[JsonSchemaInject]))
+                }.map(_.json()).foreach {
+                  json =>
+                    // Must parse json
+                    val injectJsonNode = objectMapper.readTree(json)
+                    merge(thisPropertyNode.meta, injectJsonNode)
+                }
+
               }
 
               override def optionalProperty(prop: BeanProperty): Unit = {
@@ -905,6 +965,27 @@ class JsonSchemaGenerator
 
     }
 
+  }
+
+  private def merge(mainNode:JsonNode, updateNode:JsonNode):Unit = {
+    val fieldNames = updateNode.fieldNames()
+    while (fieldNames.hasNext()) {
+
+      val fieldName = fieldNames.next()
+      val jsonNode = mainNode.get(fieldName)
+      // if field exists and is an embedded object
+      if (jsonNode != null && jsonNode.isObject()) {
+        merge(jsonNode, updateNode.get(fieldName))
+      }
+      else {
+        if (mainNode.isInstanceOf[ObjectNode]) {
+          // Overwrite field
+          val value = updateNode.get(fieldName)
+          mainNode.asInstanceOf[ObjectNode].set(fieldName, value)
+        }
+      }
+
+    }
   }
 
   def generateTitleFromPropertyName(propertyName:String):String = {

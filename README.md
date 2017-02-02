@@ -16,11 +16,14 @@ in generating jsonSchema from your POJOs using Jackson @Annotations.
   - **@JsonSchemaFormat**
   - **@JsonSchemaTitle**
   - **@JsonSchemaDefault**
+  - **@JsonSchemaOptions**
+  - **@JsonSchemaInject**
 * Supports many Javax-validation @Annotations
 * Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor)
   - (Must be configured to use this mode)
   - Special handling of Option-/Optional-properties using oneOf.
 * Supports custom Class-to-format-Mapping
+* Supports injecting custom json-schema-fragments using the **@JsonSchemaInject**-annotation.
 
 
 **Benefits**
@@ -28,6 +31,65 @@ in generating jsonSchema from your POJOs using Jackson @Annotations.
 * Simple implementation - Just [one file](https://github.com/mbknor/mbknor-jackson-jsonSchema/blob/master/src/main/scala/com/kjetland/jackson/jsonSchema/JsonSchemaGenerator.scala)  (for now..)
 * Implemented in Scala (*Built for 2.10, 2.11 and 2.12*)
 * Easy to fix and add functionality
+
+Flexible
+--------------
+
+If this generator does not generate exactly the schema you want, you can inject it by using the
+**@JsonSchemaInject**-annotation.
+
+If you need to use *patternProperties* (which is not currently 'natively' supported by *mbknor-jackson-jsonSchema*),
+you can make it work by injecting the following json-schema-fragment:
+
+```Json
+{
+  "patternProperties" : {
+    "^[a-zA-Z0-9]+" : {
+      "type" : "string"
+    }
+  }
+}
+```
+
+
+.. like this in Scala:
+```Scala
+@JsonSerialize(using = MySpecialSerializer.class)
+JsonSchemaInject(
+  json =
+    """
+      {
+        "patternProperties" : {
+          "^[a-zA-Z0-9]+" : {
+            "type" : "string"
+          }
+        }
+      }
+    """
+)
+case class MyPojo(...)
+```
+
+.. or like this in Java
+```Java
+
+@JsonSerialize(using = MySpecialSerializer.class)
+@JsonSchemaInject( json = "{\n" +
+        "  \"patternProperties\" : {\n" +
+        "    \"^[a-zA-Z0-9]+\" : {\n" +
+        "      \"type\" : \"string\"\n" +
+        "    }\n" +
+        "  }\n" +
+        "}" )
+public class MyPojo {
+    ...
+    ...
+    ...
+}
+```
+
+
+@JsonSchemaInject can also be used on properties.
 
 
 Project status

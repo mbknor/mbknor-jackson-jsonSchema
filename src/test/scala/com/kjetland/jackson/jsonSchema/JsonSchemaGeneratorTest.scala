@@ -964,6 +964,55 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, classOf[NestedPolymorphism1Base], Some(jsonNode))
   }
+
+  test("PolymorphismAndTitle") {
+    val schema = jsonSchemaGeneratorScala.generateJsonSchema(classOf[PolymorphismAndTitleBase])
+
+    println("--------------------------------------------")
+    println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+
+    assert( schema.at("/oneOf/0/$ref").asText() == "#/definitions/PolymorphismAndTitle1")
+    assert( schema.at("/oneOf/0/title").asText() == "CustomTitle1")
+  }
+
+  test("UsingJsonSchemaOptions") {
+
+    {
+      val schema = jsonSchemaGeneratorScala.generateJsonSchema(classOf[UsingJsonSchemaOptions])
+
+      println("--------------------------------------------")
+      println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+
+      assert(schema.at("/options/classOption").asText() == "classOptionValue")
+      assert(schema.at("/properties/propertyUsingOneProperty/options/o1").asText() == "v1")
+    }
+
+    {
+      val schema = jsonSchemaGeneratorScala.generateJsonSchema(classOf[UsingJsonSchemaOptionsBase])
+
+      println("--------------------------------------------")
+      println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+
+      assert(schema.at("/definitions/UsingJsonSchemaOptionsChild1/options/classOption1").asText() == "classOptionValue1")
+      assert(schema.at("/definitions/UsingJsonSchemaOptionsChild1/properties/propertyUsingOneProperty/options/o1").asText() == "v1")
+
+      assert(schema.at("/definitions/UsingJsonSchemaOptionsChild2/options/classOption2").asText() == "classOptionValue2")
+      assert(schema.at("/definitions/UsingJsonSchemaOptionsChild2/properties/propertyUsingOneProperty/options/o1").asText() == "v1")
+    }
+  }
+
+  test("UsingJsonSchemaInject") {
+    {
+      val schema = jsonSchemaGeneratorScala.generateJsonSchema(classOf[UsingJsonSchemaInject])
+
+      println("--------------------------------------------")
+      println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+
+      assert(schema.at("/patternProperties/^[a-zA-Z0-9]+/type").asText() == "string")
+      assert(schema.at("/properties/a/type").asText() == "string")
+      assert(schema.at("/properties/a/options/hidden").asText() == "true")
+    }
+  }
 }
 
 trait TestData {

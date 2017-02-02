@@ -43,7 +43,13 @@ lazy val commonSettings = Seq(
   javacOptions ++= Seq("-source", "1.8", "-target", "1.8"),
   scalacOptions ++= Seq("-unchecked", "-deprecation"),
   releaseCrossBuild := true,
-  releasePublishArtifactsAction := PgpKeys.publishSigned.value
+  releasePublishArtifactsAction := PgpKeys.publishSigned.value,
+  scalacOptions in(Compile, doc) ++= Seq(scalaVersion.value).flatMap {
+    case v if v.startsWith("2.12") =>
+      Seq("-no-java-comments") //workaround for scala/scala-dev#249
+    case _ =>
+      Seq()
+  }
 )
 
 
