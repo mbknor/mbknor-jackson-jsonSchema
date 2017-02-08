@@ -692,10 +692,14 @@ class JsonSchemaGenerator
             }
 
             // Optionally add JsonSchemaInject
-            Option(ac.getAnnotations.get(classOf[JsonSchemaInject])).map(_.json()).foreach {
-              json =>
+            Option(ac.getAnnotations.get(classOf[JsonSchemaInject])).foreach {
+              a =>
                 // Must parse json
-                val injectJsonNode = objectMapper.readTree(json)
+                val injectJsonNode = objectMapper.readTree(a.json())
+                a.strings().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
+                a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
+                a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
+                
                 merge(thisObjectNode, injectJsonNode)
             }
 
@@ -847,25 +851,6 @@ class JsonSchemaGenerator
                     setFormat(thisPropertyNode.main, format)
                 }
 
-                // Optionally inject custom schema values
-                prop.flatMap {
-                  p: BeanProperty =>
-                    Option(p.getMember.getAnnotation(classOf[JsonSchemaValues])).map(_.stringValues())
-                }.foreach {
-                  stringValues => stringValues.foreach {
-                    stringValue => thisPropertyNode.meta.putByPath(stringValue.path(), (o, n) => o.put(n, stringValue.value()))
-                  }
-                }
-
-                prop.flatMap {
-                  p: BeanProperty =>
-                    Option(p.getMember.getAnnotation(classOf[JsonSchemaValues])).map(_.intValues())
-                }.foreach {
-                  intValues => intValues.foreach {
-                    intValue => thisPropertyNode.meta.putByPath(intValue.path(), (o, n) => o.put(n, intValue.value()))
-                  }
-                }
-
                 // Optionally add description
                 prop.flatMap {
                   p: BeanProperty =>
@@ -915,13 +900,16 @@ class JsonSchemaGenerator
                 prop.flatMap {
                   p:BeanProperty =>
                     Option(p.getAnnotation(classOf[JsonSchemaInject]))
-                }.map(_.json()).foreach {
-                  json =>
+                }.foreach {
+                  a =>
                     // Must parse json
-                    val injectJsonNode = objectMapper.readTree(json)
+                    val injectJsonNode = objectMapper.readTree(a.json())
+                    a.strings().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
+                    a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
+                    a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
+                    
                     merge(thisPropertyNode.meta, injectJsonNode)
                 }
-
               }
 
               override def optionalProperty(prop: BeanProperty): Unit = {
@@ -1092,15 +1080,15 @@ class JsonSchemaGenerator
     rootNode
   }
 
-  implicit class ObjectNodeExtension(o:ObjectNode) {
-    def putByPath(path: String, f: (ObjectNode, String) => Unit) = {
+  implicit class JsonNodeExtension(o:JsonNode) {
+    def visit(path: String, f: (ObjectNode, String) => Unit) = {
       var p = o
 
-      val split = path.split('.')
+      val split = path.split('/')
       for (name <- split.dropRight(1)) {
-        p = Option(p.get(name)).getOrElse(p.putObject(name)).asInstanceOf[ObjectNode]
+        p = Option(p.get(name)).getOrElse(p.asInstanceOf[ObjectNode].putObject(name))
       }
-      f(p, split.last)
+      f(p.asInstanceOf[ObjectNode], split.last)
     }
   }
 }

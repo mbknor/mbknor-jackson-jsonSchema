@@ -2,7 +2,6 @@ package com.kjetland.jackson.jsonSchema.testDataScala
 
 import javax.validation.constraints.{NotNull, Size}
 
-import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaIntValue, JsonSchemaValues, JsonSchemaStringValue}
 import com.kjetland.jackson.jsonSchema.testData.{ClassNotExtendingAnything, MyEnum, Parent}
 
 case class PojoWithArraysScala
@@ -23,10 +22,5 @@ case class PojoWithArraysScala
   @NotNull
   listOfListOfStrings:List[List[String]],
   @NotNull
-  setOfUniqueValues:Set[MyEnum],
-  @NotNull
-  @JsonSchemaValues(stringValues = Array(new JsonSchemaStringValue(path = "items.pattern", value = "_stringUsingPatternA|_stringUsingPatternB")))
-  setOfStringsUsingPattern:Set[String],
-  @JsonSchemaValues(intValues = Array(new JsonSchemaIntValue(path = "items.minimum", value = 3)))
-  setOfIntsUsingMin:Set[Integer]
+  setOfUniqueValues:Set[MyEnum]
 )

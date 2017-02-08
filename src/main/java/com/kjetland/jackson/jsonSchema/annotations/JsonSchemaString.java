@@ -6,17 +6,18 @@ import java.lang.annotation.Target;
 
 import static java.lang.annotation.ElementType.FIELD;
 import static java.lang.annotation.ElementType.METHOD;
+import static java.lang.annotation.ElementType.TYPE;
 
 /**
  * Injects custom values to the schema generated for fields or getters.
  *
  * @author bbyk
  */
-@Target({METHOD, FIELD})
+@Target({METHOD, FIELD, TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface JsonSchemaStringValue {
+public @interface JsonSchemaString {
     /**
-     * @return a dot separated path to the value in the schema
+     * @return a slash separated path to the value in the schema
      */
     String path();
 
