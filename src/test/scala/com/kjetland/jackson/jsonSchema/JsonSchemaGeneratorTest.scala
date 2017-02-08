@@ -1000,9 +1000,13 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       println("--------------------------------------------")
       println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
 
-      assert(schema.at("/patternProperties/^[a-zA-Z0-9]+/type").asText() == "string")
-      assert(schema.at("/properties/a/type").asText() == "string")
-      assert(schema.at("/properties/a/options/hidden").asText() == "true")
+      assert(schema.at("/patternProperties/^s[a-zA-Z0-9]+/type").asText() == "string")
+      assert(schema.at("/patternProperties/^i[a-zA-Z0-9]+/type").asText() == "integer")
+      assert(schema.at("/properties/sa/type").asText() == "string")
+      assert(schema.at("/properties/sa/options/hidden").asText() == "true")
+      assert(schema.at("/properties/ib/type").asText() == "integer")
+      assert(schema.at("/properties/ib/multipleOf").asInt() == 7)
+      assert(schema.at("/properties/ib/exclusiveMinimum").asBoolean())
     }
   }
 }

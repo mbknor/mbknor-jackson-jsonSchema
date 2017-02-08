@@ -1,6 +1,8 @@
 package com.kjetland.jackson.jsonSchema.testDataScala
 
-import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaInject
+import javax.validation.constraints.Min
+
+import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaBool, JsonSchemaInject, JsonSchemaInt, JsonSchemaString}
 
 
 @JsonSchemaInject(
@@ -8,12 +10,14 @@ import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaInject
       """
         {
           "patternProperties": {
-            "^[a-zA-Z0-9]+": {
+            "^s[a-zA-Z0-9]+": {
               "type": "string"
             }
           }
         }
-      """)
+      """,
+    strings = Array(new JsonSchemaString(path = "patternProperties/^i[a-zA-Z0-9]+/type", value = "integer"))
+)
 case class UsingJsonSchemaInject
 (
   @JsonSchemaInject(
@@ -25,8 +29,14 @@ case class UsingJsonSchemaInject
              }
           }
         """)
-  a:String
+  sa:String,
 
+  @JsonSchemaInject(
+    bools = Array(new JsonSchemaBool(path = "exclusiveMinimum", value = true)),
+    ints = Array(new JsonSchemaInt(path = "multipleOf", value = 7))
+  )
+  @Min(5)
+  ib:Int
 )
 
 

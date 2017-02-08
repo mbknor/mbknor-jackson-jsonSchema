@@ -87,7 +87,30 @@ public class MyPojo {
     ...
 }
 ```
-
+Alternatively, the following one liner will achieve the same result:
+```Java
+@JsonSerialize(using = MySpecialSerializer.class)
+@JsonSchemaInject(strings = {@JsonSchemaString(path = "patternProperties/^[a-zA-Z0-9]+/type", value = "string")})
+public class MyPojo {
+    ...
+    ...
+    ...
+}
+```
+The annotation will nest the `value` at the level defined by the `path`. You can use the raw json along with the individual path/value pairs in the same `@JsonSchemaInject` annotation. Although keep in mind that the pairs are applied last. For boolean and number values use the `JsonSchemaInject#bools` and `JsonSchemaInject#ints` collections correspondingly.
+```Java
+public class MyPojo {
+    @JsonSchemaInject(
+      bools = {@JsonSchemaBool(path = "exclusiveMinimum", value = true)},
+      ints = {@JsonSchemaInt(path = "multipleOf", value = 7)}
+    )
+    @Min(5)
+    public int myIntValue;
+    ...
+    ...
+    ...
+}
+```
 
 @JsonSchemaInject can also be used on properties.
 
