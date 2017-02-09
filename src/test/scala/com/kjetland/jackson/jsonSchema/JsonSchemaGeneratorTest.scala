@@ -16,6 +16,7 @@ import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.{Child21, Child22, Parent2}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism3.{Child31, Child32, Parent3}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
 import org.scalatest.{FunSuite, Matchers}
@@ -419,6 +420,21 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assertChild1(schema, "/oneOf", "Child21", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.Child21")
       assertChild2(schema, "/oneOf", "Child22", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.Child22")
+    }
+  }
+
+  
+  test("Generate schema for super class annotated with @JsonTypeInfo - include = JsonTypeInfo.As.EXISTING_PROPERTY") {
+
+    // Java
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child31)
+      assertToFromJson(jsonSchemaGenerator, testData.child31, classOf[Parent3])
+
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, classOf[Parent3], Some(jsonNode))
+
+      assertChild1(schema, "/oneOf", "Child31", typeName = "child31")
+      assertChild2(schema, "/oneOf", "Child32", typeName = "child32")
     }
   }
 
@@ -1063,6 +1079,21 @@ trait TestData {
   }
   val child22 = {
     val c = new Child22()
+    c.parentString = "pv"
+    c.child2int = 12
+    c
+  }
+
+  val child31 = {
+    val c = new Child31()
+    c.parentString = "pv"
+    c.child1String = "cs"
+    c.child1String2 = "cs2"
+    c.child1String3 = "cs3"
+    c
+  }
+  val child32 = {
+    val c = new Child32()
     c.parentString = "pv"
     c.child2int = 12
     c
