@@ -581,7 +581,12 @@ class JsonSchemaGenerator
       val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
       Option(ac.getAnnotations.get(classOf[JsonTypeInfo])).map {
         jsonTypeInfo =>
-          if ( jsonTypeInfo.include() != JsonTypeInfo.As.PROPERTY) throw new Exception("We only support polymorphism using jsonTypeInfo.include() == JsonTypeInfo.As.PROPERTY")
+
+          jsonTypeInfo.include() match {
+            case JsonTypeInfo.As.PROPERTY          => // supported
+            case JsonTypeInfo.As.EXISTING_PROPERTY => // supported
+            case x                                 => throw new Exception(s"We do not support polymorphism using jsonTypeInfo.include() = $x")
+          }
 
           val propertyName = jsonTypeInfo.property()
 
