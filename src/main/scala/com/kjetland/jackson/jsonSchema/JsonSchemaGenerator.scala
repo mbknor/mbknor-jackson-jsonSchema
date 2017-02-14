@@ -732,6 +732,9 @@ class JsonSchemaGenerator
               a =>
                 // Must parse json
                 val injectJsonNode = objectMapper.readTree(a.json())
+                Option(a.jsonSupplier())
+                  .flatMap(cls => Option(cls.newInstance().call()))
+                  .foreach(json => merge(injectJsonNode, json))
                 a.strings().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
                 a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
                 a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
@@ -940,6 +943,9 @@ class JsonSchemaGenerator
                   a =>
                     // Must parse json
                     val injectJsonNode = objectMapper.readTree(a.json())
+                    Option(a.jsonSupplier())
+                      .flatMap(cls => Option(cls.newInstance().call()))
+                      .foreach(json => merge(injectJsonNode, json))
                     a.strings().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
                     a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
                     a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
