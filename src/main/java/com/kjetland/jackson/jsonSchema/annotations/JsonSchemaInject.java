@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import java.util.concurrent.Callable;
+import java.util.function.Supplier;
 
 import static java.lang.annotation.ElementType.*;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
@@ -21,28 +21,28 @@ public @interface JsonSchemaInject {
     String json() default "{}";
 
     /**
-     * @return a collection of key/value pairs to merge on top of the generated jsonSchema and applied after {@link #json()}
+     * @return a class for supplier of a raw json. The json gets applied after {@link #json()}.
+     */
+    Class<? extends Supplier<JsonNode>> jsonSupplier() default None.class;
+
+    /**
+     * @return a collection of key/value pairs to merge on top of the generated jsonSchema and applied after {@link #jsonSupplier()}
      */
     JsonSchemaString[] strings() default {};
 
     /**
-     * @return a collection of key/value pairs to merge on top of the generated jsonSchema and applied after {@link #json()}
+     * @return a collection of key/value pairs to merge on top of the generated jsonSchema and applied after {@link #jsonSupplier()
      */
     JsonSchemaInt[] ints() default {};
 
     /**
-     * @return a collection of key/value pairs to merge on top of the generated jsonSchema and applied after {@link #json()}
+     * @return a collection of key/value pairs to merge on top of the generated jsonSchema and applied after {@link #jsonSupplier()
      */
     JsonSchemaBool[] bools() default {};
 
-    /**
-     * @return a class that supplies a raw json
-     */
-    Class<? extends Callable<JsonNode>> jsonSupplier() default None.class;
-
-    class None implements Callable<JsonNode> {
+    class None implements Supplier<JsonNode> {
         @Override
-        public JsonNode call() throws Exception {
+        public JsonNode get() {
             return null;
         }
     }
