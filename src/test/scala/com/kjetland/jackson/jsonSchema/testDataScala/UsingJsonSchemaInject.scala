@@ -1,7 +1,10 @@
 package com.kjetland.jackson.jsonSchema.testDataScala
 
+import java.util.function.Supplier
 import javax.validation.constraints.Min
 
+import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
+import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
 import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaBool, JsonSchemaInject, JsonSchemaInt, JsonSchemaString}
 
 
@@ -36,8 +39,25 @@ case class UsingJsonSchemaInject
     ints = Array(new JsonSchemaInt(path = "multipleOf", value = 7))
   )
   @Min(5)
-  ib:Int
+  ib:Int,
+
+  @JsonSchemaInject(jsonSupplier = classOf[UserNamesLoader])
+  uns:Set[String]
 )
+
+class UserNamesLoader extends Supplier[JsonNode] {
+  val _objectMapper = new ObjectMapper()
+
+  override def get(): JsonNode = {
+    val schema = _objectMapper.createObjectNode()
+    val values = schema.putObject("items").putArray("enum")
+    values.add("foo")
+    values.add("bar")
+
+    schema
+  }
+}
+  
 
 
 

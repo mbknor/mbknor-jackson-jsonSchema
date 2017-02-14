@@ -111,6 +111,32 @@ public class MyPojo {
     ...
 }
 ```
+If a part of the schema is not known at compile time, you can use a json supplier:
+```Scala
+case class MyPojo {
+  @JsonSchemaInject(jsonSupplier = classOf[UserNamesLoader])
+  uns:Set[String]
+  ...
+  ...
+  ...
+}
+
+class UserNamesLoader extends Supplier[JsonNode] {
+  val _objectMapper = new ObjectMapper()
+
+  override def get(): JsonNode = {
+    val schema = _objectMapper.createObjectNode()
+    val values = schema.putObject("items").putArray("enum")
+    loadUsers().foreach(u => values.add(u.name))
+
+    schema
+  }
+  ...
+  ...
+  ...
+}
+```
+This will associate an enum of possible values for the set that you generate at runtime.
 
 @JsonSchemaInject can also be used on properties.
 

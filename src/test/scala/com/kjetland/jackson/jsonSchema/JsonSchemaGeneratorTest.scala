@@ -1039,6 +1039,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/ib/type").asText() == "integer")
       assert(schema.at("/properties/ib/multipleOf").asInt() == 7)
       assert(schema.at("/properties/ib/exclusiveMinimum").asBoolean())
+      assert(schema.at("/properties/uns/items/enum/0").asText() == "foo")
+      assert(schema.at("/properties/uns/items/enum/1").asText() == "bar")
     }
   }
 }
