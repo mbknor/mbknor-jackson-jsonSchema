@@ -17,6 +17,8 @@ import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
   val JSON_SCHEMA_DRAFT_4_URL = "http://json-schema.org/draft-04/schema#"
+
+  private[jsonSchema] val reflections = new Reflections()
 }
 
 object JsonSchemaConfig {
@@ -635,10 +637,10 @@ class JsonSchemaGenerator
 
             case JsonTypeInfo.Id.CLASS =>
               // Just find all subclasses
-              new Reflections().getSubTypesOf(_type.getRawClass).asScala.toList
+              JsonSchemaGenerator.reflections.getSubTypesOf(_type.getRawClass).asScala.toList
             case JsonTypeInfo.Id.MINIMAL_CLASS =>
               // Just find all subclasses
-              new Reflections().getSubTypesOf(_type.getRawClass).asScala.toList
+              JsonSchemaGenerator.reflections.getSubTypesOf(_type.getRawClass).asScala.toList
 
             case x => throw new Exception("We do not support @jsonTypeInfo.use = " + x)
           }
