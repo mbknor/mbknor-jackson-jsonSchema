@@ -53,8 +53,8 @@ lazy val commonSettings = Seq(
 )
 
 
-val jacksonVersion = "2.8.4"
-val jacksonModuleScalaVersion = "2.8.4"
+val jacksonVersion = "2.8.7"
+val jacksonModuleScalaVersion = "2.8.7"
 val slf4jVersion = "1.7.7"
 
 
