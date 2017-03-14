@@ -666,7 +666,6 @@ class JsonSchemaGenerator
       val _type:JavaType = config.classTypeReMapping.get(originalType.getRawClass).map {
         mappedToClass:Class[_] =>
           l(s"Class ${originalType.getRawClass} is remapped to $mappedToClass")
-          //val mappedToJavaType:JavaType = objectMapper.getTypeFactory.uncheckedSimpleType(mappedToClass)
           val mappedToJavaType:JavaType = objectMapper.getTypeFactory.constructType(mappedToClass)
           mappedToJavaType
       }.getOrElse(originalType)
@@ -1092,7 +1091,7 @@ class JsonSchemaGenerator
         jsonDeserialize:JsonDeserialize =>
           Option(jsonDeserialize.contentAs()).map {
             clazz =>
-              objectMapper.getTypeFactory.uncheckedSimpleType(clazz)
+              objectMapper.getTypeFactory.constructType(clazz)
           }
       }.getOrElse( {
         if (!config.disableWarnings) {
