@@ -42,7 +42,10 @@ case class UsingJsonSchemaInject
   ib:Int,
 
   @JsonSchemaInject(jsonSupplier = classOf[UserNamesLoader])
-  uns:Set[String]
+  uns:Set[String],
+
+  @JsonSchemaInject(jsonSupplierViaLookup = "myCustomUserNamesLoader")
+  uns2:Set[String]
 )
 
 class UserNamesLoader extends Supplier[JsonNode] {
@@ -53,6 +56,19 @@ class UserNamesLoader extends Supplier[JsonNode] {
     val values = schema.putObject("items").putArray("enum")
     values.add("foo")
     values.add("bar")
+
+    schema
+  }
+}
+
+class CustomUserNamesLoader(custom:String) extends Supplier[JsonNode] {
+  val _objectMapper = new ObjectMapper()
+
+  override def get(): JsonNode = {
+    val schema = _objectMapper.createObjectNode()
+    val values = schema.putObject("items").putArray("enum")
+    values.add("foo_"+custom)
+    values.add("bar_"+custom)
 
     schema
   }

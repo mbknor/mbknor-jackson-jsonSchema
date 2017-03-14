@@ -38,6 +38,7 @@ public class UseItFromJavaTest {
                 customMapping,
                 false,
                 new HashSet<>(),
+                new HashMap<>(),
                 new HashMap<>());
         JsonSchemaGenerator g2 = new JsonSchemaGenerator(objectMapper, config);
     }

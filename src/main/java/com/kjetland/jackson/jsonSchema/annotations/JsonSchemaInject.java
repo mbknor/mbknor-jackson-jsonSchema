@@ -26,6 +26,11 @@ public @interface JsonSchemaInject {
     Class<? extends Supplier<JsonNode>> jsonSupplier() default None.class;
 
     /**
+     * @return a key to lookup a jsonSupplier via lookupMap defined in JsonSchemaConfig
+     */
+    String jsonSupplierViaLookup() default "";
+
+    /**
      * @return a collection of key/value pairs to merge on top of the generated jsonSchema and applied after {@link #jsonSupplier()}
      */
     JsonSchemaString[] strings() default {};

@@ -2,6 +2,7 @@ package com.kjetland.jackson.jsonSchema
 
 import java.util
 import java.util.Optional
+import java.util.function.Supplier
 import javax.validation.constraints._
 
 import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, JsonTypeInfo}
@@ -36,7 +37,8 @@ object JsonSchemaConfig {
     customType2FormatMapping = Map(),
     useMultipleEditorSelectViaProperty = false,
     uniqueItemClasses = Set(),
-    classTypeReMapping = Map()
+    classTypeReMapping = Map(),
+    jsonSuppliers = Map()
   )
 
   /**
@@ -70,7 +72,8 @@ object JsonSchemaConfig {
       classOf[scala.collection.mutable.Set[_]],
       classOf[java.util.Set[_]]
     ),
-    classTypeReMapping = Map()
+    classTypeReMapping = Map(),
+    jsonSuppliers = Map()
   )
 
   /**
@@ -95,7 +98,8 @@ object JsonSchemaConfig {
     customType2FormatMapping = Map(),
     useMultipleEditorSelectViaProperty = false,
     uniqueItemClasses = Set(),
-    classTypeReMapping = Map()
+    classTypeReMapping = Map(),
+    jsonSuppliers = Map()
   )
 
   // Java-API
@@ -112,7 +116,8 @@ object JsonSchemaConfig {
               customType2FormatMapping:java.util.Map[String, String],
               useMultipleEditorSelectViaProperty:Boolean,
               uniqueItemClasses:java.util.Set[Class[_]],
-              classTypeReMapping:java.util.Map[Class[_], Class[_]]
+              classTypeReMapping:java.util.Map[Class[_], Class[_]],
+              jsonSuppliers:java.util.Map[String, Supplier[JsonNode]]
             ):JsonSchemaConfig = {
 
     import scala.collection.JavaConverters._
@@ -130,7 +135,8 @@ object JsonSchemaConfig {
       customType2FormatMapping.asScala.toMap,
       useMultipleEditorSelectViaProperty,
       uniqueItemClasses.asScala.toSet,
-      classTypeReMapping.asScala.toMap
+      classTypeReMapping.asScala.toMap,
+      jsonSuppliers.asScala.toMap
     )
   }
 
@@ -150,7 +156,8 @@ case class JsonSchemaConfig
   customType2FormatMapping:Map[String, String],
   useMultipleEditorSelectViaProperty:Boolean, // https://github.com/jdorn/json-editor/issues/709
   uniqueItemClasses:Set[Class[_]], // If rendering array and type is instanceOf class in this set, then we add 'uniqueItems": true' to schema - See // https://github.com/jdorn/json-editor for more info
-  classTypeReMapping:Map[Class[_], Class[_]] // Can be used to prevent rendering using polymorphism for specific classes.
+  classTypeReMapping:Map[Class[_], Class[_]], // Can be used to prevent rendering using polymorphism for specific classes.
+  jsonSuppliers:Map[String, Supplier[JsonNode]] // Suppliers in this map can be accessed using @JsonSchemaInject(jsonSupplierViaLookup = "lookupKey")
 )
 
 
@@ -673,6 +680,23 @@ class JsonSchemaGenerator
       _type
     }
 
+    private def injectFromJsonSchemaInject(a:JsonSchemaInject, thisObjectNode:ObjectNode): Unit ={
+      // Must parse json
+      val injectJsonNode = objectMapper.readTree(a.json())
+      Option(a.jsonSupplier())
+        .flatMap(cls => Option(cls.newInstance().get()))
+        .foreach(json => merge(injectJsonNode, json))
+      if (a.jsonSupplierViaLookup().nonEmpty) {
+        val json = config.jsonSuppliers.get(a.jsonSupplierViaLookup()).getOrElse(throw new Exception(s"@JsonSchemaInject(jsonSupplierLookup='${a.jsonSupplierViaLookup()}') does not exist in config.jsonSupplierLookup-map")).get()
+        merge(injectJsonNode, json)
+      }
+      a.strings().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
+      a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
+      a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
+
+      merge(thisObjectNode, injectJsonNode)
+    }
+
     override def expectObjectFormat(_type: JavaType) = {
 
       val subTypes: List[Class[_]] = extractSubTypes(_type)
@@ -756,16 +780,7 @@ class JsonSchemaGenerator
             // Optionally add JsonSchemaInject
             Option(ac.getAnnotations.get(classOf[JsonSchemaInject])).foreach {
               a =>
-                // Must parse json
-                val injectJsonNode = objectMapper.readTree(a.json())
-                Option(a.jsonSupplier())
-                  .flatMap(cls => Option(cls.newInstance().get()))
-                  .foreach(json => merge(injectJsonNode, json))
-                a.strings().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
-                a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
-                a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
-
-                merge(thisObjectNode, injectJsonNode)
+                injectFromJsonSchemaInject(a, thisObjectNode)
             }
 
 
@@ -967,16 +982,7 @@ class JsonSchemaGenerator
                     Option(p.getAnnotation(classOf[JsonSchemaInject]))
                 }.foreach {
                   a =>
-                    // Must parse json
-                    val injectJsonNode = objectMapper.readTree(a.json())
-                    Option(a.jsonSupplier())
-                      .flatMap(cls => Option(cls.newInstance().get()))
-                      .foreach(json => merge(injectJsonNode, json))
-                    a.strings().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
-                    a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
-                    a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
-
-                    merge(thisPropertyNode.meta, injectJsonNode)
+                    injectFromJsonSchemaInject(a, thisPropertyNode.meta)
                 }
               }
 

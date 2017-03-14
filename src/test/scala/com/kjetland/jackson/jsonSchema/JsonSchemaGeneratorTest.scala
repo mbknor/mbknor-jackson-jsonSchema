@@ -1030,10 +1030,16 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   test("UsingJsonSchemaInject") {
     {
-      val schema = jsonSchemaGeneratorScala.generateJsonSchema(classOf[UsingJsonSchemaInject])
+
+      val customUserNameLoaderVariable = "xx"
+      val customUserNamesLoader = new CustomUserNamesLoader(customUserNameLoaderVariable)
+
+      val config = JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(jsonSuppliers = Map("myCustomUserNamesLoader" -> customUserNamesLoader))
+      val _jsonSchemaGeneratorScala = new JsonSchemaGenerator(_objectMapperScala, debug = true, config)
+      val schema = _jsonSchemaGeneratorScala.generateJsonSchema(classOf[UsingJsonSchemaInject])
 
       println("--------------------------------------------")
-      println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+      println(asPrettyJson(schema, _jsonSchemaGeneratorScala.rootObjectMapper))
 
       assert(schema.at("/patternProperties/^s[a-zA-Z0-9]+/type").asText() == "string")
       assert(schema.at("/patternProperties/^i[a-zA-Z0-9]+/type").asText() == "integer")
@@ -1044,6 +1050,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/ib/exclusiveMinimum").asBoolean())
       assert(schema.at("/properties/uns/items/enum/0").asText() == "foo")
       assert(schema.at("/properties/uns/items/enum/1").asText() == "bar")
+      assert(schema.at("/properties/uns2/items/enum/0").asText() == "foo_" + customUserNameLoaderVariable)
+      assert(schema.at("/properties/uns2/items/enum/1").asText() == "bar_" + customUserNameLoaderVariable)
     }
   }
 

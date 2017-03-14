@@ -138,6 +138,23 @@ class UserNamesLoader extends Supplier[JsonNode] {
 ```
 This will associate an enum of possible values for the set that you generate at runtime.
 
+If you need even more control over the schema-generating runtime, you can use **@JsonSchemaInject.jsonSupplierViaLookup**
+like this:
+
+```Scala
+case class MyPojo {
+  @JsonSchemaInject(jsonSupplierViaLookup = "theKeyToUseWhenLookingUpASupplier")
+  uns:Set[String]
+  ...
+  ...
+  ...
+}
+```
+
+Then you have to add the mapping between the key 'theKeyToUseWhenLookingUpASupplier' and the Supplier-instance in the config-object
+used when creating the JsonSchemaGenerator.
+
+
 @JsonSchemaInject can also be used on properties.
 
 
