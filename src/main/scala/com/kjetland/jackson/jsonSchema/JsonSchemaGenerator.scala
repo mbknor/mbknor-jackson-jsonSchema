@@ -35,7 +35,8 @@ object JsonSchemaConfig {
     useTypeIdForDefinitionName = false,
     customType2FormatMapping = Map(),
     useMultipleEditorSelectViaProperty = false,
-    uniqueItemClasses = Set()
+    uniqueItemClasses = Set(),
+    classTypeReMapping = Map()
   )
 
   /**
@@ -68,7 +69,8 @@ object JsonSchemaConfig {
       classOf[scala.collection.immutable.Set[_]],
       classOf[scala.collection.mutable.Set[_]],
       classOf[java.util.Set[_]]
-    )
+    ),
+    classTypeReMapping = Map()
   )
 
   /**
@@ -92,7 +94,8 @@ object JsonSchemaConfig {
     useTypeIdForDefinitionName = false,
     customType2FormatMapping = Map(),
     useMultipleEditorSelectViaProperty = false,
-    uniqueItemClasses = Set()
+    uniqueItemClasses = Set(),
+    classTypeReMapping = Map()
   )
 
   // Java-API
@@ -108,7 +111,8 @@ object JsonSchemaConfig {
               useTypeIdForDefinitionName:Boolean,
               customType2FormatMapping:java.util.Map[String, String],
               useMultipleEditorSelectViaProperty:Boolean,
-              uniqueItemClasses:java.util.Set[Class[_]]
+              uniqueItemClasses:java.util.Set[Class[_]],
+              classTypeReMapping:java.util.Map[Class[_], Class[_]]
             ):JsonSchemaConfig = {
 
     import scala.collection.JavaConverters._
@@ -125,7 +129,8 @@ object JsonSchemaConfig {
       useTypeIdForDefinitionName,
       customType2FormatMapping.asScala.toMap,
       useMultipleEditorSelectViaProperty,
-      uniqueItemClasses.asScala.toSet
+      uniqueItemClasses.asScala.toSet,
+      classTypeReMapping.asScala.toMap
     )
   }
 
@@ -144,7 +149,8 @@ case class JsonSchemaConfig
   useTypeIdForDefinitionName:Boolean,
   customType2FormatMapping:Map[String, String],
   useMultipleEditorSelectViaProperty:Boolean, // https://github.com/jdorn/json-editor/issues/709
-  uniqueItemClasses:Set[Class[_]] // If rendering array and type is instanceOf class in this set, then we add 'uniqueItems": true' to schema - See // https://github.com/jdorn/json-editor for more info
+  uniqueItemClasses:Set[Class[_]], // If rendering array and type is instanceOf class in this set, then we add 'uniqueItems": true' to schema - See // https://github.com/jdorn/json-editor for more info
+  classTypeReMapping:Map[Class[_], Class[_]] // Can be used to prevent rendering using polymorphism for specific classes.
 )
 
 
@@ -410,7 +416,7 @@ class JsonSchemaGenerator
       new JsonArrayFormatVisitor with MySerializerProvider {
         override def itemsFormat(handler: JsonFormatVisitable, _elementType: JavaType): Unit = {
           l(s"expectArrayFormat - handler: $handler - elementType: ${_elementType} - preferredElementType: $preferredElementType")
-          objectMapper.acceptJsonFormatVisitor(preferredElementType, createChild(itemsNode, currentProperty = None))
+          objectMapper.acceptJsonFormatVisitor(tryToReMapType(preferredElementType), createChild(itemsNode, currentProperty = None))
         }
 
         override def itemsFormat(format: JsonFormatTypes): Unit = {
@@ -544,7 +550,7 @@ class JsonSchemaGenerator
       definitionsHandler.pushWorkInProgress()
 
       val childVisitor = createChild(additionalPropsObject, None)
-      objectMapper.acceptJsonFormatVisitor(_type.containedType(1), childVisitor)
+      objectMapper.acceptJsonFormatVisitor(tryToReMapType(_type.containedType(1)), childVisitor)
       definitionsHandler.popworkInProgress()
 
 
@@ -648,6 +654,26 @@ class JsonSchemaGenerator
       }.getOrElse(List())
     }
 
+    def tryToReMapType(originalClass: Class[_]):Class[_] = {
+      config.classTypeReMapping.get(originalClass).map {
+        mappedToClass:Class[_] =>
+          l(s"Class $originalClass is remapped to $mappedToClass")
+          mappedToClass
+      }.getOrElse(originalClass)
+    }
+
+    private def tryToReMapType(originalType: JavaType):JavaType = {
+      val _type:JavaType = config.classTypeReMapping.get(originalType.getRawClass).map {
+        mappedToClass:Class[_] =>
+          l(s"Class ${originalType.getRawClass} is remapped to $mappedToClass")
+          //val mappedToJavaType:JavaType = objectMapper.getTypeFactory.uncheckedSimpleType(mappedToClass)
+          val mappedToJavaType:JavaType = objectMapper.getTypeFactory.constructType(mappedToClass)
+          mappedToJavaType
+      }.getOrElse(originalType)
+
+      _type
+    }
+
     override def expectObjectFormat(_type: JavaType) = {
 
       val subTypes: List[Class[_]] = extractSubTypes(_type)
@@ -668,7 +694,7 @@ class JsonSchemaGenerator
               objectNode =>
 
                 val childVisitor = createChild(objectNode, currentProperty = None)
-                objectMapper.acceptJsonFormatVisitor(subType, childVisitor)
+                objectMapper.acceptJsonFormatVisitor(tryToReMapType(subType), childVisitor)
 
                 None
             }
@@ -877,10 +903,10 @@ class JsonSchemaGenerator
 
                   val optionType:JavaType = resolveType(propertyType, prop, objectMapper)
 
-                  objectMapper.acceptJsonFormatVisitor(optionType, childVisitor)
+                  objectMapper.acceptJsonFormatVisitor( tryToReMapType(optionType), childVisitor)
 
                 } else {
-                  objectMapper.acceptJsonFormatVisitor(propertyType, childVisitor)
+                  objectMapper.acceptJsonFormatVisitor( tryToReMapType(propertyType), childVisitor)
                 }
 
                 // Pop back the work we were working on..
@@ -1114,7 +1140,18 @@ class JsonSchemaGenerator
 
     val definitionsHandler = new DefinitionsHandler
     val rootVisitor = new MyJsonFormatVisitorWrapper(rootObjectMapper, node = rootNode, definitionsHandler = definitionsHandler, currentProperty = None)
-    rootObjectMapper.acceptJsonFormatVisitor(clazz, rootVisitor)
+
+    def tryToReMapType(originalClass: Class[_]):Class[_] = {
+      config.classTypeReMapping.get(originalClass).map {
+        mappedToClass:Class[_] =>
+          if (debug) {
+            println(s"Class $originalClass is remapped to $mappedToClass")
+          }
+          mappedToClass
+      }.getOrElse(originalClass)
+    }
+
+    rootObjectMapper.acceptJsonFormatVisitor(tryToReMapType(clazz), rootVisitor)
 
     definitionsHandler.getFinalDefinitionsNode().foreach {
       definitionsNode => rootNode.set("definitions", definitionsNode)

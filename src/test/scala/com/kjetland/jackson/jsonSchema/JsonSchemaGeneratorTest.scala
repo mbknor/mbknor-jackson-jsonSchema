@@ -154,9 +154,12 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     getArrayNodeAsListOfStrings(node.at(s"/required"))
   }
 
-  def getNodeViaArrayOfRefs(root:JsonNode, pathToArrayOfRefs:String, definitionName:String):JsonNode = {
-    val nodeWhereArrayOfRefsIs:ArrayNode = root.at(pathToArrayOfRefs).asInstanceOf[ArrayNode]
-    val arrayItemNodes = nodeWhereArrayOfRefsIs.iterator().asScala.toList
+  def getNodeViaRefs(root:JsonNode, pathToArrayOfRefs:String, definitionName:String):JsonNode = {
+    val arrayItemNodes:List[JsonNode] = root.at(pathToArrayOfRefs) match {
+      case arrayNode:ArrayNode   => arrayNode.iterator().asScala.toList
+      case objectNode:ObjectNode => List(objectNode)
+
+    }
     val ref = arrayItemNodes.map(_.get("$ref").asText()).find(_.endsWith(s"/$definitionName")).get
     // use ref to look the node up
     val fixedRef = ref.substring(1) // Removing starting #
@@ -312,7 +315,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assertNullableChild1(schema, "/properties/child/oneOf/1/oneOf", "com.kjetland.jackson.jsonSchema.testData.polymorphism1.Child1")
       assertNullableChild2(schema, "/properties/child/oneOf/1/oneOf", "com.kjetland.jackson.jsonSchema.testData.polymorphism1.Child2")
     }
-    
+
     // Scala
     {
       val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.pojoWithParentScala)
@@ -328,7 +331,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   }
 
   def assertChild1(node:JsonNode, path:String, defName:String = "Child1", typeParamName:String = "type", typeName:String = "child1", html5Checks:Boolean = false): Unit ={
-    val child1 = getNodeViaArrayOfRefs(node, path, defName)
+    val child1 = getNodeViaRefs(node, path, defName)
     assertJsonSubTypesInfo(child1, typeParamName, typeName, html5Checks)
     assert(child1.at("/properties/parentString/type").asText() == "string")
     assert(child1.at("/properties/child1String/type").asText() == "string")
@@ -338,7 +341,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   }
 
   def assertNullableChild1(node:JsonNode, path:String, defName:String = "Child1", html5Checks:Boolean = false): Unit ={
-    val child1 = getNodeViaArrayOfRefs(node, path, defName)
+    val child1 = getNodeViaRefs(node, path, defName)
     assertJsonSubTypesInfo(child1, "type", "child1", html5Checks)
     assertNullableType(child1, "/properties/parentString", "string")
     assertNullableType(child1, "/properties/child1String", "string")
@@ -348,14 +351,14 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   }
 
   def assertChild2(node:JsonNode, path:String, defName:String = "Child2", typeParamName:String = "type", typeName:String = "child2", html5Checks:Boolean = false): Unit ={
-    val child2 = getNodeViaArrayOfRefs(node, path, defName)
+    val child2 = getNodeViaRefs(node, path, defName)
     assertJsonSubTypesInfo(child2, typeParamName, typeName, html5Checks)
     assert(child2.at("/properties/parentString/type").asText() == "string")
     assert(child2.at("/properties/child2int/type").asText() == "integer")
   }
 
   def assertNullableChild2(node:JsonNode, path:String, defName:String = "Child2", html5Checks:Boolean = false): Unit = {
-    val child2 = getNodeViaArrayOfRefs(node, path, defName)
+    val child2 = getNodeViaRefs(node, path, defName)
     assertJsonSubTypesInfo(child2, "type", "child2", html5Checks)
     assertNullableType(child2, "/properties/parentString", "string")
     assertNullableType(child2, "/properties/child2int", "integer")
@@ -1042,6 +1045,123 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/uns/items/enum/0").asText() == "foo")
       assert(schema.at("/properties/uns/items/enum/1").asText() == "bar")
     }
+  }
+
+  test("Preventing polymorphism by using classTypeReMapping") {
+
+    val config = JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(classTypeReMapping = Map(classOf[Parent] -> classOf[Child1]))
+    val _jsonSchemaGenerator = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+
+    // Class with property
+    {
+      def assertDefaultValues(schema: JsonNode): Unit = {
+        assert(schema.at("/properties/stringWithDefault/type").asText() == "string")
+        assert(schema.at("/properties/stringWithDefault/default").asText() == "x")
+        assert(schema.at("/properties/intWithDefault/type").asText() == "integer")
+        assert(schema.at("/properties/intWithDefault/default").asInt() == 12)
+        assert(schema.at("/properties/booleanWithDefault/type").asText() == "boolean")
+        assert(schema.at("/properties/booleanWithDefault/default").asBoolean())
+      }
+
+      // PojoWithParent has a property of type Parent (which uses polymorphism).
+      // Default rendering schema will make this property oneOf Child1 and Child2.
+      // In this test we're preventing this by remapping Parent to Child1.
+      // Now, when generating the schema, we should generate it as if the property where of type Child1
+
+      val jsonNode = assertToFromJson(_jsonSchemaGenerator, testData.pojoWithParent)
+      assertToFromJson(_jsonSchemaGenerator, testData.pojoWithParent, classOf[PojoWithParent])
+
+      val schema = generateAndValidateSchema(_jsonSchemaGenerator, classOf[PojoWithParent], Some(jsonNode))
+
+      assert(!schema.at("/additionalProperties").asBoolean())
+      assert(schema.at("/properties/pojoValue/type").asText() == "boolean")
+      assertDefaultValues(schema)
+
+      assertChild1(schema, "/properties/child")
+    }
+
+    // remaping rootclass
+    {
+      def doTest(pojo:Object, clazz:Class[_], g:JsonSchemaGenerator): Unit = {
+        val jsonNode = assertToFromJson(g, pojo)
+        val schema = generateAndValidateSchema(g, clazz, Some(jsonNode))
+
+        assert(!schema.at("/additionalProperties").asBoolean())
+        assert(schema.at("/properties/parentString/type").asText() == "string")
+        assertJsonSubTypesInfo(schema, "type", "child1")
+      }
+
+      doTest(testData.child1, classOf[Parent], _jsonSchemaGenerator)
+
+    }
+
+    //remapping arrays
+    {
+      def doTest(pojo:Object, clazz:Class[_], g:JsonSchemaGenerator, html5Checks:Boolean): Unit ={
+
+        val jsonNode = assertToFromJson(g, pojo)
+        val schema = generateAndValidateSchema(g, clazz, Some(jsonNode))
+
+        assert(schema.at("/properties/intArray1/type").asText() == "array")
+        assert(schema.at("/properties/intArray1/items/type").asText() == "integer")
+
+        assert(schema.at("/properties/stringArray/type").asText() == "array")
+        assert(schema.at("/properties/stringArray/items/type").asText() == "string")
+
+        assert(schema.at("/properties/stringList/type").asText() == "array")
+        assert(schema.at("/properties/stringList/items/type").asText() == "string")
+        assert(schema.at("/properties/stringList/minItems").asInt() == 1)
+        assert(schema.at("/properties/stringList/maxItems").asInt() == 10)
+
+        assert(schema.at("/properties/polymorphismList/type").asText() == "array")
+        assertChild1(schema, "/properties/polymorphismList/items", html5Checks = html5Checks)
+
+
+        assert(schema.at("/properties/polymorphismArray/type").asText() == "array")
+        assertChild1(schema, "/properties/polymorphismArray/items", html5Checks = html5Checks)
+
+        assert(schema.at("/properties/listOfListOfStrings/type").asText() == "array")
+        assert(schema.at("/properties/listOfListOfStrings/items/type").asText() == "array")
+        assert(schema.at("/properties/listOfListOfStrings/items/items/type").asText() == "string")
+
+        assert(schema.at("/properties/setOfUniqueValues/type").asText() == "array")
+        assert(schema.at("/properties/setOfUniqueValues/items/type").asText() == "string")
+
+        if (html5Checks) {
+          assert(schema.at("/properties/setOfUniqueValues/uniqueItems").asText() == "true")
+          assert(schema.at("/properties/setOfUniqueValues/format").asText() == "checkbox")
+        }
+      }
+
+      val c = new Child1()
+      c.parentString = "pv"
+      c.child1String = "cs"
+      c.child1String2 = "cs2"
+      c.child1String3 = "cs3"
+
+      val _classNotExtendingAnything = {
+        val o = new ClassNotExtendingAnything
+        o.someString = "Something"
+        o.myEnum = MyEnum.C
+        o
+      }
+
+      val _pojoWithArrays = new PojoWithArrays(
+        Array(1,2,3),
+        Array("a1","a2","a3"),
+        List("l1", "l2", "l3").asJava,
+        List[Parent](c, c).asJava,
+        List[Parent](c, c).toArray,
+        List(_classNotExtendingAnything, _classNotExtendingAnything).asJava,
+        PojoWithArrays._listOfListOfStringsValues, // It was difficult to construct this from scala :)
+        Set(MyEnum.B).asJava
+      )
+
+      doTest(_pojoWithArrays, _pojoWithArrays.getClass, _jsonSchemaGenerator, html5Checks = false)
+
+    }
+
   }
 }
 

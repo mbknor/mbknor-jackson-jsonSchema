@@ -141,6 +141,15 @@ This will associate an enum of possible values for the set that you generate at 
 @JsonSchemaInject can also be used on properties.
 
 
+Another way of altering the generated schema is to use the config-param **classTypeReMapping**.
+
+This can be used to remap the Class found by Jackson into another Class before generating the schema for it.
+
+It might be the case that you have a complex Class-structure using Polymorphism, but for some reason
+you know upfront that the user needs to enter/specify a specific subType.
+To enforce this into the generated schema, you can map the SuperType into the specific-type. 
+
+
 Project status
 ---------------
 We're currently using this codebase in an ongoing (not yet released) project at work,
