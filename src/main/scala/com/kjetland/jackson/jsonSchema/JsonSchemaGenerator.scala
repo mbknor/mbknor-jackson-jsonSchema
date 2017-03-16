@@ -694,6 +694,12 @@ class JsonSchemaGenerator
       a.ints().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
       a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
 
+      if ( !a.merge()) {
+        // Since we're not merging, we must remove all content of thisObjectNode before injecting.
+        // We cannot just "replace" it with injectJsonNode, since thisObjectNode already have been added to its parent
+        thisObjectNode.removeAll()
+      }
+
       merge(thisObjectNode, injectJsonNode)
     }
 

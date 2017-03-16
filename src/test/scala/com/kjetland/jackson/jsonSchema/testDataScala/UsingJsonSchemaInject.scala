@@ -1,11 +1,13 @@
 package com.kjetland.jackson.jsonSchema.testDataScala
 
 import java.util.function.Supplier
-import javax.validation.constraints.Min
+import javax.validation.constraints.{Min, Pattern}
 
 import com.fasterxml.jackson.databind.{JsonNode, ObjectMapper}
 import com.fasterxml.jackson.databind.node.{ArrayNode, ObjectNode}
 import com.kjetland.jackson.jsonSchema.annotations.{JsonSchemaBool, JsonSchemaInject, JsonSchemaInt, JsonSchemaString}
+
+import scala.annotation.meta.field
 
 
 @JsonSchemaInject(
@@ -33,6 +35,19 @@ case class UsingJsonSchemaInject
           }
         """)
   sa:String,
+
+  @JsonSchemaInject(
+    json=
+      """
+          {
+             "type": "integer",
+             "default": 12
+          }
+        """,
+    merge = false
+  )
+  @Pattern(regexp = "xxx") // Should not end up in schema since we're replacing with injected
+  saMergeFalse:String,
 
   @JsonSchemaInject(
     bools = Array(new JsonSchemaBool(path = "exclusiveMinimum", value = true)),

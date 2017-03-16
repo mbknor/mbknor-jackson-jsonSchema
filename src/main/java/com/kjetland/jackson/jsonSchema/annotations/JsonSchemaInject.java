@@ -45,6 +45,13 @@ public @interface JsonSchemaInject {
      */
     JsonSchemaBool[] bools() default {};
 
+    /**
+     * If merge is true (the default), the injected json will be injected into the generated jsonSchema-node. If merge = false, then
+     * we skips the generated jsonSchema-node and use the entire injected one instead.
+     * @return whether we should merge or replaceWith the injected json
+     */
+    boolean merge() default true;
+
     class None implements Supplier<JsonNode> {
         @Override
         public JsonNode get() {

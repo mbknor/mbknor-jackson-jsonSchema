@@ -155,6 +155,11 @@ Then you have to add the mapping between the key 'theKeyToUseWhenLookingUpASuppl
 used when creating the JsonSchemaGenerator.
 
 
+The default behaviour of @JsonSchemaInject is to **merge** the injected json into the generated JsonSchema.
+If you want to have full control over it, you can specify @JsonSchemaInject.merge = false to **replace** the generated
+jsonSchema with the injected json.
+
+
 @JsonSchemaInject can also be used on properties.
 
 
