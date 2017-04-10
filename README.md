@@ -204,7 +204,7 @@ Using sbt
 
 Add this to you sbt build-config:
 
-    "com.kjetland" % "mbknor-jackson-jsonschema" %% "[---LATEST VERSION---]"
+    "com.kjetland" %% "mbknor-jackson-jsonschema" % "[---LATEST VERSION---]"
 
 
 Code - Using Scala
