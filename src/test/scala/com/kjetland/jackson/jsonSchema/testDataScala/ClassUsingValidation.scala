@@ -19,6 +19,12 @@ case class ClassUsingValidation
   @Pattern(regexp = "_stringUsingPatternA|_stringUsingPatternB")
   stringUsingPattern:String,
 
+  @Pattern.List(Array(
+    new Pattern(regexp = "^_stringUsing.*"),
+    new Pattern(regexp = ".*PatternList$")
+  ))
+  stringUsingPatternList:String,
+
   @Min(1)
   intMin:Int,
   @Max(10)

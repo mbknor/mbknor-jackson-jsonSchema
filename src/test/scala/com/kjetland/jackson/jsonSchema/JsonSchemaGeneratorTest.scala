@@ -925,6 +925,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(schema.at("/properties/stringUsingSizeOnlyMax/minLength").isMissingNode)
 
     assert(schema.at("/properties/stringUsingPattern/pattern").asText() == "_stringUsingPatternA|_stringUsingPatternB")
+    assert(schema.at("/properties/stringUsingPatternList/pattern").asText() == "^(?=^_stringUsing.*)(?=.*PatternList$).*$")
 
     assert(schema.at("/properties/intMin/minimum").asInt() == 1)
     assert(schema.at("/properties/intMax/maximum").asInt() == 10)
@@ -1308,7 +1309,7 @@ trait TestData {
   val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
 
   val classUsingValidation = ClassUsingValidation(
-    "_stringUsingNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", "_stringUsingPatternA",
+    "_stringUsingNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", "_stringUsingPatternA", "_stringUsingPatternList",
     1, 2, 1.0, 2.0
   )
 

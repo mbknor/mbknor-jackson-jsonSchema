@@ -343,6 +343,14 @@ class JsonSchemaGenerator
               node.put("pattern", pattern.regexp())
           }
 
+          // Look for @Pattern.List
+          Option(p.getAnnotation(classOf[Pattern.List])).map {
+            patterns => {
+              val regex = patterns.value().map(_.regexp).foldLeft("^")(_ + "(?=" + _ + ")").concat(".*$")
+              node.put("pattern", regex)
+            }
+          }
+
           // Look for @JsonSchemaDefault
           Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
             defaultValue =>
