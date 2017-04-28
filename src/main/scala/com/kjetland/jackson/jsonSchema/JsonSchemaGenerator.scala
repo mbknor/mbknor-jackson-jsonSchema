@@ -35,12 +35,7 @@ object UnsupportedSubclassFinder extends SubclassFinder {
 }
 
 object BestAvailableSubclassFinder extends SubclassFinder {
-  val delegate = try {
-    Class.forName("com.kjetland.jackson.jsonSchema.ReflectionsSubclassFinder").newInstance().asInstanceOf[SubclassFinder]
-  }
-  catch {
-    case _: Throwable => UnsupportedSubclassFinder
-  }
+  val delegate = try ReflectionsSubclassFinder catch { case _: NoClassDefFoundError => UnsupportedSubclassFinder }
   def findSubclasses(clazz: Class[_]): List[Class[_]] = delegate.findSubclasses(clazz)
 }
 
