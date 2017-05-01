@@ -18,8 +18,25 @@ import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
   val JSON_SCHEMA_DRAFT_4_URL = "http://json-schema.org/draft-04/schema#"
+}
 
-  private[jsonSchema] val reflections = new Reflections()
+trait SubclassFinder {
+  def findSubclasses(clazz: Class[_]): List[Class[_]]
+}
+
+object ReflectionsSubclassFinder extends SubclassFinder {
+  import scala.collection.JavaConverters._
+  val reflections = new Reflections()
+  def findSubclasses(clazz: Class[_]): List[Class[_]] = reflections.getSubTypesOf(clazz).asScala.toList
+}
+
+object UnsupportedSubclassFinder extends SubclassFinder {
+  def findSubclasses(clazz: Class[_]): List[Class[_]] = throw new Exception("Cannot find subclasses without Reflections library; supply the dependency to use CLASS/MINIMAL_CLASS polymorphism.")
+}
+
+object BestAvailableSubclassFinder extends SubclassFinder {
+  val delegate = try ReflectionsSubclassFinder catch { case _: NoClassDefFoundError => UnsupportedSubclassFinder }
+  def findSubclasses(clazz: Class[_]): List[Class[_]] = delegate.findSubclasses(clazz)
 }
 
 object JsonSchemaConfig {
@@ -310,6 +327,7 @@ class JsonSchemaGenerator
     level:Int = 0,
     val node: ObjectNode = JsonNodeFactory.instance.objectNode(),
     val definitionsHandler:DefinitionsHandler,
+    val subclassFinder: SubclassFinder,
     currentProperty:Option[BeanProperty] // This property may represent the BeanProperty when we're directly processing beneath the property
   ) extends JsonFormatVisitorWrapper with MySerializerProvider {
 
@@ -324,7 +342,7 @@ class JsonSchemaGenerator
     }
 
     def createChild(childNode: ObjectNode, currentProperty:Option[BeanProperty]): MyJsonFormatVisitorWrapper = {
-      new MyJsonFormatVisitorWrapper(objectMapper, level + 1, node = childNode, definitionsHandler = definitionsHandler, currentProperty = currentProperty)
+      new MyJsonFormatVisitorWrapper(objectMapper, level + 1, node = childNode, definitionsHandler = definitionsHandler, subclassFinder = subclassFinder, currentProperty = currentProperty)
     }
 
     override def expectStringFormat(_type: JavaType) = {
@@ -658,10 +676,10 @@ class JsonSchemaGenerator
 
             case JsonTypeInfo.Id.CLASS =>
               // Just find all subclasses
-              JsonSchemaGenerator.reflections.getSubTypesOf(_type.getRawClass).asScala.toList
+              subclassFinder.findSubclasses(_type.getRawClass)
             case JsonTypeInfo.Id.MINIMAL_CLASS =>
               // Just find all subclasses
-              JsonSchemaGenerator.reflections.getSubTypesOf(_type.getRawClass).asScala.toList
+              subclassFinder.findSubclasses(_type.getRawClass)
 
             case x => throw new Exception("We do not support @jsonTypeInfo.use = " + x)
           }
@@ -1158,7 +1176,7 @@ class JsonSchemaGenerator
 
 
     val definitionsHandler = new DefinitionsHandler
-    val rootVisitor = new MyJsonFormatVisitorWrapper(rootObjectMapper, node = rootNode, definitionsHandler = definitionsHandler, currentProperty = None)
+    val rootVisitor = new MyJsonFormatVisitorWrapper(rootObjectMapper, node = rootNode, definitionsHandler = definitionsHandler, subclassFinder = BestAvailableSubclassFinder, currentProperty = None)
 
     def tryToReMapType(originalClass: Class[_]):Class[_] = {
       config.classTypeReMapping.get(originalClass).map {
