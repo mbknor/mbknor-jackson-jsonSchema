@@ -13,13 +13,13 @@ import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import com.kjetland.jackson.jsonSchema.annotations._
-import org.reflections.Reflections
+import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
   val JSON_SCHEMA_DRAFT_4_URL = "http://json-schema.org/draft-04/schema#"
 
-  private[jsonSchema] val reflections = new Reflections()
+  private[jsonSchema] val reflections = new FastClasspathScanner().scan()
 }
 
 object JsonSchemaConfig {
@@ -658,10 +658,10 @@ class JsonSchemaGenerator
 
             case JsonTypeInfo.Id.CLASS =>
               // Just find all subclasses
-              JsonSchemaGenerator.reflections.getSubTypesOf(_type.getRawClass).asScala.toList
+              JsonSchemaGenerator.reflections.getNamesOfSubclassesOf(_type.getRawClass).asScala.toList.map(getClass.getClassLoader.loadClass(_))
             case JsonTypeInfo.Id.MINIMAL_CLASS =>
               // Just find all subclasses
-              JsonSchemaGenerator.reflections.getSubTypesOf(_type.getRawClass).asScala.toList
+              JsonSchemaGenerator.reflections.getNamesOfSubclassesOf(_type.getRawClass).asScala.toList.map(getClass.getClassLoader.loadClass(_))
 
             case x => throw new Exception("We do not support @jsonTypeInfo.use = " + x)
           }
