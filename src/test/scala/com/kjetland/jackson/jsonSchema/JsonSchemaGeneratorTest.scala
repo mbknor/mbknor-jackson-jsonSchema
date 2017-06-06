@@ -473,6 +473,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assert(schema.at("/properties/myEnum/type").asText() == "string")
       assert(getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == MyEnum.values().toList.map(_.toString))
+      assert(schema.at("/properties/myEnum/JsonSchemaInjectOnEnum").asText() == "true")
     }
 
     // Java with nullable types

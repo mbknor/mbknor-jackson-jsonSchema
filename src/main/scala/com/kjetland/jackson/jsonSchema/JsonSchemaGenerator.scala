@@ -993,7 +993,12 @@ class JsonSchemaGenerator
                 // Optionally add JsonSchemaInject
                 prop.flatMap {
                   p:BeanProperty =>
-                    Option(p.getAnnotation(classOf[JsonSchemaInject]))
+                    Option(p.getAnnotation(classOf[JsonSchemaInject])) match {
+                      case Some(a) => Some(a)
+                      case None =>
+                        // Try to look at the class itself -- Looks like this is the only way to find it if the type is Enum
+                        Option(p.getType.getRawClass.getAnnotation(classOf[JsonSchemaInject]))
+                    }
                 }.foreach {
                   a =>
                     injectFromJsonSchemaInject(a, thisPropertyNode.meta)
