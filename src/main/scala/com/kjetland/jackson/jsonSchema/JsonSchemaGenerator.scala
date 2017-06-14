@@ -1132,8 +1132,35 @@ class JsonSchemaGenerator
   }
 
   def generateJsonSchema[T <: Any](clazz: Class[T]): JsonNode = generateJsonSchema(clazz, None, None)
+  def generateJsonSchema[T <: Any](javaType: JavaType): JsonNode = generateJsonSchema(javaType, None, None)
+
+  // Java-API
   def generateJsonSchema[T <: Any](clazz: Class[T], title:String, description:String): JsonNode = generateJsonSchema(clazz, Option(title), Option(description))
+  // Java-API
+  def generateJsonSchema[T <: Any](javaType: JavaType, title:String, description:String): JsonNode = generateJsonSchema(javaType, Option(title), Option(description))
+
   def generateJsonSchema[T <: Any](clazz: Class[T], title:Option[String], description:Option[String]): JsonNode = {
+
+
+    def tryToReMapType(originalClass: Class[_]):Class[_] = {
+      config.classTypeReMapping.get(originalClass).map {
+        mappedToClass:Class[_] =>
+          if (debug) {
+            println(s"Class $originalClass is remapped to $mappedToClass")
+          }
+          mappedToClass
+      }.getOrElse(originalClass)
+    }
+
+    val clazzToUse = tryToReMapType(clazz)
+
+    val javaType = rootObjectMapper.constructType(clazzToUse)
+
+    generateJsonSchema(javaType, title, description)
+
+  }
+
+  def generateJsonSchema[T <: Any](javaType: JavaType, title:Option[String], description:Option[String]): JsonNode = {
 
     val rootNode = JsonNodeFactory.instance.objectNode()
 
@@ -1143,7 +1170,7 @@ class JsonSchemaGenerator
 
     // Add schema title
     title.orElse {
-      Some(generateTitleFromPropertyName(clazz.getSimpleName))
+      Some(generateTitleFromPropertyName(javaType.getRawClass.getSimpleName))
     }.flatMap {
       title =>
         // Skip it if specified to empty string
@@ -1165,23 +1192,15 @@ class JsonSchemaGenerator
     val definitionsHandler = new DefinitionsHandler
     val rootVisitor = new MyJsonFormatVisitorWrapper(rootObjectMapper, node = rootNode, definitionsHandler = definitionsHandler, currentProperty = None)
 
-    def tryToReMapType(originalClass: Class[_]):Class[_] = {
-      config.classTypeReMapping.get(originalClass).map {
-        mappedToClass:Class[_] =>
-          if (debug) {
-            println(s"Class $originalClass is remapped to $mappedToClass")
-          }
-          mappedToClass
-      }.getOrElse(originalClass)
-    }
 
-    rootObjectMapper.acceptJsonFormatVisitor(tryToReMapType(clazz), rootVisitor)
+    rootObjectMapper.acceptJsonFormatVisitor(javaType, rootVisitor)
 
     definitionsHandler.getFinalDefinitionsNode().foreach {
       definitionsNode => rootNode.set("definitions", definitionsNode)
     }
 
     rootNode
+
   }
 
   implicit class JsonNodeExtension(o:JsonNode) {

@@ -22,6 +22,9 @@ public class UseItFromJavaTest {
         g1.generateJsonSchema(MyJavaPojo.class);
         g1.generateJsonSchema(MyJavaPojo.class, "My title", "My description");
 
+        g1.generateJsonSchema(objectMapper.constructType(MyJavaPojo.class));
+        g1.generateJsonSchema(objectMapper.constructType(MyJavaPojo.class), "My title", "My description");
+
         // Create custom JsonSchemaConfig from java
         Map<String,String> customMapping = new HashMap<>();
         customMapping.put(OffsetDateTime.class.getName(), "date-time");
