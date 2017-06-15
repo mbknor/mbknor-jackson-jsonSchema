@@ -260,7 +260,7 @@ Example:
                                    )
 ```
 
-PS: Scala Option combined with Polymorphism does not work in jackson-scala-module and therefor not this project either.
+PS: Scala Option combined with Polymorphism does not work in jackson-scala-module and therefore not this project either.
 
 Code - Using Java
 -------------------------
@@ -307,6 +307,43 @@ public String foo;
 // Using the Jackson @JsonProperty annotation, specifying the attribute as required.
 @JsonProperty(required = true)
 public String bar;
+```
+**Using JSON Views**
+
+Using JSON Views is most helpful for an API for various clients that will receive different output fields out of the same class, by calling different service endpoints.
+While support for these is not built in jsonSchema, it is handy to know how to use them with it since it is not an obvious process unless you are very familiar with the Jackson API. 
+
+Hence, let's suppose that you want to filter YourPojo using properties marked with the view Views.MyView.
+
+Here is how to do it in Scala: 
+
+```scala
+    val objectMapper = new ObjectMapper
+
+    objectMapper.disable(MapperFeature.DEFAULT_VIEW_INCLUSION);
+    objectMapper.setConfig(objectMapper.getSerializationConfig().withView(Views.MyView.class));
+
+    val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper)
+    val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
+
+    val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
+```
+
+And here is the equivalent for Java: 
+
+```java
+    ObjectMapper objectMapper = new ObjectMapper();
+		
+    // Disabling default View so only the properties that matter are output
+    objectMapper.disable(MapperFeature.DEFAULT_VIEW_INCLUSION);
+	    
+    // And the trick: grab the serializationConfig and define the desired view
+    objectMapper.setConfig(objectMapper.getSerializationConfig().withView(Views.MyView.class));
+	    
+    // Then, proceed as usual. Only fields and classes annotated with MyView will appear in the schema
+    JsonSchemaGenerator generator = new JsonSchemaGenerator(objectMapper);
+    JsonNode jsonSchema = generator.generateJsonSchema(SearchResult.class);
+    String jsonSchemaAsString = objectMapper.writeValueAsString(jsonSchema);
 ```
 
 Backstory
