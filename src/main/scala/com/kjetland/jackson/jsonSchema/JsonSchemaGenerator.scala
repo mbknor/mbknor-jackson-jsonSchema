@@ -523,6 +523,7 @@ class JsonSchemaGenerator
 
     override def expectNullFormat(_type: JavaType) = {
       l(s"expectNullFormat - _type: ${_type}")
+      node.put("type", "null")
       new JsonNullFormatVisitor {}
     }
 
@@ -565,7 +566,7 @@ class JsonSchemaGenerator
       definitionsHandler.pushWorkInProgress()
 
       val childVisitor = createChild(additionalPropsObject, None)
-      objectMapper.acceptJsonFormatVisitor(tryToReMapType(_type.containedType(1)), childVisitor)
+      objectMapper.acceptJsonFormatVisitor(tryToReMapType(_type.getContentType), childVisitor)
       definitionsHandler.popworkInProgress()
 
 
