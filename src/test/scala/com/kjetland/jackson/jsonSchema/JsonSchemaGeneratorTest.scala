@@ -2,7 +2,7 @@ package com.kjetland.jackson.jsonSchema
 
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
-import java.util.{Optional, TimeZone}
+import java.util.{Collections, Optional, TimeZone}
 
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.node.{ArrayNode, MissingNode, ObjectNode}
@@ -12,6 +12,8 @@ import com.fasterxml.jackson.datatype.joda.JodaModule
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
+import com.kjetland.jackson.jsonSchema.testData.GenericClass.GenericClassVoid
+import com.kjetland.jackson.jsonSchema.testData.MapLike.GenericMapLike
 import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
@@ -225,6 +227,21 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/myEnum/type").asText() == "string")
       assert(getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == enumList)
       assert(getArrayNodeAsListOfStrings(schema.at("/properties/myEnumO/enum")) == enumList)
+    }
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.genericClassVoid)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, testData.genericClassVoid.getClass, Some(jsonNode))
+      assert(schema.at("/type").asText() == "object")
+      assert(!schema.at("/additionalProperties").asBoolean())
+      assert(schema.at("/properties/content/type").asText() == "null")
+      assert(schema.at("/properties/list/type").asText() == "array")
+      assert(schema.at("/properties/list/items/type").asText() == "null")
+    }
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.genericMapLike)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, testData.genericMapLike.getClass, Some(jsonNode))
+      assert(schema.at("/type").asText() == "object")
+      assert(schema.at("/additionalProperties/type").asText() == "string")
     }
   }
 
@@ -1369,4 +1386,9 @@ trait TestData {
   val notNullableButNullBoolean = new PojoWithNotNull(null)
 
   val nestedPolymorphism = NestedPolymorphism1_1("a1", NestedPolymorphism2_2("a2", Some(NestedPolymorphism3("b3"))))
+
+  val genericClassVoid = new GenericClassVoid()
+
+  val genericMapLike = new GenericMapLike(Collections.singletonMap("foo", "bar"))
+
 }
