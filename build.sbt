@@ -60,7 +60,7 @@ val slf4jVersion = "1.7.7"
 
 lazy val deps  = Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
-  "javax.validation" % "validation-api" % "1.1.0.Final",
+  "javax.validation" % "validation-api" % "2.0.1.Final",
   "org.slf4j" % "slf4j-api" % slf4jVersion,
   "io.github.lukehutch" % "fast-classpath-scanner" % "2.0.20",
   "org.scalatest" %% "scalatest" % "3.0.0" % "test",

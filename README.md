@@ -272,7 +272,7 @@ Code - Using Java
     // If using JsonSchema to generate HTML5 GUI:
     // JsonSchemaGenerator html5 = new JsonSchemaGenerator(objectMapper, JsonSchemaConfig.html5EnabledSchema() );
 
-    // If you want to confioure it manually:
+    // If you want to configure it manually:
     // JsonSchemaConfig config = JsonSchemaConfig.create(...);
     // JsonSchemaGenerator generator = new JsonSchemaGenerator(objectMapper, config);
 
@@ -320,8 +320,8 @@ Here is how to do it in Scala:
 ```scala
     val objectMapper = new ObjectMapper
 
-    objectMapper.disable(MapperFeature.DEFAULT_VIEW_INCLUSION);
-    objectMapper.setConfig(objectMapper.getSerializationConfig().withView(Views.MyView.class));
+    objectMapper.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
+    objectMapper.setConfig(objectMapper.getSerializationConfig().withView(Views.MyView.class))
 
     val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper)
     val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
