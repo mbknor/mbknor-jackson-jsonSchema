@@ -226,7 +226,7 @@ class JsonSchemaGenerator
 
   case class DefinitionInfo(ref:Option[String], jsonObjectFormatVisitor: Option[JsonObjectFormatVisitor])
 
-  // Class that manages creating new defenitions or getting $refs to existing definitions
+  // Class that manages creating new definitions or getting $refs to existing definitions
   class DefinitionsHandler() {
     private var class2Ref = Map[Class[_], String]()
     private val definitionsNode = JsonNodeFactory.instance.objectNode()
@@ -446,7 +446,7 @@ class JsonSchemaGenerator
 
       node.put("type", "number")
 
-      // Look for @Min, @Max => minumum, maximum
+      // Look for @Min, @Max => minimum, maximum
       currentProperty.map {
         p =>
           Option(p.getAnnotation(classOf[Min])).map {
@@ -491,7 +491,7 @@ class JsonSchemaGenerator
 
       node.put("type", "integer")
 
-      // Look for @Min, @Max => minumum, maximum
+      // Look for @Min, @Max => minimum, maximum
       currentProperty.map {
         p =>
           Option(p.getAnnotation(classOf[Min])).map {
@@ -601,7 +601,7 @@ class JsonSchemaGenerator
 
     private def extractPolymorphismInfo(_type:JavaType):Option[PolymorphismInfo] = {
       // look for @JsonTypeInfo
-      val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
+      val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
       Option(ac.getAnnotations.get(classOf[JsonTypeInfo])).map {
         jsonTypeInfo =>
 
@@ -634,7 +634,7 @@ class JsonSchemaGenerator
 
     private def extractSubTypes(_type: JavaType):List[Class[_]] = {
 
-      val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
+      val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
 
       Option(ac.getAnnotation(classOf[JsonTypeInfo])).map {
         jsonTypeInfo: JsonTypeInfo =>
@@ -762,7 +762,7 @@ class JsonSchemaGenerator
             thisObjectNode.put("additionalProperties", false)
 
             // If class is annotated with JsonSchemaFormat, we should add it
-            val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
+            val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
             resolvePropertyFormat(_type, objectMapper).foreach {
               format =>
                 setFormat(thisObjectNode, format)
@@ -1051,19 +1051,21 @@ class JsonSchemaGenerator
 
   private def merge(mainNode:JsonNode, updateNode:JsonNode):Unit = {
     val fieldNames = updateNode.fieldNames()
-    while (fieldNames.hasNext()) {
+    while (fieldNames.hasNext) {
 
       val fieldName = fieldNames.next()
       val jsonNode = mainNode.get(fieldName)
       // if field exists and is an embedded object
-      if (jsonNode != null && jsonNode.isObject()) {
+      if (jsonNode != null && jsonNode.isObject) {
         merge(jsonNode, updateNode.get(fieldName))
       }
       else {
-        if (mainNode.isInstanceOf[ObjectNode]) {
-          // Overwrite field
-          val value = updateNode.get(fieldName)
-          mainNode.asInstanceOf[ObjectNode].set(fieldName, value)
+        mainNode match {
+          case node: ObjectNode =>
+            // Overwrite field
+            val value = updateNode.get(fieldName)
+            node.set(fieldName, value)
+          case _ =>
         }
       }
 
@@ -1086,7 +1088,7 @@ class JsonSchemaGenerator
   }
 
   def resolvePropertyFormat(_type: JavaType, objectMapper:ObjectMapper):Option[String] = {
-    val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig())
+    val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
     resolvePropertyFormat(Option(ac.getAnnotation(classOf[JsonSchemaFormat])), _type.getRawClass.getName)
   }
 
