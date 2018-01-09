@@ -48,7 +48,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       om.registerModule(mixinModule)
 
       om.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
-      om.setTimeZone(TimeZone.getDefault())
+      om.setTimeZone(TimeZone.getDefault)
   }
 
 
@@ -148,7 +148,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(node.at(s"/properties/$typeParamName/enum/0").asText() == typeName)
     assert(node.at(s"/properties/$typeParamName/default").asText() == typeName)
     assert(node.at(s"/title").asText() == typeName)
-    assert(getRequiredList(node).contains(typeParamName))
+    assertPropertyRequired(node, typeParamName, required = true)
 
     if (html5Checks) {
       assert(node.at(s"/properties/$typeParamName/options/hidden").asBoolean())
@@ -162,13 +162,21 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   def getArrayNodeAsListOfStrings(node:JsonNode):List[String] = {
     node match {
-      case x:MissingNode => List()
+      case _:MissingNode => List()
       case x:ArrayNode   => x.asScala.toList.map(_.asText())
     }
   }
 
   def getRequiredList(node:JsonNode):List[String] = {
     getArrayNodeAsListOfStrings(node.at(s"/required"))
+  }
+
+  def assertPropertyRequired(schema:JsonNode, propertyName:String, required:Boolean): Unit = {
+    if (required) {
+      assert(getRequiredList(schema).contains(propertyName))
+    } else {
+      assert(!getRequiredList(schema).contains(propertyName))
+    }
   }
 
   def getNodeViaRefs(root:JsonNode, pathToArrayOfRefs:String, definitionName:String):JsonNode = {
@@ -369,7 +377,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(child1.at("/properties/child1String/type").asText() == "string")
     assert(child1.at("/properties/_child1String2/type").asText() == "string")
     assert(child1.at("/properties/_child1String3/type").asText() == "string")
-    assert(getRequiredList(child1).contains("_child1String3"))
+    assertPropertyRequired(child1, "_child1String3", required = true)
   }
 
   def assertNullableChild1(node:JsonNode, path:String, defName:String = "Child1", html5Checks:Boolean = false): Unit ={
@@ -379,7 +387,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertNullableType(child1, "/properties/child1String", "string")
     assertNullableType(child1, "/properties/_child1String2", "string")
     assert(child1.at("/properties/_child1String3/type").asText() == "string")
-    assert(getRequiredList(child1).contains("_child1String3"))
+    assertPropertyRequired(child1, "_child1String3", required = true)
   }
 
   def assertChild2(node:JsonNode, path:String, defName:String = "Child2", typeParamName:String = "type", typeName:String = "child2", html5Checks:Boolean = false): Unit ={
@@ -458,7 +466,6 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
   }
 
-  
   test("Generate schema for super class annotated with @JsonTypeInfo - include = JsonTypeInfo.As.EXISTING_PROPERTY") {
 
     // Java
@@ -483,25 +490,25 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/_string/type").asText() == "string")
 
       assert(schema.at("/properties/_integer/type").asText() == "integer")
-      assert(!getRequiredList(schema).contains("_integer")) // Should allow null by default
+      assertPropertyRequired(schema, "_integer", required = false) // Should allow null by default
 
       assert(schema.at("/properties/_int/type").asText() == "integer")
-      assert(getRequiredList(schema).contains("_int")) // Must have a value
+      assertPropertyRequired(schema, "_int", required = true) // Must have a value
 
       assert(schema.at("/properties/_booleanObject/type").asText() == "boolean")
-      assert(!getRequiredList(schema).contains("_booleanObject")) // Should allow null by default
+      assertPropertyRequired(schema, "_booleanObject", required = false) // Should allow null by default
 
       assert(schema.at("/properties/_booleanPrimitive/type").asText() == "boolean")
-      assert(getRequiredList(schema).contains("_booleanPrimitive")) // Must be required since it must have true or false - not null
+      assertPropertyRequired(schema, "_booleanPrimitive", required = true) // Must be required since it must have true or false - not null
 
       assert(schema.at("/properties/_booleanObjectWithNotNull/type").asText() == "boolean")
-      assert(getRequiredList(schema).contains("_booleanObjectWithNotNull"))
+      assertPropertyRequired(schema, "_booleanObjectWithNotNull", required = true)
 
       assert(schema.at("/properties/_doubleObject/type").asText() == "number")
-      assert(!getRequiredList(schema).contains("_doubleObject")) // Should allow null by default
+      assertPropertyRequired(schema, "_doubleObject", required = false)// Should allow null by default
 
       assert(schema.at("/properties/_doublePrimitive/type").asText() == "number")
-      assert(getRequiredList(schema).contains("_doublePrimitive")) // Must be required since it must have a value - not null
+      assertPropertyRequired(schema, "_doublePrimitive", required = true) // Must be required since it must have a value - not null
 
       assert(schema.at("/properties/myEnum/type").asText() == "string")
       assert(getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")) == MyEnum.values().toList.map(_.toString))
@@ -519,18 +526,18 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assertNullableType(schema, "/properties/_doubleObject", "number")
 
       // We're actually going to test this elsewhere, because if we set this to null here it'll break the "generateAndValidateSchema"
-      // test. What's fun is that the type system will allow you to set the value as null, but the schema won't (because there's a @NotNull) annotation on it.
+      // test. What's fun is that the type system will allow you to set the value as null, but the schema won't (because there's a @NotNull annotation on it).
       assert(schema.at("/properties/_booleanObjectWithNotNull/type").asText() == "boolean")
-      assert(getRequiredList(schema).contains("_booleanObjectWithNotNull"))
+      assertPropertyRequired(schema, "_booleanObjectWithNotNull", required = true)
 
       assert(schema.at("/properties/_int/type").asText() == "integer")
-      assert(getRequiredList(schema).contains("_int"))
+      assertPropertyRequired(schema, "_int", required = true)
 
       assert(schema.at("/properties/_booleanPrimitive/type").asText() == "boolean")
-      assert(getRequiredList(schema).contains("_booleanPrimitive"))
+      assertPropertyRequired(schema, "_booleanPrimitive", required = true)
 
       assert(schema.at("/properties/_doublePrimitive/type").asText() == "number")
-      assert(getRequiredList(schema).contains("_doublePrimitive"))
+      assertPropertyRequired(schema, "_doublePrimitive", required = true)
 
       assertNullableType(schema, "/properties/myEnum", "string")
       assert(getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/oneOf/1/enum")) == MyEnum.values().toList.map(_.toString))
@@ -544,13 +551,13 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/_string/type").asText() == "string")
 
       assert(schema.at("/properties/_integer/type").asText() == "integer")
-      assert(getRequiredList(schema).contains("_integer")) // Should allow null by default
+      assertPropertyRequired(schema, "_integer", required = true) // Should allow null by default
 
       assert(schema.at("/properties/_boolean/type").asText() == "boolean")
-      assert(getRequiredList(schema).contains("_boolean")) // Should allow null by default
+      assertPropertyRequired(schema, "_boolean", required = true) // Should allow null by default
 
       assert(schema.at("/properties/_double/type").asText() == "number")
-      assert(getRequiredList(schema).contains("_double")) // Should allow null by default
+      assertPropertyRequired(schema, "_double", required = true) // Should allow null by default
     }
   }
 
@@ -559,16 +566,16 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, testData.pojoUsingOptionScala.getClass, Some(jsonNode))
 
     assert(schema.at("/properties/_string/type").asText() == "string")
-    assert(!getRequiredList(schema).contains("_string")) // Should allow null by default
+    assertPropertyRequired(schema, "_string", required = false) // Should allow null by default
 
     assert(schema.at("/properties/_integer/type").asText() == "integer")
-    assert(!getRequiredList(schema).contains("_integer")) // Should allow null by default
+    assertPropertyRequired(schema, "_integer", required = false) // Should allow null by default
 
     assert(schema.at("/properties/_boolean/type").asText() == "boolean")
-    assert(!getRequiredList(schema).contains("_boolean")) // Should allow null by default
+    assertPropertyRequired(schema, "_boolean", required = false) // Should allow null by default
 
     assert(schema.at("/properties/_double/type").asText() == "number")
-    assert(!getRequiredList(schema).contains("_double")) // Should allow null by default
+    assertPropertyRequired(schema, "_double", required = false) // Should allow null by default
 
     val child1 = getNodeViaRefs(schema, schema.at("/properties/child1"), "Child1Scala")
 
@@ -587,10 +594,10 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.pojoUsingOptionalJava.getClass, Some(jsonNode))
 
     assert(schema.at("/properties/_string/type").asText() == "string")
-    assert(!getRequiredList(schema).contains("_string")) // Should allow null by default
+    assertPropertyRequired(schema, "_string", required = false) // Should allow null by default
 
     assert(schema.at("/properties/_integer/type").asText() == "integer")
-    assert(!getRequiredList(schema).contains("_integer")) // Should allow null by default
+    assertPropertyRequired(schema, "_integer", required = false) // Should allow null by default
 
     val child1 = getNodeViaRefs(schema, schema.at("/properties/child1"), "Child1")
 
@@ -915,7 +922,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     // This is required as we have a @JsonProperty marking it as so.
     assert(child1.at("/properties/_child1String3/type").asText() == "string")
-    assert(getRequiredList(child1).contains("_child1String3"))
+    assertPropertyRequired(child1, "_child1String3", required = true)
 
     assertNullableType(schema, "/properties/optionalList", "array")
     assert(schema.at("/properties/optionalList/oneOf/1/items/$ref").asText() == "#/definitions/ClassNotExtendingAnything")
@@ -957,7 +964,6 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   }
 
   test("dates") {
-
     val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.manyDates)
     val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.manyDates.getClass, Some(jsonNode))
 
@@ -969,33 +975,75 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   }
 
   test("validation") {
-    val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.classUsingValidation)
-    val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.classUsingValidation.getClass, Some(jsonNode))
+    // Scala
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.classUsingValidation)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.classUsingValidation.getClass, Some(jsonNode))
 
-    assert(schema.at("/properties/stringUsingNotNull/minLength").asInt() == 1)
-    assert(schema.at("/properties/stringUsingNotNull/maxLength").isMissingNode)
+      verifyStringProperty(schema, "stringUsingNotNull", Some(1), None, None, required = true)
+      verifyStringProperty(schema, "stringUsingNotBlank", Some(1), None, Some("^.*\\S+.*$"), required = true)
+      verifyStringProperty(schema, "stringUsingNotBlankAndNotNull", Some(1), None, Some("^.*\\S+.*$"), required = true)
+      verifyStringProperty(schema, "stringUsingSize", Some(1), Some(20), None, required = false)
+      verifyStringProperty(schema, "stringUsingSizeOnlyMin", Some(1), None, None, required = false)
+      verifyStringProperty(schema, "stringUsingSizeOnlyMax", None, Some(30), None, required = false)
+      verifyStringProperty(schema, "stringUsingPattern", None, None, Some("_stringUsingPatternA|_stringUsingPatternB"), required = false)
+      verifyStringProperty(schema, "stringUsingPatternList", None, None, Some("^(?=^_stringUsing.*)(?=.*PatternList$).*$"), required = false)
 
-    assert(schema.at("/properties/stringUsingSize/minLength").asInt() == 1)
-    assert(schema.at("/properties/stringUsingSize/maxLength").asInt() == 20)
+      verifyNumericProperty(schema, "intMin", Some(1), None, required = true)
+      verifyNumericProperty(schema, "intMax", None, Some(10), required = true)
+      verifyNumericProperty(schema, "doubleMin", Some(1), None, required = true)
+      verifyNumericProperty(schema, "doubleMax", None, Some(10), required = true)
+    }
 
-    assert(schema.at("/properties/stringUsingSizeOnlyMin/minLength").asInt() == 1)
-    assert(schema.at("/properties/stringUsingSizeOnlyMin/maxLength").isMissingNode)
+    // Java
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.pojoUsingValidation)
+      val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.pojoUsingValidation.getClass, Some(jsonNode))
 
-    assert(schema.at("/properties/stringUsingSizeOnlyMax/maxLength").asInt() == 30)
-    assert(schema.at("/properties/stringUsingSizeOnlyMax/minLength").isMissingNode)
+      verifyStringProperty(schema, "stringUsingNotNull", Some(1), None, None, required = true)
+      verifyStringProperty(schema, "stringUsingNotBlank", Some(1), None, Some("^.*\\S+.*$"), required = true)
+      verifyStringProperty(schema, "stringUsingNotBlankAndNotNull", Some(1), None, Some("^.*\\S+.*$"), required = true)
+      verifyStringProperty(schema, "stringUsingSize", Some(1), Some(20), None, required = false)
+      verifyStringProperty(schema, "stringUsingSizeOnlyMin", Some(1), None, None, required = false)
+      verifyStringProperty(schema, "stringUsingSizeOnlyMax", None, Some(30), None, required = false)
+      verifyStringProperty(schema, "stringUsingPattern", None, None, Some("_stringUsingPatternA|_stringUsingPatternB"), required = false)
+      verifyStringProperty(schema, "stringUsingPatternList", None, None, Some("^(?=^_stringUsing.*)(?=.*PatternList$).*$"), required = false)
 
-    assert(schema.at("/properties/stringUsingPattern/pattern").asText() == "_stringUsingPatternA|_stringUsingPatternB")
-    assert(schema.at("/properties/stringUsingPatternList/pattern").asText() == "^(?=^_stringUsing.*)(?=.*PatternList$).*$")
+      verifyNumericProperty(schema, "intMin", Some(1), None, required = true)
+      verifyNumericProperty(schema, "intMax", None, Some(10), required = true)
+      verifyNumericProperty(schema, "doubleMin", Some(1), None, required = true)
+      verifyNumericProperty(schema, "doubleMax", None, Some(10), required = true)
+    }
 
-    assert(schema.at("/properties/intMin/minimum").asInt() == 1)
-    assert(schema.at("/properties/intMax/maximum").asInt() == 10)
+    def verifyStringProperty(schema:JsonNode, propertyName:String, minLength:Option[Int], maxLength:Option[Int], pattern:Option[String], required:Boolean): Unit = {
+      assertNumericPropertyValidation(schema, propertyName, "minLength", minLength)
+      assertNumericPropertyValidation(schema, propertyName, "maxLength", maxLength)
 
-    assert(schema.at("/properties/doubleMin/minimum").asInt() == 1)
-    assert(schema.at("/properties/doubleMax/maximum").asInt() == 10)
+      val matchNode = schema.at(s"/properties/$propertyName/pattern")
+      pattern match  {
+        case Some(_) => assert(matchNode.asText == pattern.get)
+        case None => assert(matchNode.isMissingNode)
+      }
+
+      assertPropertyRequired(schema, propertyName, required)
+    }
+
+    def verifyNumericProperty(schema:JsonNode, propertyName:String, minimum:Option[Int], maximum:Option[Int], required:Boolean): Unit = {
+      assertNumericPropertyValidation(schema, propertyName, "minimum", minimum)
+      assertNumericPropertyValidation(schema, propertyName, "maximum", maximum)
+      assertPropertyRequired(schema, propertyName, required)
+    }
+
+    def assertNumericPropertyValidation(schema:JsonNode, propertyName:String, validationName:String, value:Option[Int]): Unit = {
+      val jsonNode = schema.at(s"/properties/$propertyName/$validationName")
+      value match {
+        case Some(_) => assert(jsonNode.asInt == value.get)
+        case None => assert(jsonNode.isMissingNode)
+      }
+    }
   }
 
   test("Polymorphism using mixin") {
-
     // Java
     {
       val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.mixinChild1)
@@ -1043,14 +1091,14 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(exception.getMessage.contains("error: instance type (null) does not match any allowed primitive type (allowed: [\"boolean\"])"))
 
     assert(schema.at("/properties/notNullBooleanObject/type").asText() == "boolean")
-    assert(getRequiredList(schema).contains("notNullBooleanObject"))
+    assertPropertyRequired(schema, "notNullBooleanObject", required = true)
   }
 
   test("nestedPolymorphism") {
     val jsonNode = assertToFromJson(jsonSchemaGeneratorScala, testData.nestedPolymorphism)
     assertToFromJson(jsonSchemaGeneratorScala, testData.nestedPolymorphism, classOf[NestedPolymorphism1Base])
 
-    val schema = generateAndValidateSchema(jsonSchemaGeneratorScala, classOf[NestedPolymorphism1Base], Some(jsonNode))
+    generateAndValidateSchema(jsonSchemaGeneratorScala, classOf[NestedPolymorphism1Base], Some(jsonNode))
   }
 
   test("PolymorphismAndTitle") {
@@ -1153,7 +1201,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assertChild1(schema, "/properties/child")
     }
 
-    // remaping rootclass
+    // remapping root class
     {
       def doTest(pojo:Object, clazz:Class[_], g:JsonSchemaGenerator): Unit = {
         val jsonNode = assertToFromJson(g, pojo)
@@ -1295,7 +1343,7 @@ trait TestData {
 
   val child2Scala = Child2Scala("pv", 12)
   val child1Scala = Child1Scala("pv", "cs", "cs2", "cs3")
-  val pojoWithParentScala = PojoWithParentScala(true, child1Scala, "y", 13, true)
+  val pojoWithParentScala = PojoWithParentScala(pojoValue = true, child1Scala, "y", 13, booleanWithDefault = true)
 
   val classNotExtendingAnything = {
     val o = new ClassNotExtendingAnything
@@ -1310,7 +1358,7 @@ trait TestData {
 
   val manyPrimitivesNulls = new ManyPrimitives(null, null, 1, null, false, false, null, 0.1, null)
 
-  val manyPrimitivesScala = ManyPrimitivesScala("s1", 1, true, 0.1)
+  val manyPrimitivesScala = ManyPrimitivesScala("s1", 1, _boolean = true, 0.1)
 
   val pojoUsingOptionScala = PojoUsingOptionScala(Some("s1"), Some(1), Some(true), Some(0.1), Some(child1Scala), Some(List(classNotExtendingAnythingScala)))
 
@@ -1369,8 +1417,13 @@ trait TestData {
   val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
 
   val classUsingValidation = ClassUsingValidation(
-    "_stringUsingNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", "_stringUsingPatternA", "_stringUsingPatternList",
-    1, 2, 1.0, 2.0
+    "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin",
+    "_stringUsingSizeOnlyMax", "_stringUsingPatternA", "_stringUsingPatternList", 1, 2, 1.0, 2.0
+  )
+
+  val pojoUsingValidation = new PojoUsingValidation(
+    "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin",
+    "_stringUsingSizeOnlyMax", "_stringUsingPatternA", "_stringUsingPatternList", 1, 2, 1.0, 2.0
   )
 
   val mixinChild1 = {
