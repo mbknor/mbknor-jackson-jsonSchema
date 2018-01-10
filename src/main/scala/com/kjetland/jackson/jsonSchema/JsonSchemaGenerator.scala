@@ -317,7 +317,7 @@ class JsonSchemaGenerator
       if (!debug) return
 
       var indent = ""
-      for( i <- 0 until level) {
+      for(_ <- 0 until level) {
         indent = indent + "  "
       }
       println(indent + s)
@@ -335,6 +335,8 @@ class JsonSchemaGenerator
       // Check if we should include minLength and/or maxLength
       case class MinAndMaxLength(minLength:Option[Int], maxLength:Option[Int])
 
+      // TODO [kog@epiphanic.org 01/09/2018]: Probably want to refactor this: nominally it returns a value used to figure out length
+      // TODO [kog@epiphanic.org 01/09/2018]: but most of the logic seems to be unrelated.
       val minAndMaxLength:Option[MinAndMaxLength] = currentProperty.flatMap {
         p =>
           // Look for @Pattern
@@ -357,7 +359,13 @@ class JsonSchemaGenerator
               node.put("default", defaultValue.value())
           }
 
-          // Look for @Size
+          // Look for @NotBlank
+          Option(p.getAnnotation(classOf[NotBlank])).map {
+            _ =>
+              node.put("pattern", "^.*\\S+.*$")
+          }
+
+          // Look for a @Size annotation, which should have a set of min/max properties.
           Option(p.getAnnotation(classOf[Size]))
               .map {
                 size =>
@@ -367,15 +375,21 @@ class JsonSchemaGenerator
                     case (min, max)               => MinAndMaxLength(Some(min), Some(max))
                   }
               }
-              .orElse {
-                // We did not find @Size - check if we should include it anyway
-                if (config.useMinLengthForNotNull) {
-                  Option(p.getAnnotation(classOf[NotNull])).map {
-                    notNull =>
-                      MinAndMaxLength(Some(1), None)
-                  }
-                } else None
+            // Look for other annotations that don't have an explicit size, but we can infer the need to set a size for.
+            .orElse {
+              // If we're annotated with @NotNull, check to see if our config requires a size property to be generated.
+              if (config.useMinLengthForNotNull && (p.getAnnotation(classOf[NotNull]) != null)) {
+                Option(MinAndMaxLength(Some(1), None))
               }
+              // Other javax.validation annotations that require a length.
+              else if (p.getAnnotation(classOf[NotBlank]) != null) {
+                Option(MinAndMaxLength(Some(1), None))
+              }
+              // No length required.
+              else {
+                None
+              }
+            }
       }
 
       minAndMaxLength.map {
@@ -619,7 +633,7 @@ class JsonSchemaGenerator
             case JsonTypeInfo.Id.NAME =>
               objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
                 .filter(_.getType == _type.getRawClass)
-                .find(p => true) // find first
+                .find(_ => true) // find first
                 .get.getName
 
             case JsonTypeInfo.Id.CLASS => _type.getRawClass.getName
@@ -865,13 +879,10 @@ class JsonSchemaGenerator
                 // Need to check for Option/Optional-special-case before we know what node to use here.
                 case class PropertyNode(main:ObjectNode, meta:ObjectNode)
 
-                // Check if we should set this property as required
-                val rawClass = propertyType.getRawClass
-                val requiredProperty:Boolean = if (rawClass.isPrimitive) {
-                  // primitive types MUST have a value
-                  true
-                } else if(jsonPropertyRequired || prop.isDefined && prop.get.getAnnotation(classOf[NotNull]) != null) {
-                  // Has a @JsonProperty has "required" set to true, or is marked @NotNull
+                // Check if we should set this property as required. Primitive types MUST have a value, as does anything
+                // with a @JsonProperty that has "required" set to true. Lastly, various javax.validation annotations also
+                // make this required.
+                val requiredProperty:Boolean = if (propertyType.getRawClass.isPrimitive || jsonPropertyRequired || validationAnnotationRequired(prop)) {
                   true
                 } else {
                   false
@@ -886,7 +897,7 @@ class JsonSchemaGenerator
                     nextPropertyOrderIndex = nextPropertyOrderIndex + 1
                   }
 
-                  // Figure out if the type is considered optional by either the Java or Scala.
+                  // Figure out if the type is considered optional by either Java or Scala.
                   val optionalType:Boolean = classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) ||
                                              classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass)
 
@@ -1024,6 +1035,11 @@ class JsonSchemaGenerator
               override def property(name: String, handler: JsonFormatVisitable, propertyTypeHint: JavaType): Unit = {
                 l(s"JsonObjectFormatVisitor.property: name:${name} handler:${handler} propertyTypeHint:${propertyTypeHint}")
                 myPropertyHandler(name, propertyTypeHint, None, jsonPropertyRequired = true)
+              }
+
+              // Checks to see if a javax.validation field that makes our field required is present.
+              private def validationAnnotationRequired(prop: Option[BeanProperty]): Boolean = {
+                prop.exists(p => p.getAnnotation(classOf[NotNull]) != null || p.getAnnotation(classOf[NotBlank]) != null)
               }
             })
         }

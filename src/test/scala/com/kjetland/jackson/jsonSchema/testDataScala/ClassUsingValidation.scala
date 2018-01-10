@@ -7,6 +7,13 @@ case class ClassUsingValidation
   @NotNull
   stringUsingNotNull:String,
 
+  @NotBlank
+  stringUsingNotBlank:String,
+
+  @NotNull
+  @NotBlank
+  stringUsingNotBlankAndNotNull:String,
+
   @Size(min=1, max=20)
   stringUsingSize:String,
 
@@ -33,6 +40,4 @@ case class ClassUsingValidation
   doubleMin:Double,
   @Max(10)
   doubleMax:Double
-
-
 )
