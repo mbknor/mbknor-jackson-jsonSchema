@@ -14,6 +14,15 @@ case class ClassUsingValidation
   @NotBlank
   stringUsingNotBlankAndNotNull:String,
 
+  @NotEmpty
+  stringUsingNotEmpty:String,
+
+  @NotEmpty
+  notEmptyStringArray:List[String], // Per PojoArraysWithScala, we use always use Lists in Scala, and never raw arrays.
+
+  @NotEmpty
+  notEmptyMap:Map[String, String],
+
   @Size(min=1, max=20)
   stringUsingSize:String,
 
