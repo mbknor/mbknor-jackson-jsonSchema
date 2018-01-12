@@ -382,7 +382,7 @@ class JsonSchemaGenerator
                 Option(MinAndMaxLength(Some(1), None))
               }
               // Other javax.validation annotations that require a length.
-              else if (p.getAnnotation(classOf[NotBlank]) != null) {
+              else if (p.getAnnotation(classOf[NotBlank]) != null || p.getAnnotation(classOf[NotEmpty]) != null) {
                 Option(MinAndMaxLength(Some(1), None))
               }
               // No length required.
@@ -423,13 +423,19 @@ class JsonSchemaGenerator
         }
       }
 
-      // Look for @Size
       currentProperty.map {
         p =>
+          // Look for @Size
           Option(p.getAnnotation(classOf[Size])).map {
             size =>
               node.put("minItems", size.min())
               node.put("maxItems", size.max())
+          }
+
+          // Look for @NotEmpty
+          Option(p.getAnnotation(classOf[NotEmpty])).map {
+            notEmpty =>
+              node.put("minItems", 1)
           }
       }
 
@@ -576,6 +582,14 @@ class JsonSchemaGenerator
 
       val additionalPropsObject = JsonNodeFactory.instance.objectNode()
       node.set("additionalProperties", additionalPropsObject)
+
+      // If we're annotated with @NotEmpty, make sure we add a minItems of 1 to our schema here.
+      currentProperty.map { p =>
+        Option(p.getAnnotation(classOf[NotEmpty])).map {
+          notEmpty =>
+            node.put("minProperties", 1)
+        }
+      }
 
       definitionsHandler.pushWorkInProgress()
 
@@ -1039,7 +1053,7 @@ class JsonSchemaGenerator
 
               // Checks to see if a javax.validation field that makes our field required is present.
               private def validationAnnotationRequired(prop: Option[BeanProperty]): Boolean = {
-                prop.exists(p => p.getAnnotation(classOf[NotNull]) != null || p.getAnnotation(classOf[NotBlank]) != null)
+                prop.exists(p => p.getAnnotation(classOf[NotNull]) != null || p.getAnnotation(classOf[NotBlank]) != null || p.getAnnotation(classOf[NotEmpty]) != null)
               }
             })
         }

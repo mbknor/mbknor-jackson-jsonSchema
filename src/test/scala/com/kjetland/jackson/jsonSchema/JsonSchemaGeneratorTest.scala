@@ -983,6 +983,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       verifyStringProperty(schema, "stringUsingNotNull", Some(1), None, None, required = true)
       verifyStringProperty(schema, "stringUsingNotBlank", Some(1), None, Some("^.*\\S+.*$"), required = true)
       verifyStringProperty(schema, "stringUsingNotBlankAndNotNull", Some(1), None, Some("^.*\\S+.*$"), required = true)
+      verifyStringProperty(schema, "stringUsingNotEmpty", Some(1), None, None, required = true)
       verifyStringProperty(schema, "stringUsingSize", Some(1), Some(20), None, required = false)
       verifyStringProperty(schema, "stringUsingSizeOnlyMin", Some(1), None, None, required = false)
       verifyStringProperty(schema, "stringUsingSizeOnlyMax", None, Some(30), None, required = false)
@@ -993,6 +994,10 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       verifyNumericProperty(schema, "intMax", None, Some(10), required = true)
       verifyNumericProperty(schema, "doubleMin", Some(1), None, required = true)
       verifyNumericProperty(schema, "doubleMax", None, Some(10), required = true)
+
+      verifyArrayProperty(schema, "notEmptyStringArray", Some(1), None, required = true)
+
+      verifyObjectProperty(schema, "notEmptyMap", "string", Some(1), None, required = true)
     }
 
     // Java
@@ -1003,6 +1008,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       verifyStringProperty(schema, "stringUsingNotNull", Some(1), None, None, required = true)
       verifyStringProperty(schema, "stringUsingNotBlank", Some(1), None, Some("^.*\\S+.*$"), required = true)
       verifyStringProperty(schema, "stringUsingNotBlankAndNotNull", Some(1), None, Some("^.*\\S+.*$"), required = true)
+      verifyStringProperty(schema, "stringUsingNotEmpty", Some(1), None, None, required = true)
       verifyStringProperty(schema, "stringUsingSize", Some(1), Some(20), None, required = false)
       verifyStringProperty(schema, "stringUsingSizeOnlyMin", Some(1), None, None, required = false)
       verifyStringProperty(schema, "stringUsingSizeOnlyMax", None, Some(30), None, required = false)
@@ -1013,6 +1019,11 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       verifyNumericProperty(schema, "intMax", None, Some(10), required = true)
       verifyNumericProperty(schema, "doubleMin", Some(1), None, required = true)
       verifyNumericProperty(schema, "doubleMax", None, Some(10), required = true)
+
+      verifyArrayProperty(schema, "notEmptyStringArray", Some(1), None, required = true)
+      verifyArrayProperty(schema, "notEmptyStringList", Some(1), None, required = true)
+
+      verifyObjectProperty(schema, "notEmptyStringMap", "string", Some(1), None, required = true)
     }
 
     def verifyStringProperty(schema:JsonNode, propertyName:String, minLength:Option[Int], maxLength:Option[Int], pattern:Option[String], required:Boolean): Unit = {
@@ -1031,6 +1042,19 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     def verifyNumericProperty(schema:JsonNode, propertyName:String, minimum:Option[Int], maximum:Option[Int], required:Boolean): Unit = {
       assertNumericPropertyValidation(schema, propertyName, "minimum", minimum)
       assertNumericPropertyValidation(schema, propertyName, "maximum", maximum)
+      assertPropertyRequired(schema, propertyName, required)
+    }
+
+    def verifyArrayProperty(schema:JsonNode, propertyName:String, minItems:Option[Int], maxItems:Option[Int], required:Boolean): Unit = {
+      assertNumericPropertyValidation(schema, propertyName, "minItems", minItems)
+      assertNumericPropertyValidation(schema, propertyName, "maxItems", maxItems)
+      assertPropertyRequired(schema, propertyName, required)
+    }
+
+    def verifyObjectProperty(schema:JsonNode, propertyName:String, additionalPropertiesType:String, minProperties:Option[Int], maxProperties:Option[Int], required:Boolean): Unit = {
+      assert(schema.at(s"/properties/$propertyName/additionalProperties/type").asText() == additionalPropertiesType)
+      assertNumericPropertyValidation(schema, propertyName, "minProperties", minProperties)
+      assertNumericPropertyValidation(schema, propertyName, "maxProperties", maxProperties)
       assertPropertyRequired(schema, propertyName, required)
     }
 
@@ -1417,13 +1441,15 @@ trait TestData {
   val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
 
   val classUsingValidation = ClassUsingValidation(
-    "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin",
-    "_stringUsingSizeOnlyMax", "_stringUsingPatternA", "_stringUsingPatternList", 1, 2, 1.0, 2.0
+    "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingNotEmpty", List("l1", "l2", "l3"), Map("mk1" -> "mv1", "mk2" -> "mv2"),
+    "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", "_stringUsingPatternA", "_stringUsingPatternList",
+    1, 2, 1.0, 2.0
   )
 
   val pojoUsingValidation = new PojoUsingValidation(
-    "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingSize", "_stringUsingSizeOnlyMin",
-    "_stringUsingSizeOnlyMax", "_stringUsingPatternA", "_stringUsingPatternList", 1, 2, 1.0, 2.0
+    "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingNotEmpty", Array("a1", "a2", "a3"), List("l1", "l2", "l3").asJava,
+    Map("mk1" -> "mv1", "mk2" -> "mv2").asJava, "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", "_stringUsingPatternA",
+    "_stringUsingPatternList", 1, 2, 1.0, 2.0
   )
 
   val mixinChild1 = {
