@@ -3,10 +3,7 @@ package com.kjetland.jackson.jsonSchema;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.OffsetDateTime;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class UseItFromJavaTest {
 
@@ -44,6 +41,14 @@ public class UseItFromJavaTest {
                 new HashMap<>(),
                 new HashMap<>());
         JsonSchemaGenerator g2 = new JsonSchemaGenerator(objectMapper, config);
+
+
+        // Config SubclassesResolving
+
+        final SubclassesResolver subclassesResolver = new SubclassesResolverImpl()
+                .withClassesToScan(Arrays.asList(
+                        "this.is.myPackage"
+                ));
     }
 
 }

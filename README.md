@@ -346,6 +346,51 @@ And here is the equivalent for Java:
     String jsonSchemaAsString = objectMapper.writeValueAsString(jsonSchema);
 ```
 
+Subclass-resolving using reflection
+-------
+
+In some cases it is needed to find extra info about classes not found in jackson data.
+[https://github.com/classgraph/classgraph](https://github.com/classgraph/classgraph) is used to solve this problem.
+
+By default we scan the entire classpath. This can be slow, so it is better to customize what to scan.
+
+This is how you can configure what *mbknor-jackson-jsonSchema* should scan 
+
+in Scala:
+```Scala
+    // Scan only some packages (this is faster)
+    
+    val resolver = SubclassesResolverImpl()
+                    .withPackagesToScan(List("this.is.myPackage"))
+                    .withClassesToScan(List("this.is.myPackage.MyClass")) // and/or this one
+                    //.withClassGraph() - or use this one to get full control..       
+    
+    config = config.withSubclassesResolver( resolver )
+
+```
+
+.. or in Java:
+```Java
+    // Scan only some packages (this is faster)
+    
+    final SubclassesResolver resolver = new SubclassesResolverImpl()
+                                            .withPackagesToScan(Arrays.asList(
+                                               "this.is.myPackage"
+                                            ))
+                                            .withClassesToScan(Arrays.asList( // and/or this one
+                                               "this.is.myPackage.MyClass"
+                                            ))
+                                            //.withClassGraph() - or use this one to get full control..       
+    
+    config = config.withSubclassesResolver( resolver )
+
+```
+
+
+
+
+
+
 Backstory
 --------------
 

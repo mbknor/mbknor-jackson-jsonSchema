@@ -1,6 +1,7 @@
 package com.kjetland.jackson.jsonSchema;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.classgraph.ClassGraph;
 
 public class CreateJsonSchemaGeneratorFromJava {
     public CreateJsonSchemaGeneratorFromJava(ObjectMapper objectMapper) {

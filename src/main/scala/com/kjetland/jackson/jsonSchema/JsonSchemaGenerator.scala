@@ -3,8 +3,9 @@ package com.kjetland.jackson.jsonSchema
 import java.util
 import java.util.Optional
 import java.util.function.Supplier
-import javax.validation.constraints._
+import java.util.{List => JList}
 
+import javax.validation.constraints._
 import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind._
@@ -13,13 +14,11 @@ import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import com.kjetland.jackson.jsonSchema.annotations._
-import io.github.lukehutch.fastclasspathscanner.FastClasspathScanner
+import io.github.classgraph.{ClassGraph, ScanResult}
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
   val JSON_SCHEMA_DRAFT_4_URL = "http://json-schema.org/draft-04/schema#"
-
-  private[jsonSchema] val reflections = new FastClasspathScanner().scan()
 }
 
 object JsonSchemaConfig {
@@ -142,6 +141,78 @@ object JsonSchemaConfig {
 
 }
 
+trait SubclassesResolver {
+  def getSubclasses(clazz:Class[_]):List[Class[_]]
+}
+
+case class SubclassesResolverImpl
+(
+  classGraph:Option[ClassGraph] = None,
+  packagesToScan:List[String] = List(),
+  classesToScan:List[String] = List()
+) extends SubclassesResolver {
+  import scala.collection.JavaConverters._
+
+  def this() = this(None, List(), List())
+
+  def withClassGraph(classGraph:ClassGraph):SubclassesResolverImpl = {
+    this.copy(classGraph = Option(classGraph))
+  }
+
+  // Scala API
+  def withPackagesToScan(packagesToScan:List[String]):SubclassesResolverImpl = {
+    this.copy(packagesToScan = packagesToScan)
+  }
+
+  // Java API
+  def withPackagesToScan(packagesToScan:JList[String]):SubclassesResolverImpl = {
+    this.copy(packagesToScan = packagesToScan.asScala.toList)
+  }
+
+  // Scala API
+  def withClassesToScan(classesToScan:List[String]):SubclassesResolverImpl = {
+    this.copy(classesToScan = classesToScan)
+  }
+
+  // Java API
+  def withClassesToScan(classesToScan:JList[String]):SubclassesResolverImpl = {
+    this.copy(classesToScan = classesToScan.asScala.toList)
+  }
+
+  lazy val reflection:ScanResult = {
+
+    var classGraphConfigured:Boolean = false
+
+    if ( classGraph.isDefined ) {
+      classGraphConfigured = true
+    }
+
+    val _classGraph:ClassGraph = classGraph.getOrElse( new ClassGraph() )
+
+    if (packagesToScan.nonEmpty) {
+      classGraphConfigured = true
+      _classGraph.whitelistPackages( packagesToScan:_* )
+    }
+
+    if ( classesToScan.nonEmpty ) {
+      classGraphConfigured = true
+      _classGraph.whitelistClasses( classesToScan:_* )
+    }
+
+    if ( !classGraphConfigured ) {
+      LoggerFactory.getLogger(this.getClass).warn(s"Performance-warning. Since SubclassesResolver is not configured," +
+        s" it scans the entire classpath. " +
+        s"https://github.com/mbknor/mbknor-jackson-jsonSchema#subclass-resolving-using-reflection")
+    }
+
+    _classGraph.enableClassInfo().scan()
+  }
+
+  override def getSubclasses(clazz: Class[_]): List[Class[_]] = {
+    reflection.getSubclasses(clazz.getName).loadClasses().asScala.toList
+  }
+}
+
 case class JsonSchemaConfig
 (
   autoGenerateTitleForProperties:Boolean,
@@ -157,8 +228,14 @@ case class JsonSchemaConfig
   useMultipleEditorSelectViaProperty:Boolean, // https://github.com/jdorn/json-editor/issues/709
   uniqueItemClasses:Set[Class[_]], // If rendering array and type is instanceOf class in this set, then we add 'uniqueItems": true' to schema - See // https://github.com/jdorn/json-editor for more info
   classTypeReMapping:Map[Class[_], Class[_]], // Can be used to prevent rendering using polymorphism for specific classes.
-  jsonSuppliers:Map[String, Supplier[JsonNode]] // Suppliers in this map can be accessed using @JsonSchemaInject(jsonSupplierViaLookup = "lookupKey")
-)
+  jsonSuppliers:Map[String, Supplier[JsonNode]], // Suppliers in this map can be accessed using @JsonSchemaInject(jsonSupplierViaLookup = "lookupKey")
+  subclassesResolver:SubclassesResolver = new SubclassesResolverImpl() // Using default impl that scans entire classpath
+) {
+
+  def withSubclassesResolver(subclassesResolver: SubclassesResolver):JsonSchemaConfig = {
+    this.copy( subclassesResolver = subclassesResolver )
+  }
+}
 
 
 
@@ -687,10 +764,10 @@ class JsonSchemaGenerator
 
             case JsonTypeInfo.Id.CLASS =>
               // Just find all subclasses
-              JsonSchemaGenerator.reflections.getNamesOfSubclassesOf(_type.getRawClass).asScala.toList.map(getClass.getClassLoader.loadClass(_))
+              config.subclassesResolver.getSubclasses(_type.getRawClass)
             case JsonTypeInfo.Id.MINIMAL_CLASS =>
               // Just find all subclasses
-              JsonSchemaGenerator.reflections.getNamesOfSubclassesOf(_type.getRawClass).asScala.toList.map(getClass.getClassLoader.loadClass(_))
+              config.subclassesResolver.getSubclasses(_type.getRawClass)
 
             case x => throw new Exception("We do not support @jsonTypeInfo.use = " + x)
           }
