@@ -62,7 +62,7 @@ lazy val deps  = Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
   "javax.validation" % "validation-api" % "2.0.1.Final",
   "org.slf4j" % "slf4j-api" % slf4jVersion,
-  "io.github.lukehutch" % "fast-classpath-scanner" % "2.11.1",
+  "io.github.classgraph" % "classgraph" % "4.1.5",
   "org.scalatest" %% "scalatest" % "3.0.0" % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
   "com.github.fge" % "json-schema-validator" % "2.2.6" % "test",

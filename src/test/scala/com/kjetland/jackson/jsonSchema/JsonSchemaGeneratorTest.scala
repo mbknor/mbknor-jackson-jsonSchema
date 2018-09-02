@@ -21,6 +21,7 @@ import com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.{Chi
 import com.kjetland.jackson.jsonSchema.testData.polymorphism3.{Child31, Child32, Parent3}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
+import io.github.classgraph.ClassGraph
 import org.scalatest.{FunSuite, Matchers}
 
 import scala.collection.JavaConverters._
@@ -456,10 +457,14 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     // Java
     {
-      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child21)
-      assertToFromJson(jsonSchemaGenerator, testData.child21, classOf[Parent2])
 
-      val schema = generateAndValidateSchema(jsonSchemaGenerator, classOf[Parent2], Some(jsonNode))
+      val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+      val g = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+      val jsonNode = assertToFromJson(g, testData.child21)
+      assertToFromJson(g, testData.child21, classOf[Parent2])
+
+      val schema = generateAndValidateSchema(g, classOf[Parent2], Some(jsonNode))
 
       assertChild1(schema, "/oneOf", "Child21", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.Child21")
       assertChild2(schema, "/oneOf", "Child22", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.Child22")
