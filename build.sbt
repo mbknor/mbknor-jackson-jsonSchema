@@ -5,7 +5,7 @@ lazy val commonSettings = Seq(
   organization := "com.kjetland",
   organizationName := "mbknor",
   scalaVersion := "2.12.4",
-  crossScalaVersions := Seq("2.10.5", "2.11.11", "2.12.4"),
+  crossScalaVersions := Seq("2.10.5", "2.11.11", "2.12.6", "2.13.0-M4"),
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
@@ -53,8 +53,8 @@ lazy val commonSettings = Seq(
 )
 
 
-val jacksonVersion = "2.8.7"
-val jacksonModuleScalaVersion = "2.8.7"
+val jacksonVersion = "2.9.7"
+val jacksonModuleScalaVersion = "2.9.7"
 val slf4jVersion = "1.7.7"
 
 
@@ -63,7 +63,7 @@ lazy val deps  = Seq(
   "javax.validation" % "validation-api" % "2.0.1.Final",
   "org.slf4j" % "slf4j-api" % slf4jVersion,
   "io.github.classgraph" % "classgraph" % "4.1.5",
-  "org.scalatest" %% "scalatest" % "3.0.0" % "test",
+  "org.scalatest" %% "scalatest" % "3.0.6-SNAP2" % "test",
   "ch.qos.logback" % "logback-classic" % "1.1.3" % "test",
   "com.github.fge" % "json-schema-validator" % "2.2.6" % "test",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonModuleScalaVersion % "test",
