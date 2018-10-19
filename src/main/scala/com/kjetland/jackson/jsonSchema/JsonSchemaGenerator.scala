@@ -543,7 +543,7 @@ class JsonSchemaGenerator
 
       node.put("type", "number")
 
-      // Look for @Min, @Max => minimum, maximum
+      // Look for @Min, @Max, @DecimalMin, @DecimalMax => minimum, maximum
       currentProperty.map {
         p =>
           Option(p.getAnnotation(classOf[Min])).map {
@@ -556,10 +556,20 @@ class JsonSchemaGenerator
               node.put("maximum", max.value())
           }
 
+          Option(p.getAnnotation(classOf[DecimalMin])).map {
+            decimalMin =>
+              node.put("minimum", decimalMin.value().toDouble)
+          }
+
+          Option(p.getAnnotation(classOf[DecimalMax])).map {
+            decimalMax =>
+              node.put("maximum", decimalMax.value().toDouble)
+          }
+
           // Look for @JsonSchemaDefault
           Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
             defaultValue =>
-              node.put("default", defaultValue.value().toLong )
+              node.put("default", defaultValue.value() )
           }
       }
 
