@@ -558,12 +558,12 @@ class JsonSchemaGenerator
 
           Option(p.getAnnotation(classOf[DecimalMin])).map {
             decimalMin =>
-              node.put("minimum", decimalMin.value())
+              node.put("minimum", decimalMin.value().toDouble)
           }
 
           Option(p.getAnnotation(classOf[DecimalMax])).map {
             decimalMax =>
-              node.put("maximum", decimalMax.value())
+              node.put("maximum", decimalMax.value().toDouble)
           }
 
           // Look for @JsonSchemaDefault
