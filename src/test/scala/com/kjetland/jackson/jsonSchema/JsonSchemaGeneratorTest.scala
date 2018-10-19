@@ -19,6 +19,7 @@ import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule,
 import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.{Child21, Child22, Parent2}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism3.{Child31, Child32, Parent3}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism4.{Child41, Child42, Parent4}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
 import io.github.classgraph.ClassGraph
@@ -482,6 +483,22 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assertChild1(schema, "/oneOf", "Child31", typeName = "child31")
       assertChild2(schema, "/oneOf", "Child32", typeName = "child32")
+    }
+  }
+
+  test("Generate schema for super class annotated with @JsonTypeInfo - include = JsonTypeInfo.As.CUSTOM") {
+
+    // Java
+    {
+
+      val jsonNode1 = assertToFromJson(jsonSchemaGenerator, testData.child41)
+      val jsonNode2 = assertToFromJson(jsonSchemaGenerator, testData.child42)
+
+      val schema1 = generateAndValidateSchema(jsonSchemaGenerator, classOf[Child41], Some(jsonNode1))
+      val schema2 = generateAndValidateSchema(jsonSchemaGenerator, classOf[Child42], Some(jsonNode2))
+
+      assertJsonSubTypesInfo(schema1, "type", "Child41")
+      assertJsonSubTypesInfo(schema2, "type", "Child42")
     }
   }
 
@@ -1369,6 +1386,9 @@ trait TestData {
     c.child2int = 12
     c
   }
+
+  val child41 = new Child41()
+  val child42 = new Child42()
 
   val child2Scala = Child2Scala("pv", 12)
   val child1Scala = Child1Scala("pv", "cs", "cs2", "cs3")

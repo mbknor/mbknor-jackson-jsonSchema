@@ -1,20 +1,20 @@
 package com.kjetland.jackson.jsonSchema
 
 import java.util
-import java.util.Optional
 import java.util.function.Supplier
-import java.util.{List => JList}
+import java.util.{Optional, List => JList}
 
-import javax.validation.constraints._
 import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind._
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.databind.jsonFormatVisitors._
+import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonTypeIdResolver}
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass
+import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
+import com.fasterxml.jackson.databind.util.ClassUtil
 import com.kjetland.jackson.jsonSchema.annotations._
 import io.github.classgraph.{ClassGraph, ScanResult}
+import javax.validation.constraints._
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
@@ -729,12 +729,35 @@ class JsonSchemaGenerator
 
             case JsonTypeInfo.Id.CLASS => _type.getRawClass.getName
             case JsonTypeInfo.Id.MINIMAL_CLASS => "." + _type.getRawClass.getName
+            case JsonTypeInfo.Id.CUSTOM => extractCustomPolymorphismInfo(_type)
             case x => throw new Exception(s"Polymorphism using jsonTypeInfo.use == $x not supported")
           }
 
           PolymorphismInfo(propertyName, subTypeName)
       }
+    }
 
+    def extractCustomPolymorphismInfo(_type: JavaType): String = {
+      import scala.collection.JavaConverters._
+
+      // Support CUSTOM only if the JsonTypeIdResolver is provided,
+      // and it can resolve the type without an  object instance
+
+      try {
+        val (baseType, idResolver) = asScalaBuffer(ClassUtil.findSuperTypes(_type, null, false))
+          .filter {cl => cl.getRawClass isAnnotationPresent classOf[JsonTypeInfo]}
+          .filter {cl => cl.getRawClass isAnnotationPresent classOf[JsonTypeIdResolver]}
+          .map(cl => (cl, cl.getRawClass getAnnotation classOf[JsonTypeIdResolver]) )
+          .head
+
+        val resolverClass = idResolver.value()
+        val resolver = resolverClass.newInstance()
+        resolver.init(baseType)
+        resolver.idFromValueAndType(null, _type.getRawClass)
+
+      } catch {
+        case e: Exception => throw new Exception(s"Can't process polymorphism info for the type=${_type.getRawClass.getName}", e)
+      }
     }
 
     private def extractSubTypes(_type: JavaType):List[Class[_]] = {
@@ -766,6 +789,9 @@ class JsonSchemaGenerator
               // Just find all subclasses
               config.subclassesResolver.getSubclasses(_type.getRawClass)
             case JsonTypeInfo.Id.MINIMAL_CLASS =>
+              // Just find all subclasses
+              config.subclassesResolver.getSubclasses(_type.getRawClass)
+            case JsonTypeInfo.Id.CUSTOM =>
               // Just find all subclasses
               config.subclassesResolver.getSubclasses(_type.getRawClass)
 
