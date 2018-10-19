@@ -569,7 +569,7 @@ class JsonSchemaGenerator
           // Look for @JsonSchemaDefault
           Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
             defaultValue =>
-              node.put("default", defaultValue.value().toLong )
+              node.put("default", defaultValue.value() )
           }
       }
 
