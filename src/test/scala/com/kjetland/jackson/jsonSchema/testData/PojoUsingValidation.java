@@ -2,13 +2,7 @@ package com.kjetland.jackson.jsonSchema.testData;
 
 import com.kjetland.jackson.jsonSchema.testDataScala.ClassUsingValidation;
 
-import javax.validation.constraints.Max;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
-import javax.validation.constraints.Size;
+import javax.validation.constraints.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +67,12 @@ public class PojoUsingValidation {
     @Max(10)
     public double doubleMax;
 
+    @DecimalMin("1.5")
+    public double decimalMin;
+
+    @DecimalMax("2.5")
+    public double decimalMax;
+
     public PojoUsingValidation() {
 
     }
@@ -80,7 +80,8 @@ public class PojoUsingValidation {
     public PojoUsingValidation(final String stringUsingNotNull,final String stringUsingNotBlank, final String stringUsingNotBlankAndNotNull, final String stringUsingNotEmpty,
                                final String[] notEmptyStringArray, final List<String> notEmptyStringList, final Map<String, String> notEmptyStringMap,
                                final String stringUsingSize,final String stringUsingSizeOnlyMin, final String stringUsingSizeOnlyMax, final String stringUsingPattern,
-                               final String stringUsingPatternList, final int intMin, final int intMax, final double doubleMin, final double doubleMax) {
+                               final String stringUsingPatternList, final int intMin, final int intMax, final double doubleMin, final double doubleMax,
+                               final double decimalMin, final double decimalMax) {
         this.stringUsingNotNull = stringUsingNotNull;
         this.stringUsingNotBlank = stringUsingNotBlank;
         this.stringUsingNotBlankAndNotNull = stringUsingNotBlankAndNotNull;
@@ -97,21 +98,21 @@ public class PojoUsingValidation {
         this.intMax = intMax;
         this.doubleMin = doubleMin;
         this.doubleMax = doubleMax;
+        this.decimalMin = decimalMin;
+        this.decimalMax = decimalMax;
     }
 
     @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        final PojoUsingValidation that = (PojoUsingValidation) o;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        PojoUsingValidation that = (PojoUsingValidation) o;
         return intMin == that.intMin &&
                 intMax == that.intMax &&
                 Double.compare(that.doubleMin, doubleMin) == 0 &&
                 Double.compare(that.doubleMax, doubleMax) == 0 &&
+                Double.compare(that.decimalMin, decimalMin) == 0 &&
+                Double.compare(that.decimalMax, decimalMax) == 0 &&
                 Objects.equals(stringUsingNotNull, that.stringUsingNotNull) &&
                 Objects.equals(stringUsingNotBlank, that.stringUsingNotBlank) &&
                 Objects.equals(stringUsingNotBlankAndNotNull, that.stringUsingNotBlankAndNotNull) &&
@@ -128,9 +129,7 @@ public class PojoUsingValidation {
 
     @Override
     public int hashCode() {
-
-        int result = Objects
-                .hash(stringUsingNotNull, stringUsingNotBlank, stringUsingNotBlankAndNotNull, stringUsingNotEmpty, notEmptyStringList, notEmptyStringMap, stringUsingSize, stringUsingSizeOnlyMin, stringUsingSizeOnlyMax, stringUsingPattern, stringUsingPatternList, intMin, intMax, doubleMin, doubleMax);
+        int result = Objects.hash(stringUsingNotNull, stringUsingNotBlank, stringUsingNotBlankAndNotNull, stringUsingNotEmpty, notEmptyStringList, notEmptyStringMap, stringUsingSize, stringUsingSizeOnlyMin, stringUsingSizeOnlyMax, stringUsingPattern, stringUsingPatternList, intMin, intMax, doubleMin, doubleMax, decimalMin, decimalMax);
         result = 31 * result + Arrays.hashCode(notEmptyStringArray);
         return result;
     }

@@ -48,5 +48,9 @@ case class ClassUsingValidation
   @Min(1)
   doubleMin:Double,
   @Max(10)
-  doubleMax:Double
+  doubleMax:Double,
+  @DecimalMin("1.5")
+  decimalMin:Double,
+  @DecimalMax("2.5")
+  decimalMax:Double
 )
