@@ -1,4 +1,4 @@
-package com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1;
+package com.kjetland.jackson.jsonSchema.testData.polymorphism2;
 
 public class Child22 extends Parent2 {
 

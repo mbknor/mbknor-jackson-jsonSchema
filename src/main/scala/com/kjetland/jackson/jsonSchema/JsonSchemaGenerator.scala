@@ -728,7 +728,7 @@ class JsonSchemaGenerator
                 .get.getName
 
             case JsonTypeInfo.Id.CLASS => _type.getRawClass.getName
-            case JsonTypeInfo.Id.MINIMAL_CLASS => "." + _type.getRawClass.getName
+            case JsonTypeInfo.Id.MINIMAL_CLASS => "." + _type.getRawClass.getSimpleName
             case JsonTypeInfo.Id.CUSTOM => extractCustomPolymorphismInfo(_type)
             case x => throw new Exception(s"Polymorphism using jsonTypeInfo.use == $x not supported")
           }

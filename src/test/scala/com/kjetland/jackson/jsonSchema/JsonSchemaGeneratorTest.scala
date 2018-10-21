@@ -17,9 +17,11 @@ import com.kjetland.jackson.jsonSchema.testData.MapLike.GenericMapLike
 import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
-import com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.{Child21, Child22, Parent2}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism2.{Child21, Child22, Parent2}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism2.{Child22, Parent2}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism3.{Child31, Child32, Parent3}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism4.{Child41, Child42, Parent4}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism5.{Child51, Child52, Parent5}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
 import io.github.classgraph.ClassGraph
@@ -467,10 +469,29 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       val schema = generateAndValidateSchema(g, classOf[Parent2], Some(jsonNode))
 
-      assertChild1(schema, "/oneOf", "Child21", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.Child21")
-      assertChild2(schema, "/oneOf", "Child22", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.polymorphism1.Child22")
+      assertChild1(schema, "/oneOf", "Child21", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.Child21")
+      assertChild2(schema, "/oneOf", "Child22", typeParamName = "clazz", typeName = "com.kjetland.jackson.jsonSchema.testData.polymorphism2.Child22")
     }
   }
+
+  test("Generate schema for super class annotated with @JsonTypeInfo - use = JsonTypeInfo.Id.MINIMAL_CLASS") {
+
+    // Java
+    {
+
+      val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+      val g = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+      val jsonNode = assertToFromJson(g, testData.child51)
+      assertToFromJson(g, testData.child51, classOf[Parent5])
+
+      val schema = generateAndValidateSchema(g, classOf[Parent5], Some(jsonNode))
+
+      assertChild1(schema, "/oneOf", "Child51", typeParamName = "clazz", typeName = ".Child51")
+      assertChild2(schema, "/oneOf", "Child52", typeParamName = "clazz", typeName = ".Child52")
+    }
+  }
+
 
   test("Generate schema for super class annotated with @JsonTypeInfo - include = JsonTypeInfo.As.EXISTING_PROPERTY") {
 
@@ -1389,6 +1410,22 @@ trait TestData {
 
   val child41 = new Child41()
   val child42 = new Child42()
+
+  val child51 = {
+    val c = new Child51()
+    c.parentString = "pv"
+    c.child1String = "cs"
+    c.child1String2 = "cs2"
+    c.child1String3 = "cs3"
+    c
+  }
+  val child52 = {
+    val c = new Child52()
+    c.parentString = "pv"
+    c.child2int = 12
+    c
+  }
+
 
   val child2Scala = Child2Scala("pv", 12)
   val child1Scala = Child1Scala("pv", "cs", "cs2", "cs3")
