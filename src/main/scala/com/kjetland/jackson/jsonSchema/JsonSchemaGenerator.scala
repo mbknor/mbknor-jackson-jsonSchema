@@ -743,20 +743,23 @@ class JsonSchemaGenerator
       // Support CUSTOM only if the JsonTypeIdResolver is provided,
       // and it can resolve the type without an  object instance
 
-      try {
-        val (baseType, idResolver) = asScalaBuffer(ClassUtil.findSuperTypes(_type, null, false))
-          .filter {cl => cl.getRawClass isAnnotationPresent classOf[JsonTypeInfo]}
-          .filter {cl => cl.getRawClass isAnnotationPresent classOf[JsonTypeIdResolver]}
-          .map(cl => (cl, cl.getRawClass getAnnotation classOf[JsonTypeIdResolver]) )
-          .head
 
+      ClassUtil.findSuperTypes(_type, null, false).asScala.find { cl =>
+        val clazz = cl.getRawClass
+        clazz.isAnnotationPresent( classOf[JsonTypeInfo] ) && clazz.isAnnotationPresent( classOf[JsonTypeIdResolver] )
+      }.map { baseType =>
+        val idResolver = baseType.getRawClass.getAnnotation(classOf[JsonTypeIdResolver])
         val resolverClass = idResolver.value()
-        val resolver = resolverClass.newInstance()
-        resolver.init(baseType)
-        resolver.idFromValueAndType(null, _type.getRawClass)
-
-      } catch {
-        case e: Exception => throw new Exception(s"Can't process polymorphism info for the type=${_type.getRawClass.getName}", e)
+        val id = try {
+          val resolver = resolverClass.newInstance()
+          resolver.init(baseType)
+          resolver.idFromValueAndType(null, _type.getRawClass)
+        } catch {
+          case e: Exception => throw new Exception(s"Error extracting typeInfo for type=${_type.getRawClass.getName} via resolverClass=$resolverClass", e)
+        }
+        id
+      }.getOrElse {
+        throw new Exception(s"Cannot extract typeInfo for type=${_type.getRawClass.getName}. @JsonTypeIdResolver-annotation missing")
       }
     }
 
