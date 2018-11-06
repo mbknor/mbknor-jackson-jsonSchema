@@ -387,7 +387,8 @@ class JsonSchemaGenerator
     level:Int = 0,
     val node: ObjectNode = JsonNodeFactory.instance.objectNode(),
     val definitionsHandler:DefinitionsHandler,
-    currentProperty:Option[BeanProperty] // This property may represent the BeanProperty when we're directly processing beneath the property
+    currentProperty:Option[BeanProperty], // This property may represent the BeanProperty when we're directly processing beneath the property
+    var arrayItems: Array[Class[_]] = Array()
   ) extends JsonFormatVisitorWrapper with MySerializerProvider {
 
     def l(s: => String): Unit = {
@@ -400,8 +401,11 @@ class JsonSchemaGenerator
       println(indent + s)
     }
 
-    def createChild(childNode: ObjectNode, currentProperty:Option[BeanProperty]): MyJsonFormatVisitorWrapper = {
-      new MyJsonFormatVisitorWrapper(objectMapper, level + 1, node = childNode, definitionsHandler = definitionsHandler, currentProperty = currentProperty)
+    def createChild(childNode: ObjectNode, currentProperty:Option[BeanProperty],
+                    arrayItems: Array[Class[_]] = Array()): MyJsonFormatVisitorWrapper = {
+      new MyJsonFormatVisitorWrapper(objectMapper, level + 1, node = childNode, 
+        definitionsHandler = definitionsHandler, currentProperty = currentProperty, 
+        arrayItems = arrayItems)
     }
 
     override def expectStringFormat(_type: JavaType) = {
@@ -520,6 +524,9 @@ class JsonSchemaGenerator
       val itemsNode = JsonNodeFactory.instance.objectNode()
       node.set("items", itemsNode)
 
+      // check if the array has been annotated with JsonSchemaArrayItems
+      val itemTypes: Array[Class[_]] = extractArrayItemTypes(_type).getOrElse(Array())
+
       // We get improved result while processing scala-collections by getting elementType this way
       // instead of using the one which we receive in JsonArrayFormatVisitor.itemsFormat
       // This approach also works for Java
@@ -528,7 +535,7 @@ class JsonSchemaGenerator
       new JsonArrayFormatVisitor with MySerializerProvider {
         override def itemsFormat(handler: JsonFormatVisitable, _elementType: JavaType): Unit = {
           l(s"expectArrayFormat - handler: $handler - elementType: ${_elementType} - preferredElementType: $preferredElementType")
-          objectMapper.acceptJsonFormatVisitor(tryToReMapType(preferredElementType), createChild(itemsNode, currentProperty = None))
+          objectMapper.acceptJsonFormatVisitor(tryToReMapType(preferredElementType), createChild(itemsNode, currentProperty = None, arrayItems = itemTypes))
         }
 
         override def itemsFormat(format: JsonFormatTypes): Unit = {
@@ -773,6 +780,16 @@ class JsonSchemaGenerator
       }
     }
 
+    private def extractArrayItemTypes(javaType: JavaType): Option[Array[Class[_]]] = {
+      val annotation = if (currentProperty.isDefined) {
+        currentProperty.get.getAnnotation(classOf[JsonSchemaArrayItems])
+      } else {
+        val ac = AnnotatedClass.construct(javaType, objectMapper.getDeserializationConfig)
+        ac.getAnnotation(classOf[JsonSchemaArrayItems])
+      }
+      if (annotation != null) Option(annotation.value) else None
+    }
+
     private def extractSubTypes(_type: JavaType):List[Class[_]] = {
 
       val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
@@ -882,7 +899,9 @@ class JsonSchemaGenerator
             }
 
             val thisOneOfNode = JsonNodeFactory.instance.objectNode()
-            thisOneOfNode.put("$ref", definitionInfo.ref.get)
+            if (arrayItems.isEmpty || arrayItems.contains(subType)) {
+                thisOneOfNode.put("$ref", definitionInfo.ref.get)
+            }
 
             // If class is annotated with JsonSchemaTitle, we should add it
             Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
@@ -890,7 +909,10 @@ class JsonSchemaGenerator
                 thisOneOfNode.put("title", title)
             }
 
-            anyOfArrayNode.add(thisOneOfNode)
+            // Do not write an empty {} into the items list
+            if (thisOneOfNode.size() > 0) {
+              anyOfArrayNode.add(thisOneOfNode)
+            }
 
         }
 

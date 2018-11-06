@@ -14,6 +14,7 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData.GenericClass.GenericClassVoid
 import com.kjetland.jackson.jsonSchema.testData.MapLike.GenericMapLike
+import com.kjetland.jackson.jsonSchema.testData.PolymorphicArrayWithSubtypes.{ABaseType, BarType, FooType}
 import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
@@ -1369,6 +1370,63 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
 
   }
+
+  test("Multiple types within a polymorphic array") {
+
+    val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+    val _jsonSchemaGenerator = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+    {
+      val jsonNode = assertToFromJson(_jsonSchemaGenerator, testData.polymorphicArrayWithSubtypes)
+      assertToFromJson(_jsonSchemaGenerator, testData.polymorphicArrayWithSubtypes, classOf[PolymorphicArrayWithSubtypes])
+
+      val schema = generateAndValidateSchema(_jsonSchemaGenerator, classOf[PolymorphicArrayWithSubtypes], Some(jsonNode))
+
+      assert(schema.at("/$schema").asText() == "http://json-schema.org/draft-04/schema#")
+      assert(schema.at("/title").asText() == "Polymorphic Array With Subtypes")
+      assert(schema.at("/type").asText() == "object")
+      assert(!schema.at("/additionalProperties").asBoolean())
+      assert(schema.at("/required/0").asText() == "fooOrBarList")
+      assert(schema.at("/properties/fooOrBarList/type").asText() == "array")
+      assert(schema.at("/properties/fooOrBarList/minItems").asInt() == 2)
+      assert(schema.at("/properties/fooOrBarList/maxItems").asInt() == 2)
+      assert(schema.at("/properties/fooOrBarList/items/oneOf").size() == 2)
+      assert(schema.at("/properties/fooOrBarList/items/oneOf/0/$ref").asText() == "#/definitions/FooType")
+      assert(schema.at("/properties/fooOrBarList/items/oneOf/1/$ref").asText() == "#/definitions/BarType")
+
+      assert(schema.at("/definitions/FooType/type").asText() == "object")
+      assert(schema.at("/definitions/FooType/title").asText() == "foo")
+      assert(schema.at("/definitions/FooType/required/0").asText() == "type")
+      assert(schema.at("/definitions/FooType/required/1").asText() == "fooField")
+      assert(!schema.at("/definitions/FooType/additionalProperties").asBoolean())
+      assert(schema.at("/definitions/FooType/properties/type/type").asText() == "string")
+      assert(schema.at("/definitions/FooType/properties/type/enum/0").asText() == "foo")
+      assert(schema.at("/definitions/FooType/properties/type/default").asText() == "foo")
+      assert(schema.at("/definitions/FooType/properties/fooField/type").asText() == "string")
+
+      assert(schema.at("/definitions/BarType/type").asText() == "object")
+      assert(schema.at("/definitions/BarType/title").asText() == "bar")
+      assert(schema.at("/definitions/BarType/required/0").asText() == "type")
+      assert(schema.at("/definitions/BarType/required/1").asText() == "barField")
+      assert(!schema.at("/definitions/BarType/additionalProperties").asBoolean())
+      assert(schema.at("/definitions/BarType/properties/type/type").asText() == "string")
+      assert(schema.at("/definitions/BarType/properties/type/enum/0").asText() == "bar")
+      assert(schema.at("/definitions/BarType/properties/type/default").asText() == "bar")
+      assert(schema.at("/definitions/BarType/properties/barField/type").asText() == "string")
+
+      assert(schema.at("/definitions/EggType/type").asText() == "object")
+      assert(schema.at("/definitions/EggType/title").asText() == "egg")
+      assert(schema.at("/definitions/EggType/required/0").asText() == "type")
+      assert(schema.at("/definitions/EggType/required/1").asText() == "eggField")
+      assert(!schema.at("/definitions/EggType/additionalProperties").asBoolean())
+      assert(schema.at("/definitions/EggType/properties/type/type").asText() == "string")
+      assert(schema.at("/definitions/EggType/properties/type/enum/0").asText() == "egg")
+      assert(schema.at("/definitions/EggType/properties/type/default").asText() == "egg")
+      assert(schema.at("/definitions/EggType/properties/eggField/type").asText() == "string")
+    }
+
+  }
+
 }
 
 trait TestData {
@@ -1550,5 +1608,7 @@ trait TestData {
   val genericClassVoid = new GenericClassVoid()
 
   val genericMapLike = new GenericMapLike(Collections.singletonMap("foo", "bar"))
+
+  val polymorphicArrayWithSubtypes = new PolymorphicArrayWithSubtypes(List[ABaseType](new FooType("foof"), new BarType("barf")).asJava)
 
 }
