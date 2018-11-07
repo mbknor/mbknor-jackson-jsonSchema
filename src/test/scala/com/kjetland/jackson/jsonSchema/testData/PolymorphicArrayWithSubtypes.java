@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.As;
 import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
 import com.google.common.collect.Lists;
-import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaArrayItems;
+import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaArrayFilter;
 
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +19,7 @@ public class PolymorphicArrayWithSubtypes {
   @NotNull
   @Size(min = 2, max = 2)
   @JsonProperty(required = true)
-  @JsonSchemaArrayItems({FooType.class, BarType.class})
+  @JsonSchemaArrayFilter({FooType.class, BarType.class})
   private List<ABaseType> fooOrBarList;
 
 

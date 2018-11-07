@@ -14,7 +14,7 @@ import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData.GenericClass.GenericClassVoid
 import com.kjetland.jackson.jsonSchema.testData.MapLike.GenericMapLike
-import com.kjetland.jackson.jsonSchema.testData.PolymorphicArrayWithSubtypes.{ABaseType, BarType, FooType}
+import com.kjetland.jackson.jsonSchema.testData.PolymorphicArrayWithSubtypes.{ABaseType, BarType, EggType, FooType}
 import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
@@ -29,6 +29,7 @@ import io.github.classgraph.ClassGraph
 import org.scalatest.{FunSuite, Matchers}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 
 class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
@@ -105,6 +106,17 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
         }
 
     }
+  }
+
+  // Returns a list of error messages from the validation report created by validating the given
+  // record again the schema.
+  def validateRecordAgainstSchemaFailureMessages(jsonSchema: JsonNode,
+                                                 jsonRecord: JsonNode): List[String] = {
+    val schemaValidator = JsonSchemaFactory.byDefault().getJsonSchema(jsonSchema)
+    val report = schemaValidator.validate(jsonRecord)
+    val messageBuffer = ListBuffer[String]()
+    report.forEach { message => messageBuffer += message.getMessage }
+    messageBuffer.toList
   }
 
   // Generates schema, validates the schema using external schema validator and
@@ -1393,36 +1405,25 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/properties/fooOrBarList/items/oneOf").size() == 2)
       assert(schema.at("/properties/fooOrBarList/items/oneOf/0/$ref").asText() == "#/definitions/FooType")
       assert(schema.at("/properties/fooOrBarList/items/oneOf/1/$ref").asText() == "#/definitions/BarType")
+    }
 
-      assert(schema.at("/definitions/FooType/type").asText() == "object")
-      assert(schema.at("/definitions/FooType/title").asText() == "foo")
-      assert(schema.at("/definitions/FooType/required/0").asText() == "type")
-      assert(schema.at("/definitions/FooType/required/1").asText() == "fooField")
-      assert(!schema.at("/definitions/FooType/additionalProperties").asBoolean())
-      assert(schema.at("/definitions/FooType/properties/type/type").asText() == "string")
-      assert(schema.at("/definitions/FooType/properties/type/enum/0").asText() == "foo")
-      assert(schema.at("/definitions/FooType/properties/type/default").asText() == "foo")
-      assert(schema.at("/definitions/FooType/properties/fooField/type").asText() == "string")
+  }
 
-      assert(schema.at("/definitions/BarType/type").asText() == "object")
-      assert(schema.at("/definitions/BarType/title").asText() == "bar")
-      assert(schema.at("/definitions/BarType/required/0").asText() == "type")
-      assert(schema.at("/definitions/BarType/required/1").asText() == "barField")
-      assert(!schema.at("/definitions/BarType/additionalProperties").asBoolean())
-      assert(schema.at("/definitions/BarType/properties/type/type").asText() == "string")
-      assert(schema.at("/definitions/BarType/properties/type/enum/0").asText() == "bar")
-      assert(schema.at("/definitions/BarType/properties/type/default").asText() == "bar")
-      assert(schema.at("/definitions/BarType/properties/barField/type").asText() == "string")
+  test("Multiple types within a polymorphic array with invalid implementation class") {
 
-      assert(schema.at("/definitions/EggType/type").asText() == "object")
-      assert(schema.at("/definitions/EggType/title").asText() == "egg")
-      assert(schema.at("/definitions/EggType/required/0").asText() == "type")
-      assert(schema.at("/definitions/EggType/required/1").asText() == "eggField")
-      assert(!schema.at("/definitions/EggType/additionalProperties").asBoolean())
-      assert(schema.at("/definitions/EggType/properties/type/type").asText() == "string")
-      assert(schema.at("/definitions/EggType/properties/type/enum/0").asText() == "egg")
-      assert(schema.at("/definitions/EggType/properties/type/default").asText() == "egg")
-      assert(schema.at("/definitions/EggType/properties/eggField/type").asText() == "string")
+    val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+    val _jsonSchemaGenerator = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+    {
+      val invalidRecord = new PolymorphicArrayWithSubtypes(List[ABaseType](new FooType("foof"), new EggType("eggy")).asJava)
+      
+      val jsonNode = assertToFromJson(_jsonSchemaGenerator, invalidRecord)
+      assertToFromJson(_jsonSchemaGenerator, invalidRecord, classOf[PolymorphicArrayWithSubtypes])
+      
+      val schema = _jsonSchemaGenerator.generateJsonSchema(classOf[PolymorphicArrayWithSubtypes])
+      val messages = validateRecordAgainstSchemaFailureMessages(schema, jsonNode)
+      
+      assert(messages.contains("instance failed to match exactly one schema (matched 0 out of 2)"))
     }
 
   }

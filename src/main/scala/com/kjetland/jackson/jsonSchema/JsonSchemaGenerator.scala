@@ -782,10 +782,10 @@ class JsonSchemaGenerator
 
     private def extractArrayItemTypes(javaType: JavaType): Option[Array[Class[_]]] = {
       val annotation = if (currentProperty.isDefined) {
-        currentProperty.get.getAnnotation(classOf[JsonSchemaArrayItems])
+        currentProperty.get.getAnnotation(classOf[JsonSchemaArrayFilter])
       } else {
         val ac = AnnotatedClass.construct(javaType, objectMapper.getDeserializationConfig)
-        ac.getAnnotation(classOf[JsonSchemaArrayItems])
+        ac.getAnnotation(classOf[JsonSchemaArrayFilter])
       }
       if (annotation != null) Option(annotation.value) else None
     }
@@ -909,11 +909,10 @@ class JsonSchemaGenerator
                 thisOneOfNode.put("title", title)
             }
 
-            // Do not write an empty {} into the items list
+            // Do not write {} into list; happens when JsonSchemaArrayFilter stops a subtype
             if (thisOneOfNode.size() > 0) {
               anyOfArrayNode.add(thisOneOfNode)
             }
-
         }
 
         null // Returning null to stop jackson from visiting this object since we have done it manually
