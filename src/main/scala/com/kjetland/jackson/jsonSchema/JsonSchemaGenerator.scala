@@ -381,6 +381,21 @@ class JsonSchemaGenerator
 
   }
 
+  case class ArrayItems(items: Array[Class[_]]) {
+
+    def isEmpty: Boolean = items.isEmpty
+
+    def isAssignableFrom(target: Class[_]): Boolean = {
+      items.foreach {
+        clazz => if (clazz.isAssignableFrom(target)) {
+          return true
+        }
+      }
+      false
+    }
+
+  }
+
   class MyJsonFormatVisitorWrapper
   (
     objectMapper: ObjectMapper,
@@ -388,7 +403,7 @@ class JsonSchemaGenerator
     val node: ObjectNode = JsonNodeFactory.instance.objectNode(),
     val definitionsHandler:DefinitionsHandler,
     currentProperty:Option[BeanProperty], // This property may represent the BeanProperty when we're directly processing beneath the property
-    var arrayItems: Array[Class[_]] = Array()
+    var arrayItems: ArrayItems = ArrayItems(Array())
   ) extends JsonFormatVisitorWrapper with MySerializerProvider {
 
     def l(s: => String): Unit = {
@@ -405,7 +420,7 @@ class JsonSchemaGenerator
                     arrayItems: Array[Class[_]] = Array()): MyJsonFormatVisitorWrapper = {
       new MyJsonFormatVisitorWrapper(objectMapper, level + 1, node = childNode, 
         definitionsHandler = definitionsHandler, currentProperty = currentProperty, 
-        arrayItems = arrayItems)
+        arrayItems = ArrayItems(arrayItems))
     }
 
     override def expectStringFormat(_type: JavaType) = {
@@ -899,8 +914,8 @@ class JsonSchemaGenerator
             }
 
             val thisOneOfNode = JsonNodeFactory.instance.objectNode()
-            if (arrayItems.isEmpty || arrayItems.contains(subType)) {
-                thisOneOfNode.put("$ref", definitionInfo.ref.get)
+            if (arrayItems.isEmpty || arrayItems.isAssignableFrom(subType)) {
+              thisOneOfNode.put("$ref", definitionInfo.ref.get)
             }
 
             // If class is annotated with JsonSchemaTitle, we should add it

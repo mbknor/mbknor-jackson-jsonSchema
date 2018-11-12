@@ -15,6 +15,7 @@ import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData.GenericClass.GenericClassVoid
 import com.kjetland.jackson.jsonSchema.testData.MapLike.GenericMapLike
 import com.kjetland.jackson.jsonSchema.testData.PolymorphicArrayWithSubtypes.{ABaseType, BarType, EggType, FooType}
+import com.kjetland.jackson.jsonSchema.testData.PolymorphicArrayWithSubtypesInheritance._
 import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
@@ -115,7 +116,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     val schemaValidator = JsonSchemaFactory.byDefault().getJsonSchema(jsonSchema)
     val report = schemaValidator.validate(jsonRecord)
     val messageBuffer = ListBuffer[String]()
-    report.forEach { message => messageBuffer += message.getMessage }
+    report.forEach(message => messageBuffer += message.getMessage)
     messageBuffer.toList
   }
 
@@ -1428,6 +1429,52 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   }
 
+  test("Inherited types within a polymorphic array") {
+
+    val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+    val _jsonSchemaGenerator = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+    {
+      val jsonNode = assertToFromJson(_jsonSchemaGenerator, testData.polymorphicArrayWithInheritedSubtypes)
+      assertToFromJson(_jsonSchemaGenerator, testData.polymorphicArrayWithInheritedSubtypes, classOf[PolymorphicArrayWithSubtypesInheritance])
+
+      val schema = generateAndValidateSchema(_jsonSchemaGenerator, classOf[PolymorphicArrayWithSubtypesInheritance], Some(jsonNode))
+
+      assert(schema.at("/$schema").asText() == "http://json-schema.org/draft-04/schema#")
+      assert(schema.at("/title").asText() == "Polymorphic Array With Subtypes Inheritance")
+      assert(schema.at("/type").asText() == "object")
+      assert(!schema.at("/additionalProperties").asBoolean())
+      assert(schema.at("/required/0").asText() == "fooOrSubList")
+      assert(schema.at("/properties/fooOrSubList/type").asText() == "array")
+      assert(schema.at("/properties/fooOrSubList/minItems").asInt() == 2)
+      assert(schema.at("/properties/fooOrSubList/maxItems").asInt() == 2)
+      assert(schema.at("/properties/fooOrSubList/items/oneOf").size() == 3)
+      assert(schema.at("/properties/fooOrSubList/items/oneOf/0/$ref").asText() == "#/definitions/Foo2Type")
+      assert(schema.at("/properties/fooOrSubList/items/oneOf/1/$ref").asText() == "#/definitions/SpamType")
+      assert(schema.at("/properties/fooOrSubList/items/oneOf/2/$ref").asText() == "#/definitions/HamType")
+    }
+
+  }
+
+  test("Inherited types within a polymorphic array with invalid implementation class") {
+
+    val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+    val _jsonSchemaGenerator = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+    {
+      val invalidRecord = new PolymorphicArrayWithSubtypesInheritance(List[ABase2Type](new HamType("foof"), new Bar2Type("barf")).asJava)
+
+      val jsonNode = assertToFromJson(_jsonSchemaGenerator, invalidRecord)
+      assertToFromJson(_jsonSchemaGenerator, invalidRecord, classOf[PolymorphicArrayWithSubtypesInheritance])
+
+      val schema = _jsonSchemaGenerator.generateJsonSchema(classOf[PolymorphicArrayWithSubtypesInheritance])
+      val messages = validateRecordAgainstSchemaFailureMessages(schema, jsonNode)
+
+      assert(messages.contains("instance failed to match exactly one schema (matched 0 out of 3)"))
+    }
+
+  }
+
 }
 
 trait TestData {
@@ -1611,5 +1658,7 @@ trait TestData {
   val genericMapLike = new GenericMapLike(Collections.singletonMap("foo", "bar"))
 
   val polymorphicArrayWithSubtypes = new PolymorphicArrayWithSubtypes(List[ABaseType](new FooType("foof"), new BarType("barf")).asJava)
+
+  val polymorphicArrayWithInheritedSubtypes = new PolymorphicArrayWithSubtypesInheritance(List[ABase2Type](new Foo2Type("foof"), new SpamType("barf")).asJava)
 
 }
