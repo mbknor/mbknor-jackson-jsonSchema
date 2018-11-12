@@ -30,7 +30,6 @@ import io.github.classgraph.ClassGraph
 import org.scalatest.{FunSuite, Matchers}
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable.ListBuffer
 
 class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
@@ -115,9 +114,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
                                                  jsonRecord: JsonNode): List[String] = {
     val schemaValidator = JsonSchemaFactory.byDefault().getJsonSchema(jsonSchema)
     val report = schemaValidator.validate(jsonRecord)
-    val messageBuffer = ListBuffer[String]()
-    report.forEach(message => messageBuffer += message.getMessage)
-    messageBuffer.toList
+
+    report.iterator().asScala.map(_.getMessage).toList
   }
 
   // Generates schema, validates the schema using external schema validator and
