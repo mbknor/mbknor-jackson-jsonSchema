@@ -18,13 +18,11 @@ import com.kjetland.jackson.jsonSchema.testData._
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism2.{Child21, Child22, Parent2}
-import com.kjetland.jackson.jsonSchema.testData.polymorphism2.{Child22, Parent2}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism3.{Child31, Child32, Parent3}
-import com.kjetland.jackson.jsonSchema.testData.polymorphism4.{Child41, Child42, Parent4}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism4.{Child41, Child42}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism5.{Child51, Child52, Parent5}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
-import io.github.classgraph.ClassGraph
 import org.scalatest.{FunSuite, Matchers}
 
 import scala.collection.JavaConverters._
@@ -489,6 +487,9 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assertChild1(schema, "/oneOf", "Child51", typeParamName = "clazz", typeName = ".Child51")
       assertChild2(schema, "/oneOf", "Child52", typeParamName = "clazz", typeName = ".Child52")
+
+      val embeddedTypeName = _objectMapper.valueToTree[ObjectNode](new Parent5.Child51InnerClass()).get("clazz").asText()
+      assertChild1(schema, "/oneOf", "Child51InnerClass", typeParamName = "clazz", typeName = embeddedTypeName)
     }
   }
 
