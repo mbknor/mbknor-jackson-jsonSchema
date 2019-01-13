@@ -7,9 +7,10 @@ import java.util.{Optional, List => JList}
 import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind._
-import com.fasterxml.jackson.databind.annotation.{JsonDeserialize, JsonTypeIdResolver}
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.introspect.AnnotatedClass
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
+import com.fasterxml.jackson.databind.jsontype.impl.MinimalClassNameIdResolver
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
 import com.fasterxml.jackson.databind.util.ClassUtil
 import com.kjetland.jackson.jsonSchema.annotations._
@@ -715,61 +716,29 @@ class JsonSchemaGenerator
     case class PolymorphismInfo(typePropertyName:String, subTypeName:String)
 
     private def extractPolymorphismInfo(_type:JavaType):Option[PolymorphismInfo] = {
-      // look for @JsonTypeInfo
-      val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
-      Option(ac.getAnnotations.get(classOf[JsonTypeInfo])).map {
-        jsonTypeInfo =>
+      val maybeBaseType = ClassUtil.findSuperTypes(_type, null, false).asScala.find { cl =>
+        cl.getRawClass.isAnnotationPresent(classOf[JsonTypeInfo] )
+      } orElse Option(_type.getSuperClass)
 
-          jsonTypeInfo.include() match {
-            case JsonTypeInfo.As.PROPERTY          => // supported
-            case JsonTypeInfo.As.EXISTING_PROPERTY => // supported
-            case x                                 => throw new Exception(s"We do not support polymorphism using jsonTypeInfo.include() = $x")
+      maybeBaseType.flatMap { baseType =>
+        val serializerOrNull = objectMapper
+          .getSerializerFactory
+          .createTypeSerializer(objectMapper.getSerializationConfig, baseType)
+
+        Option(serializerOrNull).map { serializer =>
+          serializer.getTypeInclusion match {
+            case JsonTypeInfo.As.PROPERTY | JsonTypeInfo.As.EXISTING_PROPERTY =>
+              val idResolver = serializer.getTypeIdResolver
+              val id = idResolver match {
+                // use custom implementation instead, because default implementation needs instance and we don't have one
+                case _ : MinimalClassNameIdResolver => extractMinimalClassnameId(baseType, _type)
+                case _ => idResolver.idFromValueAndType(null, _type.getRawClass)
+              }
+              PolymorphismInfo(serializer.getPropertyName, id)
+
+            case x => throw new Exception(s"We do not support polymorphism using jsonTypeInfo.include() = $x")
           }
-
-          val propertyName = jsonTypeInfo.property()
-
-          // Must find out what this current class should be called
-
-          val subTypeName:String = jsonTypeInfo.use match {
-            case JsonTypeInfo.Id.NAME =>
-              objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
-                .filter(_.getType == _type.getRawClass)
-                .find(_ => true) // find first
-                .get.getName
-
-            case JsonTypeInfo.Id.CLASS => _type.getRawClass.getName
-            case JsonTypeInfo.Id.MINIMAL_CLASS => "." + _type.getRawClass.getSimpleName
-            case JsonTypeInfo.Id.CUSTOM => extractCustomPolymorphismInfo(_type)
-            case x => throw new Exception(s"Polymorphism using jsonTypeInfo.use == $x not supported")
-          }
-
-          PolymorphismInfo(propertyName, subTypeName)
-      }
-    }
-
-    def extractCustomPolymorphismInfo(_type: JavaType): String = {
-      import scala.collection.JavaConverters._
-
-      // Support CUSTOM only if the JsonTypeIdResolver is provided,
-      // and it can resolve the type without an  object instance
-
-
-      ClassUtil.findSuperTypes(_type, null, false).asScala.find { cl =>
-        val clazz = cl.getRawClass
-        clazz.isAnnotationPresent( classOf[JsonTypeInfo] ) && clazz.isAnnotationPresent( classOf[JsonTypeIdResolver] )
-      }.map { baseType =>
-        val idResolver = baseType.getRawClass.getAnnotation(classOf[JsonTypeIdResolver])
-        val resolverClass = idResolver.value()
-        val id = try {
-          val resolver = resolverClass.newInstance()
-          resolver.init(baseType)
-          resolver.idFromValueAndType(null, _type.getRawClass)
-        } catch {
-          case e: Exception => throw new Exception(s"Error extracting typeInfo for type=${_type.getRawClass.getName} via resolverClass=$resolverClass", e)
         }
-        id
-      }.getOrElse {
-        throw new Exception(s"Cannot extract typeInfo for type=${_type.getRawClass.getName}. @JsonTypeIdResolver-annotation missing")
       }
     }
 
@@ -798,17 +767,9 @@ class JsonSchemaGenerator
 
               subTypes
 
-            case JsonTypeInfo.Id.CLASS =>
+            case _ =>
               // Just find all subclasses
               config.subclassesResolver.getSubclasses(_type.getRawClass)
-            case JsonTypeInfo.Id.MINIMAL_CLASS =>
-              // Just find all subclasses
-              config.subclassesResolver.getSubclasses(_type.getRawClass)
-            case JsonTypeInfo.Id.CUSTOM =>
-              // Just find all subclasses
-              config.subclassesResolver.getSubclasses(_type.getRawClass)
-
-            case x => throw new Exception("We do not support @jsonTypeInfo.use = " + x)
           }
 
       }.getOrElse(List())
@@ -1193,6 +1154,23 @@ class JsonSchemaGenerator
 
     }
 
+  }
+
+  private def extractMinimalClassnameId(baseType: JavaType, child: JavaType) = {
+    // code taken straight from Jackson's MinimalClassNameIdResolver
+    val base = baseType.getRawClass.getName
+    val ix = base.lastIndexOf('.')
+    val _basePackagePrefix = if (ix < 0) { // can this ever occur?
+      "."
+    } else {
+      base.substring(0, ix + 1)
+    }
+    val n = child.getRawClass.getName
+    if (n.startsWith(_basePackagePrefix)) { // note: we will leave the leading dot in there
+      n.substring(_basePackagePrefix.length - 1)
+    } else {
+      n
+    }
   }
 
   private def merge(mainNode:JsonNode, updateNode:JsonNode):Unit = {
