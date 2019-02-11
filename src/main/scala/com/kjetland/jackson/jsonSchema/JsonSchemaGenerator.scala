@@ -230,8 +230,13 @@ case class JsonSchemaConfig
   uniqueItemClasses:Set[Class[_]], // If rendering array and type is instanceOf class in this set, then we add 'uniqueItems": true' to schema - See // https://github.com/jdorn/json-editor for more info
   classTypeReMapping:Map[Class[_], Class[_]], // Can be used to prevent rendering using polymorphism for specific classes.
   jsonSuppliers:Map[String, Supplier[JsonNode]], // Suppliers in this map can be accessed using @JsonSchemaInject(jsonSupplierViaLookup = "lookupKey")
-  subclassesResolver:SubclassesResolver = new SubclassesResolverImpl() // Using default impl that scans entire classpath
+  subclassesResolver:SubclassesResolver = new SubclassesResolverImpl(), // Using default impl that scans entire classpath
+  failOnUnknownProperties:Boolean = true
 ) {
+
+  def withFailOnUnknownProperties(failOnUnknownProperties:Boolean):JsonSchemaConfig = {
+    this.copy( failOnUnknownProperties = failOnUnknownProperties )
+  }
 
   def withSubclassesResolver(subclassesResolver: SubclassesResolver):JsonSchemaConfig = {
     this.copy( subclassesResolver = subclassesResolver )
@@ -864,7 +869,7 @@ class JsonSchemaGenerator
           thisObjectNode:ObjectNode =>
 
             thisObjectNode.put("type", "object")
-            thisObjectNode.put("additionalProperties", false)
+            thisObjectNode.put("additionalProperties", !config.failOnUnknownProperties)
 
             // If class is annotated with JsonSchemaFormat, we should add it
             val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
