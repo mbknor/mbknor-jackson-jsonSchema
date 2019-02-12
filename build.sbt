@@ -5,7 +5,7 @@ lazy val commonSettings = Seq(
   organization := "com.kjetland",
   organizationName := "mbknor",
   scalaVersion := "2.12.4",
-  crossScalaVersions := Seq("2.10.5", "2.11.11", "2.12.6", "2.13.0-M4"),
+  crossScalaVersions := Seq("2.10.7", "2.11.12", "2.12.8", "2.13.0-M4"),
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
