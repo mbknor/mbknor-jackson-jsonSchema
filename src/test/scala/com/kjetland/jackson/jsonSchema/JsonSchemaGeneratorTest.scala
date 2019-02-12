@@ -524,6 +524,28 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
   }
 
+  test("additionalProperties / failOnUnknownProperties") {
+
+    // Test default
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.manyPrimitives)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, testData.manyPrimitives.getClass, Some(jsonNode))
+
+      assert(schema.at("/additionalProperties").asBoolean() == false)
+    }
+
+    // Test turning failOnUnknownProperties off
+    {
+      val generator = new JsonSchemaGenerator(_objectMapper, debug = false,
+        config = JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(failOnUnknownProperties = false)
+      )
+      val jsonNode = assertToFromJson(generator, testData.manyPrimitives)
+      val schema = generateAndValidateSchema(generator, testData.manyPrimitives.getClass, Some(jsonNode))
+
+      assert(schema.at("/additionalProperties").asBoolean() == true)
+    }
+  }
+
   test("primitives") {
 
     // Java
