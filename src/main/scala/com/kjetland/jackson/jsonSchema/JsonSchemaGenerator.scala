@@ -442,6 +442,16 @@ class JsonSchemaGenerator
               node.put("default", defaultValue.value())
           }
 
+          // Look for @JsonSchemaExamples
+          Option(p.getAnnotation(classOf[JsonSchemaExamples])).map {
+            exampleValues =>
+              val examples: ArrayNode = JsonNodeFactory.instance.arrayNode()
+              exampleValues.value().map {
+                exampleValue => examples.add(exampleValue)
+              }
+              node.set("examples", examples)
+          }
+
           // Look for @NotBlank
           Option(p.getAnnotation(classOf[NotBlank])).map {
             _ =>
@@ -577,6 +587,16 @@ class JsonSchemaGenerator
             defaultValue =>
               node.put("default", defaultValue.value() )
           }
+
+          // Look for @JsonSchemaExamples
+          Option(p.getAnnotation(classOf[JsonSchemaExamples])).map {
+            exampleValues =>
+              val examples: ArrayNode = JsonNodeFactory.instance.arrayNode()
+              exampleValues.value().map {
+                exampleValue => examples.add(exampleValue)
+              }
+              node.set("examples", examples)
+          }
       }
 
       new JsonNumberFormatVisitor  with EnumSupport {
@@ -621,6 +641,16 @@ class JsonSchemaGenerator
           Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
             defaultValue =>
               node.put("default", defaultValue.value().toInt)
+          }
+
+          // Look for @JsonSchemaExamples
+          Option(p.getAnnotation(classOf[JsonSchemaExamples])).map {
+            exampleValues =>
+              val examples: ArrayNode = JsonNodeFactory.instance.arrayNode()
+              exampleValues.value().map {
+                exampleValue => examples.add(exampleValue)
+              }
+              node.set("examples", examples)
           }
       }
 

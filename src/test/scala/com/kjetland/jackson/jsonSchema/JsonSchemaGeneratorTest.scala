@@ -1040,6 +1040,15 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   }
 
+  test("default and examples") {
+    val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.defaultAndExamples)
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.defaultAndExamples.getClass, Some(jsonNode))
+
+    assert(getArrayNodeAsListOfStrings(schema.at("/properties/emailValue/examples")) == List("user@example.com"))
+    assert(schema.at("/properties/fontSize/default").asText() == "12")
+    assert(getArrayNodeAsListOfStrings(schema.at("/properties/fontSize/examples")) == List("10", "14", "18"))
+  }
+
   test("validation") {
     // Scala
     {
@@ -1543,6 +1552,8 @@ trait TestData {
 
   val pojoUsingFormat = new PojoUsingFormat("test@example.com", true, OffsetDateTime.now(), OffsetDateTime.now())
   val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
+
+  val defaultAndExamples = DefaultAndExamples("email@example.com", 18)
 
   val classUsingValidation = ClassUsingValidation(
     "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingNotEmpty", List("l1", "l2", "l3"), Map("mk1" -> "mv1", "mk2" -> "mv2"),
