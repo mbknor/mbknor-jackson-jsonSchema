@@ -311,11 +311,11 @@ class JsonSchemaGenerator
 
   // Class that manages creating new definitions or getting $refs to existing definitions
   class DefinitionsHandler() {
-    private var class2Ref = Map[Class[_], String]()
+    private var class2Ref = Map[JavaType, String]()
     private val definitionsNode = JsonNodeFactory.instance.objectNode()
 
 
-    case class WorkInProgress(classInProgress:Class[_], nodeInProgress:ObjectNode)
+    case class WorkInProgress(typeInProgress:JavaType, nodeInProgress:ObjectNode)
 
     // Used when 'combining' multiple invocations to getOrCreateDefinition when processing polymorphism.
     private var workInProgress:Option[WorkInProgress] = None
@@ -333,12 +333,22 @@ class JsonSchemaGenerator
     }
 
 
-    def getDefinitionName (clazz:Class[_]) = { if (config.useTypeIdForDefinitionName) clazz.getName else clazz.getSimpleName }
+    def getDefinitionName (_type:JavaType) : String = {
+      val baseName = if (config.useTypeIdForDefinitionName) _type.getRawClass.getTypeName else _type.getRawClass.getSimpleName
+
+      if (_type.hasGenericTypes) {
+        val containedTypes = Range(0, _type.containedTypeCount()).map(_type.containedType)
+        val typeNames = containedTypes.map(getDefinitionName).mkString(",")
+        s"$baseName[$typeNames]"
+      } else {
+        baseName
+      }
+    }
 
     // Either creates new definitions or return $ref to existing one
-    def getOrCreateDefinition(clazz:Class[_])(objectDefinitionBuilder:(ObjectNode) => Option[JsonObjectFormatVisitor]):DefinitionInfo = {
+    def getOrCreateDefinition(_type:JavaType)(objectDefinitionBuilder:(ObjectNode) => Option[JsonObjectFormatVisitor]):DefinitionInfo = {
 
-      class2Ref.get(clazz) match {
+      class2Ref.get(_type) match {
         case Some(ref) =>
 
           workInProgress match {
@@ -347,7 +357,7 @@ class JsonSchemaGenerator
 
             case Some(w) =>
               // this is a recursive polymorphism call
-              if ( clazz != w.classInProgress) throw new Exception(s"Wrong class - working on ${w.classInProgress} - got $clazz")
+              if ( _type != w.typeInProgress) throw new Exception(s"Wrong type - working on ${w.typeInProgress} - got ${_type}")
 
               DefinitionInfo(None, objectDefinitionBuilder(w.nodeInProgress))
           }
@@ -356,20 +366,21 @@ class JsonSchemaGenerator
 
           // new one - must build it
           var retryCount = 0
-          var shortRef = getDefinitionName(clazz)
-          var longRef = "#/definitions/" + shortRef
+          val definitionName = getDefinitionName(_type)
+          var shortRef = definitionName
+          var longRef = "#/definitions/" + definitionName
           while( class2Ref.values.toList.contains(longRef)) {
             retryCount = retryCount + 1
-            shortRef = clazz.getSimpleName + "_" + retryCount
-            longRef = "#/definitions/"+clazz.getSimpleName + "_" + retryCount
+            shortRef = definitionName + "_" + retryCount
+            longRef = "#/definitions/" + definitionName + "_" + retryCount
           }
-          class2Ref = class2Ref + (clazz -> longRef)
+          class2Ref = class2Ref + (_type -> longRef)
 
           // create definition
           val node = JsonNodeFactory.instance.objectNode()
 
           // When processing polymorphism, we might get multiple recursive calls to getOrCreateDefinition - this is a wau to combine them
-          workInProgress = Some(WorkInProgress(clazz, node))
+          workInProgress = Some(WorkInProgress(_type, node))
 
           definitionsNode.set(shortRef, node)
 
@@ -837,8 +848,7 @@ class JsonSchemaGenerator
         subTypes.foreach {
           subType: Class[_] =>
             l(s"polymorphism - subType: $subType")
-
-            val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(subType){
+            val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(objectMapper.constructType(subType)){
               objectNode =>
 
                 val childVisitor = createChild(objectNode, currentProperty = None)
@@ -1144,7 +1154,7 @@ class JsonSchemaGenerator
           // This is the first level - we must not use definitions
           objectBuilder(node).orNull
         } else {
-          val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(_type.getRawClass)(objectBuilder)
+          val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(_type)(objectBuilder)
 
           definitionInfo.ref.foreach {
             r =>

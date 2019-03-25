@@ -15,6 +15,7 @@ import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData.GenericClass.GenericClassVoid
 import com.kjetland.jackson.jsonSchema.testData.MapLike.GenericMapLike
 import com.kjetland.jackson.jsonSchema.testData._
+import com.kjetland.jackson.jsonSchema.testData.generic.GenericClassContainer
 import com.kjetland.jackson.jsonSchema.testData.mixin.{MixinChild1, MixinModule, MixinParent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism1.{Child1, Child2, Parent}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism2.{Child21, Child22, Parent2}
@@ -521,6 +522,25 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       assertJsonSubTypesInfo(schema1, "type", "Child41")
       assertJsonSubTypesInfo(schema2, "type", "Child42")
+    }
+  }
+
+  test("Generate schema for class containing generics with same base type but different type arguments") {
+    {
+      val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+      val g = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+      val instance = new GenericClassContainer()
+      val jsonNode = assertToFromJson(g, instance)
+      assertToFromJson(g, instance, classOf[GenericClassContainer])
+
+      val schema = generateAndValidateSchema(g, classOf[GenericClassContainer], Some(jsonNode))
+
+      assert(schema.at("/definitions/BoringClass/properties/data/type").asText() == "integer")
+      assert(schema.at("/definitions/GenericClass[String]/properties/data/type").asText() == "string")
+      assert(schema.at("/definitions/GenericClass[BoringClass]/properties/data/$ref").asText() == "#/definitions/BoringClass")
+      assert(schema.at("/definitions/GenericClassTwo[String,GenericClass[BoringClass]]/properties/data1/type").asText() == "string")
+      assert(schema.at("/definitions/GenericClassTwo[String,GenericClass[BoringClass]]/properties/data2/$ref").asText() == "#/definitions/GenericClass[BoringClass]")
     }
   }
 
