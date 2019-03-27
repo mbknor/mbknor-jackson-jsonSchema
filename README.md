@@ -18,6 +18,7 @@ in generating jsonSchema from your POJOs using Jackson @Annotations.
   - **@JsonSchemaDefault**
   - **@JsonSchemaOptions**
   - **@JsonSchemaInject**
+  - **@JsonSchemaExamples**
 * Supports many Javax-validation @Annotations
 * Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor)
   - (Must be configured to use this mode)
