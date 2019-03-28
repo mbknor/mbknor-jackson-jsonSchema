@@ -537,10 +537,10 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       val schema = generateAndValidateSchema(g, classOf[GenericClassContainer], Some(jsonNode))
 
       assert(schema.at("/definitions/BoringClass/properties/data/type").asText() == "integer")
-      assert(schema.at("/definitions/GenericClass[String]/properties/data/type").asText() == "string")
-      assert(schema.at("/definitions/GenericClass[BoringClass]/properties/data/$ref").asText() == "#/definitions/BoringClass")
-      assert(schema.at("/definitions/GenericClassTwo[String,GenericClass[BoringClass]]/properties/data1/type").asText() == "string")
-      assert(schema.at("/definitions/GenericClassTwo[String,GenericClass[BoringClass]]/properties/data2/$ref").asText() == "#/definitions/GenericClass[BoringClass]")
+      assert(schema.at("/definitions/GenericClass(String)/properties/data/type").asText() == "string")
+      assert(schema.at("/definitions/GenericClass(BoringClass)/properties/data/$ref").asText() == "#/definitions/BoringClass")
+      assert(schema.at("/definitions/GenericClassTwo(String,GenericClass(BoringClass))/properties/data1/type").asText() == "string")
+      assert(schema.at("/definitions/GenericClassTwo(String,GenericClass(BoringClass))/properties/data2/$ref").asText() == "#/definitions/GenericClass(BoringClass)")
     }
   }
 

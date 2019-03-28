@@ -339,7 +339,7 @@ class JsonSchemaGenerator
       if (_type.hasGenericTypes) {
         val containedTypes = Range(0, _type.containedTypeCount()).map(_type.containedType)
         val typeNames = containedTypes.map(getDefinitionName).mkString(",")
-        s"$baseName[$typeNames]"
+        s"$baseName($typeNames)"
       } else {
         baseName
       }
