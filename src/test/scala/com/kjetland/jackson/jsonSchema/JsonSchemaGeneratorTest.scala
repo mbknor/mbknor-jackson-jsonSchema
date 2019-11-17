@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.{JavaType, JsonNode, ObjectMapper, Seriali
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module
 import com.fasterxml.jackson.datatype.joda.JodaModule
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.github.fge.jsonschema.main.JsonSchemaFactory
 import com.kjetland.jackson.jsonSchema.testData.GenericClass.GenericClassVoid
@@ -31,8 +32,9 @@ import scala.collection.JavaConverters._
 class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   val _objectMapper = new ObjectMapper()
-  val _objectMapperScala = new ObjectMapper()
-  _objectMapperScala.registerModule(new DefaultScalaModule)
+  val _objectMapperScala = new ObjectMapper().registerModule(new DefaultScalaModule)
+
+  val _objectMapperKotlin = new ObjectMapper().registerModule(new KotlinModule())
 
   val mixinModule = new MixinModule
 
@@ -1421,6 +1423,14 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
 
   }
+
+  test("Basic json (de)serialization of Kotlin data class") {
+    val a = new KotlinClass("a", 1)
+    val json = _objectMapperKotlin.writeValueAsString(a)
+    val r = _objectMapperKotlin.readValue(json, classOf[KotlinClass])
+    assert( a == r)
+  }
+
 }
 
 trait TestData {
