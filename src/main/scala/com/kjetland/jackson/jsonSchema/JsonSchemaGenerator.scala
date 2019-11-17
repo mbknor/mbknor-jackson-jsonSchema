@@ -461,6 +461,7 @@ class JsonSchemaGenerator
                 exampleValue => examples.add(exampleValue)
               }
               node.set("examples", examples)
+              ()
           }
 
           // Look for @NotBlank
@@ -662,6 +663,7 @@ class JsonSchemaGenerator
                 exampleValue => examples.add(exampleValue)
               }
               node.set("examples", examples)
+              ()
           }
       }
 
@@ -991,6 +993,7 @@ class JsonSchemaGenerator
                   val objectOptionsNode = JsonNodeFactory.instance.objectNode()
                   objectOptionsNode.set("multiple_editor_select_via_property", multipleEditorSelectViaPropertyNode)
                   thisObjectNode.set("options", objectOptionsNode)
+                  ()
                 }
 
             }
@@ -1234,6 +1237,7 @@ class JsonSchemaGenerator
             // Overwrite field
             val value = updateNode.get(fieldName)
             node.set(fieldName, value)
+            ()
           case _ =>
         }
       }
@@ -1369,6 +1373,7 @@ class JsonSchemaGenerator
 
     definitionsHandler.getFinalDefinitionsNode().foreach {
       definitionsNode => rootNode.set("definitions", definitionsNode)
+      ()
     }
 
     rootNode
