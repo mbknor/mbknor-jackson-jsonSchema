@@ -63,6 +63,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   val jsonSchemaGeneratorScala = new JsonSchemaGenerator(_objectMapperScala, debug = true)
   val jsonSchemaGeneratorScalaHTML5 = new JsonSchemaGenerator(_objectMapperScala, debug = true, config = JsonSchemaConfig.html5EnabledSchema)
 
+  val jsonSchemaGeneratorKotlin = new JsonSchemaGenerator(_objectMapperKotlin, debug = true)
+
   val vanillaJsonSchemaDraft4WithIds = JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(useTypeIdForDefinitionName = true)
   val jsonSchemaGeneratorWithIds = new JsonSchemaGenerator(_objectMapperScala, debug = true, vanillaJsonSchemaDraft4WithIds)
 
@@ -1431,6 +1433,24 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert( a == r)
   }
 
+  test("Non-nullable parameter with default value is always required for Kotlin class") {
+
+    val jsonNode = assertToFromJson(jsonSchemaGeneratorKotlin, testData.kotlinWithDefaultValues)
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorKotlin, testData.kotlinWithDefaultValues.getClass, Some(jsonNode))
+
+    println(schema)
+    assert("string" == schema.at("/properties/optional/type").asText())
+    assert("string" == schema.at("/properties/required/type").asText())
+    assert("string" == schema.at("/properties/optionalDefault/type").asText())
+    assert("string" == schema.at("/properties/optionalDefaultNull/type").asText())
+
+    assertPropertyRequired(schema, "optional", required = false)
+    assertPropertyRequired(schema, "required", required = true)
+    assertPropertyRequired(schema, "optionalDefault", required = true)
+    assertPropertyRequired(schema, "optionalDefaultNull", required = false)
+
+  }
+
 }
 
 trait TestData {
@@ -1614,5 +1634,7 @@ trait TestData {
   val genericClassVoid = new GenericClassVoid()
 
   val genericMapLike = new GenericMapLike(Collections.singletonMap("foo", "bar"))
+
+  val kotlinWithDefaultValues = new KotlinWithDefaultValues("1", "2", "3", "4")
 
 }
