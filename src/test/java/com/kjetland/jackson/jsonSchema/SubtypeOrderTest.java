@@ -1,5 +1,6 @@
 package com.kjetland.jackson.jsonSchema;
 
+import java.io.IOException;
 import java.util.List;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -28,7 +29,7 @@ public class SubtypeOrderTest {
 
 	private final ObjectMapper MAPPER = new ObjectMapper();
 
-	public void testGenerateSchema() {
+	public void testGenerateSchema() throws IOException {
 		com.kjetland.jackson.jsonSchema.JsonSchemaGenerator generator = new com.kjetland.jackson.jsonSchema.JsonSchemaGenerator(MAPPER);
 		ObjectWriter objectWriter = MAPPER.writerWithDefaultPrettyPrinter();
 		JsonNode jsonNode = generator.generateJsonSchema(Loc.class);
