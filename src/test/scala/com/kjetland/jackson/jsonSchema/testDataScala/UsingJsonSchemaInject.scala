@@ -88,14 +88,15 @@ class CustomUserNamesLoader(custom:String) extends Supplier[JsonNode] {
     schema
   }
 }
-  
 
-
-
-
-
-
-
-
-
-
+@JsonSchemaInject(
+  json =
+    """{
+      "everything": "should be replaced"
+      }""",
+  merge = false
+)
+case class UsingJsonSchemaInjectWithTopLevelMergeFalse
+(
+  shouldBeIgnored:String
+)

@@ -1309,6 +1309,24 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
   }
 
+  test("UsingJsonSchemaInjectWithTopLevelMergeFalse") {
+
+    val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+    val _jsonSchemaGeneratorScala = new JsonSchemaGenerator(_objectMapperScala, debug = true, config)
+    val schema = _jsonSchemaGeneratorScala.generateJsonSchema(classOf[UsingJsonSchemaInjectWithTopLevelMergeFalse])
+
+    val schemaJson = asPrettyJson(schema, _jsonSchemaGeneratorScala.rootObjectMapper)
+    println("--------------------------------------------")
+    println(schemaJson)
+
+    val fasit =
+      """{
+        |  "everything" : "should be replaced"
+        |}""".stripMargin
+
+    assert( schemaJson == fasit )
+  }
+
   test("Preventing polymorphism by using classTypeReMapping") {
 
     val config = JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(classTypeReMapping = Map(classOf[Parent] -> classOf[Child1]))
