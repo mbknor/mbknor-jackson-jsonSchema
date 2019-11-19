@@ -42,7 +42,9 @@ lazy val commonSettings = Seq(
       Seq("-no-java-comments") //workaround for scala/scala-dev#249
     case _ =>
       Seq()
-  }
+  },
+  packageOptions in (Compile, packageBin) +=
+    Package.ManifestAttributes( "Automatic-Module-Name" -> "mbknor.jackson.jsonschema" )
 )
 
 
