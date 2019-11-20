@@ -433,6 +433,14 @@ class JsonSchemaGenerator
       // TODO [kog@epiphanic.org 01/09/2018]: but most of the logic seems to be unrelated.
       val minAndMaxLength:Option[MinAndMaxLength] = currentProperty.flatMap {
         p =>
+
+          // Look for @NotBlank
+          Option(p.getAnnotation(classOf[NotBlank])).map {
+            _ =>
+              // Need to write this pattern first in case we should override it with more specific @Pattern
+              node.put("pattern", "^.*\\S+.*$")
+          }
+
           // Look for @Pattern
           Option(p.getAnnotation(classOf[Pattern])).map {
             pattern =>
@@ -462,12 +470,6 @@ class JsonSchemaGenerator
               }
               node.set("examples", examples)
               ()
-          }
-
-          // Look for @NotBlank
-          Option(p.getAnnotation(classOf[NotBlank])).map {
-            _ =>
-              node.put("pattern", "^.*\\S+.*$")
           }
 
           // Look for a @Size annotation, which should have a set of min/max properties.
