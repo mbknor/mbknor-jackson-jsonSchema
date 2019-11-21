@@ -1,5 +1,6 @@
 package com.kjetland.jackson.jsonSchema
 
+import java.lang.annotation.Annotation
 import java.util
 import java.util.function.Supplier
 import java.util.{Optional, List => JList}
@@ -8,7 +9,7 @@ import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, 
 import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
-import com.fasterxml.jackson.databind.introspect.AnnotatedClass
+import com.fasterxml.jackson.databind.introspect.{AnnotatedClass, AnnotatedClassResolver}
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.jsontype.impl.MinimalClassNameIdResolver
 import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
@@ -16,6 +17,7 @@ import com.fasterxml.jackson.databind.util.ClassUtil
 import com.kjetland.jackson.jsonSchema.annotations._
 import io.github.classgraph.{ClassGraph, ScanResult}
 import javax.validation.constraints._
+import javax.validation.groups.Default
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
@@ -117,7 +119,10 @@ object JsonSchemaConfig {
               useMultipleEditorSelectViaProperty:Boolean,
               uniqueItemClasses:java.util.Set[Class[_]],
               classTypeReMapping:java.util.Map[Class[_], Class[_]],
-              jsonSuppliers:java.util.Map[String, Supplier[JsonNode]]
+              jsonSuppliers:java.util.Map[String, Supplier[JsonNode]],
+              subclassesResolver:SubclassesResolver,
+              failOnUnknownProperties:Boolean,
+              javaxValidationGroups:java.util.List[Class[_]]
             ):JsonSchemaConfig = {
 
     import scala.collection.JavaConverters._
@@ -136,7 +141,12 @@ object JsonSchemaConfig {
       useMultipleEditorSelectViaProperty,
       uniqueItemClasses.asScala.toSet,
       classTypeReMapping.asScala.toMap,
-      jsonSuppliers.asScala.toMap
+      jsonSuppliers.asScala.toMap,
+      Option(subclassesResolver).getOrElse( new SubclassesResolverImpl()),
+      failOnUnknownProperties,
+      if (javaxValidationGroups == null) Array[Class[_]]() else {
+        javaxValidationGroups.toArray.asInstanceOf[Array[Class[_]]]
+      }
     )
   }
 
@@ -231,7 +241,8 @@ case class JsonSchemaConfig
   classTypeReMapping:Map[Class[_], Class[_]], // Can be used to prevent rendering using polymorphism for specific classes.
   jsonSuppliers:Map[String, Supplier[JsonNode]], // Suppliers in this map can be accessed using @JsonSchemaInject(jsonSupplierViaLookup = "lookupKey")
   subclassesResolver:SubclassesResolver = new SubclassesResolverImpl(), // Using default impl that scans entire classpath
-  failOnUnknownProperties:Boolean = true
+  failOnUnknownProperties:Boolean = true,
+  javaxValidationGroups:Array[Class[_]] = Array() // Used to match against different validation-groups (javax.validation.constraints)
 ) {
 
   def withFailOnUnknownProperties(failOnUnknownProperties:Boolean):JsonSchemaConfig = {
@@ -257,6 +268,8 @@ class JsonSchemaGenerator
   debug:Boolean = false,
   config:JsonSchemaConfig = JsonSchemaConfig.vanillaJsonSchemaDraft4
 ) {
+
+  val javaxValidationGroups = config.javaxValidationGroups
 
   // Java API
   def this(rootObjectMapper: ObjectMapper) = this(rootObjectMapper, false, JsonSchemaConfig.vanillaJsonSchemaDraft4)
@@ -304,6 +317,57 @@ class JsonSchemaGenerator
 
   private def setFormat(node:ObjectNode, format:String): Unit = {
     node.put("format", format)
+  }
+
+  // Verifies that the annotation is applicable based on the config.javaxValidationGroups
+  private def annotationIsApplicable(annotation:Annotation):Boolean = {
+
+    def extractGroupsFromAnnotation(annotation:Annotation):Array[Class[_]] = {
+      // Annotations cannot implement interface, so we have to check each and every
+      // javax-annotation... To prevent bugs with missing groups-extract-impl when new
+      // validation-annotations are added, I've decided to do it using reflection
+      val annotationClass = annotation.annotationType()
+      if ( annotationClass.getPackage.getName().startsWith("javax.validation.constraints") ) {
+        val groupsMethod = try {
+          annotationClass.getMethod("groups")
+        } catch {
+          case e:NoSuchMethodException => null
+        }
+        if ( groupsMethod != null ) {
+          groupsMethod.invoke(annotation).asInstanceOf[Array[Class[_]]]
+        } else {
+          Array()
+        }
+      } else {
+        annotation match {
+          case x:JsonSchemaInject => x.javaxValidationGroups()
+          case _ => Array()
+        }
+      }
+    }
+
+    val javaxDefaultGroup = classOf[Default]
+
+    val groupsOnAnnotation:Array[Class[_]] = extractGroupsFromAnnotation(annotation)
+
+    (javaxValidationGroups, groupsOnAnnotation) match {
+      case (Array(), Array()) => true
+      case (Array(), l)       => l.contains(javaxDefaultGroup)// Use it if groupsOnAnnotation contains Default
+      case (l, Array())       => l.contains(javaxDefaultGroup)// Use it if javaxValidationGroups contains Default
+      case (a, b)             => a.exists( c => b.contains(c))// One of a must be included in b
+    }
+  }
+
+  // Tries to retrieve a annotation and validates that it is applicable
+  private def selectAnnotation[T <: Annotation](property:BeanProperty, annotationClass:Class[T]):Option[T] = {
+    Option(property.getAnnotation(annotationClass))
+      .filter(annotationIsApplicable(_))
+  }
+
+  // Tries to retrieve a annotation and validates that it is applicable
+  private def selectAnnotation[T <: Annotation](annotatedClass:AnnotatedClass, annotationClass:Class[T]):Option[T] = {
+    Option(annotatedClass.getAnnotation(annotationClass))
+      .filter(annotationIsApplicable(_))
   }
 
 
@@ -435,20 +499,20 @@ class JsonSchemaGenerator
         p =>
 
           // Look for @NotBlank
-          Option(p.getAnnotation(classOf[NotBlank])).map {
+          selectAnnotation(p, classOf[NotBlank]).map {
             _ =>
               // Need to write this pattern first in case we should override it with more specific @Pattern
               node.put("pattern", "^.*\\S+.*$")
           }
 
           // Look for @Pattern
-          Option(p.getAnnotation(classOf[Pattern])).map {
+          selectAnnotation(p, classOf[Pattern]).map {
             pattern =>
               node.put("pattern", pattern.regexp())
           }
 
           // Look for @Pattern.List
-          Option(p.getAnnotation(classOf[Pattern.List])).map {
+          selectAnnotation(p, classOf[Pattern.List]).map {
             patterns => {
               val regex = patterns.value().map(_.regexp).foldLeft("^")(_ + "(?=" + _ + ")").concat(".*$")
               node.put("pattern", regex)
@@ -456,13 +520,13 @@ class JsonSchemaGenerator
           }
 
           // Look for @JsonSchemaDefault
-          Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
+          selectAnnotation(p, classOf[JsonSchemaDefault]).map {
             defaultValue =>
               node.put("default", defaultValue.value())
           }
 
           // Look for @JsonSchemaExamples
-          Option(p.getAnnotation(classOf[JsonSchemaExamples])).map {
+          selectAnnotation(p, classOf[JsonSchemaExamples]).map {
             exampleValues =>
               val examples: ArrayNode = JsonNodeFactory.instance.arrayNode()
               exampleValues.value().map {
@@ -473,7 +537,7 @@ class JsonSchemaGenerator
           }
 
           // Look for a @Size annotation, which should have a set of min/max properties.
-          Option(p.getAnnotation(classOf[Size]))
+          selectAnnotation(p, classOf[Size])
               .map {
                 size =>
                   (size.min(), size.max()) match {
@@ -485,11 +549,11 @@ class JsonSchemaGenerator
             // Look for other annotations that don't have an explicit size, but we can infer the need to set a size for.
             .orElse {
               // If we're annotated with @NotNull, check to see if our config requires a size property to be generated.
-              if (config.useMinLengthForNotNull && (p.getAnnotation(classOf[NotNull]) != null)) {
+              if (config.useMinLengthForNotNull && (selectAnnotation(p, classOf[NotNull]).isDefined)) {
                 Option(MinAndMaxLength(Some(1), None))
               }
               // Other javax.validation annotations that require a length.
-              else if (p.getAnnotation(classOf[NotBlank]) != null || p.getAnnotation(classOf[NotEmpty]) != null) {
+              else if (selectAnnotation(p, classOf[NotBlank]).isDefined || selectAnnotation(p, classOf[NotEmpty]).isDefined) {
                 Option(MinAndMaxLength(Some(1), None))
               }
               // No length required.
@@ -533,14 +597,14 @@ class JsonSchemaGenerator
       currentProperty.map {
         p =>
           // Look for @Size
-          Option(p.getAnnotation(classOf[Size])).map {
+          selectAnnotation(p, classOf[Size]).map {
             size =>
               node.put("minItems", size.min())
               node.put("maxItems", size.max())
           }
 
           // Look for @NotEmpty
-          Option(p.getAnnotation(classOf[NotEmpty])).map {
+          selectAnnotation(p, classOf[NotEmpty]).map {
             notEmpty =>
               node.put("minItems", 1)
           }
@@ -576,22 +640,22 @@ class JsonSchemaGenerator
       // Look for @Min, @Max, @DecimalMin, @DecimalMax => minimum, maximum
       currentProperty.map {
         p =>
-          Option(p.getAnnotation(classOf[Min])).map {
+          selectAnnotation(p, classOf[Min]).map {
             min =>
               node.put("minimum", min.value())
           }
 
-          Option(p.getAnnotation(classOf[Max])).map {
+          selectAnnotation(p, classOf[Max]).map {
             max =>
               node.put("maximum", max.value())
           }
 
-          Option(p.getAnnotation(classOf[DecimalMin])).map {
+          selectAnnotation(p, classOf[DecimalMin]).map {
             decimalMin =>
               node.put("minimum", decimalMin.value().toDouble)
           }
 
-          Option(p.getAnnotation(classOf[DecimalMax])).map {
+          selectAnnotation(p, classOf[DecimalMax]).map {
             decimalMax =>
               node.put("maximum", decimalMax.value().toDouble)
           }
@@ -641,24 +705,24 @@ class JsonSchemaGenerator
       // Look for @Min, @Max => minimum, maximum
       currentProperty.map {
         p =>
-          Option(p.getAnnotation(classOf[Min])).map {
+          selectAnnotation(p, classOf[Min]).map {
             min =>
               node.put("minimum", min.value())
           }
 
-          Option(p.getAnnotation(classOf[Max])).map {
+          selectAnnotation(p, classOf[Max]).map {
             max =>
               node.put("maximum", max.value())
           }
 
           // Look for @JsonSchemaDefault
-          Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
+          selectAnnotation(p, classOf[JsonSchemaDefault]).map {
             defaultValue =>
               node.put("default", defaultValue.value().toInt)
           }
 
           // Look for @JsonSchemaExamples
-          Option(p.getAnnotation(classOf[JsonSchemaExamples])).map {
+          selectAnnotation(p, classOf[JsonSchemaExamples]).map {
             exampleValues =>
               val examples: ArrayNode = JsonNodeFactory.instance.arrayNode()
               exampleValues.value().map {
@@ -794,7 +858,7 @@ class JsonSchemaGenerator
 
     private def extractSubTypes(_type: JavaType):List[Class[_]] = {
 
-      val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
+      val ac = AnnotatedClassResolver.resolve(objectMapper.getDeserializationConfig, _type, objectMapper.getDeserializationConfig)
 
       Option(ac.getAnnotation(classOf[JsonTypeInfo])).map {
         jsonTypeInfo: JsonTypeInfo =>
@@ -921,7 +985,7 @@ class JsonSchemaGenerator
             thisObjectNode.put("additionalProperties", !config.failOnUnknownProperties)
 
             // If class is annotated with JsonSchemaFormat, we should add it
-            val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
+            val ac = AnnotatedClassResolver.resolve(objectMapper.getDeserializationConfig, _type, objectMapper.getDeserializationConfig)
             resolvePropertyFormat(_type, objectMapper).foreach {
               format =>
                 setFormat(thisObjectNode, format)
@@ -952,7 +1016,7 @@ class JsonSchemaGenerator
             }
 
             // Optionally add JsonSchemaInject to top-level
-            val renderProps:Boolean = Option(ac.getAnnotations.get(classOf[JsonSchemaInject])).map {
+            val renderProps:Boolean = selectAnnotation(ac, classOf[JsonSchemaInject]).map {
               a =>
                 val merged = injectFromJsonSchemaInject(a, thisObjectNode)
                 merged == true // Continue to render props since we merged injection
@@ -1153,11 +1217,12 @@ class JsonSchemaGenerator
                   // Optionally add JsonSchemaInject
                   prop.flatMap {
                     p: BeanProperty =>
-                      Option(p.getAnnotation(classOf[JsonSchemaInject])) match {
+                      selectAnnotation(p, classOf[JsonSchemaInject]) match {
                         case Some(a) => Some(a)
                         case None =>
                           // Try to look at the class itself -- Looks like this is the only way to find it if the type is Enum
                           Option(p.getType.getRawClass.getAnnotation(classOf[JsonSchemaInject]))
+                            .filter( annotationIsApplicable(_) )
                       }
                   }.foreach {
                     a =>
@@ -1187,7 +1252,7 @@ class JsonSchemaGenerator
 
                 // Checks to see if a javax.validation field that makes our field required is present.
                 private def validationAnnotationRequired(prop: Option[BeanProperty]): Boolean = {
-                  prop.exists(p => p.getAnnotation(classOf[NotNull]) != null || p.getAnnotation(classOf[NotBlank]) != null || p.getAnnotation(classOf[NotEmpty]) != null)
+                  prop.exists(p => selectAnnotation(p, classOf[NotNull]).isDefined || selectAnnotation(p, classOf[NotBlank]).isDefined || selectAnnotation(p, classOf[NotEmpty]).isDefined)
                 }
               })
             } else None
@@ -1271,7 +1336,7 @@ class JsonSchemaGenerator
   }
 
   def resolvePropertyFormat(_type: JavaType, objectMapper:ObjectMapper):Option[String] = {
-    val ac = AnnotatedClass.construct(_type, objectMapper.getDeserializationConfig)
+    val ac = AnnotatedClassResolver.resolve(objectMapper.getDeserializationConfig, _type, objectMapper.getDeserializationConfig)
     resolvePropertyFormat(Option(ac.getAnnotation(classOf[JsonSchemaFormat])), _type.getRawClass.getName)
   }
 

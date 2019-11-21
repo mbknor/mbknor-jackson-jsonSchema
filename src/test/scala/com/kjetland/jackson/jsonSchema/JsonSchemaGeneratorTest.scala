@@ -25,6 +25,7 @@ import com.kjetland.jackson.jsonSchema.testData.polymorphism4.{Child41, Child42}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism5.{Child51, Child52, Parent5}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
+import javax.validation.groups.Default
 import org.scalatest.{FunSuite, Matchers}
 
 import scala.collection.JavaConverters._
@@ -1185,6 +1186,157 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
   }
 
+  test("validation using groups") {
+
+    def check(schema:JsonNode, propertyName:String, included:Boolean): Unit = {
+      assertPropertyRequired(schema, propertyName, required = included)
+      assert(schema.at(s"/properties/$propertyName/injected").isMissingNode != included)
+    }
+
+    val objectUsingGroups = testData.classUsingValidationWithGroups
+
+    // no Group at all
+    {
+      val jsonSchemaGenerator_Group = new JsonSchemaGenerator(_objectMapperScala, debug = true,
+        JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(
+          javaxValidationGroups = Array()
+        ))
+
+      val jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass, Some(jsonNode))
+
+      check(schema, "noGroup", included = true)
+      check(schema, "defaultGroup", included = true)
+      check(schema, "group1", included = false)
+      check(schema, "group2", included = false)
+      check(schema, "group12", included = false)
+
+      // Make sure inject on class-level is not included
+      assert(schema.at(s"/injected").isMissingNode)
+    }
+
+    // Default group
+    {
+      val jsonSchemaGenerator_Group = new JsonSchemaGenerator(_objectMapperScala, debug = true,
+        JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(
+          javaxValidationGroups = Array(classOf[Default])
+        ))
+
+      val jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass, Some(jsonNode))
+
+      check(schema, "noGroup", included = true)
+      check(schema, "defaultGroup", included = true)
+      check(schema, "group1", included = false)
+      check(schema, "group2", included = false)
+      check(schema, "group12", included = false)
+
+      // Make sure inject on class-level is not included
+      assert(schema.at(s"/injected").isMissingNode)
+    }
+
+    // Group 1
+    {
+      val jsonSchemaGenerator_Group = new JsonSchemaGenerator(_objectMapperScala, debug = true,
+        JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(
+          javaxValidationGroups = Array(classOf[ValidationGroup1])
+        ))
+
+      val jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass, Some(jsonNode))
+
+      check(schema, "noGroup", included = false)
+      check(schema, "defaultGroup", included = false)
+      check(schema, "group1", included = true)
+      check(schema, "group2", included = false)
+      check(schema, "group12", included = true)
+
+      // Make sure inject on class-level is not included
+      assert(!schema.at(s"/injected").isMissingNode)
+    }
+
+    // Group 1 and Default-group
+    {
+      val jsonSchemaGenerator_Group = new JsonSchemaGenerator(_objectMapperScala, debug = true,
+        JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(
+          javaxValidationGroups = Array(classOf[ValidationGroup1], classOf[Default])
+        ))
+
+      val jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass, Some(jsonNode))
+
+      check(schema, "noGroup", included = true)
+      check(schema, "defaultGroup", included = true)
+      check(schema, "group1", included = true)
+      check(schema, "group2", included = false)
+      check(schema, "group12", included = true)
+
+      // Make sure inject on class-level is not included
+      assert(!schema.at(s"/injected").isMissingNode)
+    }
+
+    // Group 2
+    {
+      val jsonSchemaGenerator_Group = new JsonSchemaGenerator(_objectMapperScala, debug = true,
+        JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(
+          javaxValidationGroups = Array(classOf[ValidationGroup2])
+        ))
+
+      val jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass, Some(jsonNode))
+
+      check(schema, "noGroup", included = false)
+      check(schema, "defaultGroup", included = false)
+      check(schema, "group1", included = false)
+      check(schema, "group2", included = true)
+      check(schema, "group12", included = true)
+
+      // Make sure inject on class-level is not included
+      assert(schema.at(s"/injected").isMissingNode)
+    }
+
+    // Group 1 and 2
+    {
+      val jsonSchemaGenerator_Group = new JsonSchemaGenerator(_objectMapperScala, debug = true,
+        JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(
+          javaxValidationGroups = Array(classOf[ValidationGroup1], classOf[ValidationGroup2])
+        ))
+
+      val jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass, Some(jsonNode))
+
+      check(schema, "noGroup", included = false)
+      check(schema, "defaultGroup", included = false)
+      check(schema, "group1", included = true)
+      check(schema, "group2", included = true)
+      check(schema, "group12", included = true)
+
+      // Make sure inject on class-level is not included
+      assert(!schema.at(s"/injected").isMissingNode)
+    }
+
+    // Group 3 - not in use
+    {
+      val jsonSchemaGenerator_Group = new JsonSchemaGenerator(_objectMapperScala, debug = true,
+        JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(
+          javaxValidationGroups = Array(classOf[ValidationGroup3_notInUse])
+        ))
+
+      val jsonNode = assertToFromJson(jsonSchemaGenerator_Group, objectUsingGroups)
+      val schema = generateAndValidateSchema(jsonSchemaGenerator_Group, objectUsingGroups.getClass, Some(jsonNode))
+
+      check(schema, "noGroup", included = false)
+      check(schema, "defaultGroup", included = false)
+      check(schema, "group1", included = false)
+      check(schema, "group2", included = false)
+      check(schema, "group12", included = false)
+
+      // Make sure inject on class-level is not included
+      assert(schema.at(s"/injected").isMissingNode)
+    }
+
+  }
+
   test("Polymorphism using mixin") {
     // Java
     {
@@ -1627,6 +1779,10 @@ trait TestData {
     "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingNotEmpty", List("l1", "l2", "l3"), Map("mk1" -> "mv1", "mk2" -> "mv2"),
     "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", "_stringUsingPatternA", "_stringUsingPatternList",
     1, 2, 1.0, 2.0, 1.6, 2.0
+  )
+
+  val classUsingValidationWithGroups = ClassUsingValidationWithGroups(
+    "_noGroup", "_defaultGroup", "_group1", "_group2", "_group12"
   )
 
   val pojoUsingValidation = new PojoUsingValidation(

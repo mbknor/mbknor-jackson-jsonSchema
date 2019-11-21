@@ -19,7 +19,7 @@ in generating jsonSchema from your POJOs using Jackson @Annotations.
   - **@JsonSchemaOptions**
   - **@JsonSchemaInject**
   - **@JsonSchemaExamples**
-* Supports many Javax-validation @Annotations
+* Supports many Javax-validation @Annotations including support for validation-groups
 * Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor)
   - (Must be configured to use this mode)
   - Special handling of Option-/Optional-properties using oneOf.
