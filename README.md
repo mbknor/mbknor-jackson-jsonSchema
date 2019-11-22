@@ -20,7 +20,7 @@ in generating jsonSchema from your POJOs using Jackson @Annotations.
   - **@JsonSchemaInject**
   - **@JsonSchemaExamples**
 * Supports many Javax-validation @Annotations including support for validation-groups
-* Works well with Generated GUI's using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor)
+* Works well with Generated GUI's using [https://github.com/json-editor/json-editor](https://github.com/json-editor/json-editor)
   - (Must be configured to use this mode)
   - Special handling of Option-/Optional-properties using oneOf.
 * Supports custom Class-to-format-Mapping
@@ -397,7 +397,7 @@ Backstory
 
 
 At work we've been using the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)
-to generate schemas used when rendering dynamic GUI using [https://github.com/jdorn/json-editor](https://github.com/jdorn/json-editor).
+to generate schemas used when rendering dynamic GUI using [https://github.com/json-editor/json-editor](https://github.com/json-editor/json-editor).
 
 Recently we needed to support POJO's using polymorphism like this:
 
