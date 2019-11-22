@@ -536,6 +536,12 @@ class JsonSchemaGenerator
               ()
           }
 
+          // Look for @Email
+          selectAnnotation(p, classOf[Email]).map {
+            pattern =>
+              node.put("format", "email")
+          }
+
           // Look for a @Size annotation, which should have a set of min/max properties.
           selectAnnotation(p, classOf[Size])
               .map {

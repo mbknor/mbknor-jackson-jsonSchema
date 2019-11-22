@@ -1096,6 +1096,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       verifyNumericProperty(schema, "doubleMax", None, Some(10), required = true)
       verifyNumericDoubleProperty(schema, "decimalMin", Some(1.5), None, required = true)
       verifyNumericDoubleProperty(schema, "decimalMax", None, Some(2.5), required = true)
+      assert(schema.at("/properties/email/format").asText() == "email")
 
       verifyArrayProperty(schema, "notEmptyStringArray", Some(1), None, required = true)
 
@@ -1778,7 +1779,7 @@ trait TestData {
   val classUsingValidation = ClassUsingValidation(
     "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingNotEmpty", List("l1", "l2", "l3"), Map("mk1" -> "mv1", "mk2" -> "mv2"),
     "_stringUsingSize", "_stringUsingSizeOnlyMin", "_stringUsingSizeOnlyMax", "_stringUsingPatternA", "_stringUsingPatternList",
-    1, 2, 1.0, 2.0, 1.6, 2.0
+    1, 2, 1.0, 2.0, 1.6, 2.0, "mbk@kjetland.com"
   )
 
   val classUsingValidationWithGroups = ClassUsingValidationWithGroups(

@@ -54,7 +54,10 @@ case class ClassUsingValidation
   @DecimalMin("1.5")
   decimalMin:Double,
   @DecimalMax("2.5")
-  decimalMax:Double
+  decimalMax:Double,
+
+  @Email
+  email:String
 )
 
 trait ValidationGroup1
