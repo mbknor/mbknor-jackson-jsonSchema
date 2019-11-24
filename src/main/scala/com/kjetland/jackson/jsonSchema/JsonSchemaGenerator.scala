@@ -21,7 +21,6 @@ import javax.validation.groups.Default
 import org.slf4j.LoggerFactory
 
 object JsonSchemaGenerator {
-  val JSON_SCHEMA_DRAFT_4_URL = "http://json-schema.org/draft-04/schema#"
 }
 
 object JsonSchemaConfig {
@@ -242,7 +241,8 @@ case class JsonSchemaConfig
   jsonSuppliers:Map[String, Supplier[JsonNode]], // Suppliers in this map can be accessed using @JsonSchemaInject(jsonSupplierViaLookup = "lookupKey")
   subclassesResolver:SubclassesResolver = new SubclassesResolverImpl(), // Using default impl that scans entire classpath
   failOnUnknownProperties:Boolean = true,
-  javaxValidationGroups:Array[Class[_]] = Array() // Used to match against different validation-groups (javax.validation.constraints)
+  javaxValidationGroups:Array[Class[_]] = Array(), // Used to match against different validation-groups (javax.validation.constraints)
+  jsonSchemaDraft:JsonSchemaDraft = JsonSchemaDraft.DRAFT_04
 ) {
 
   def withFailOnUnknownProperties(failOnUnknownProperties:Boolean):JsonSchemaConfig = {
@@ -251,6 +251,14 @@ case class JsonSchemaConfig
 
   def withSubclassesResolver(subclassesResolver: SubclassesResolver):JsonSchemaConfig = {
     this.copy( subclassesResolver = subclassesResolver )
+  }
+
+  def withJavaxValidationGroups(javaxValidationGroups:Array[Class[_]]):JsonSchemaConfig = {
+    this.copy(javaxValidationGroups = javaxValidationGroups)
+  }
+
+  def withJsonSchemaDraft(jsonSchemaDraft:JsonSchemaDraft):JsonSchemaConfig = {
+    this.copy(jsonSchemaDraft = jsonSchemaDraft)
   }
 }
 
@@ -1422,7 +1430,7 @@ class JsonSchemaGenerator
     val rootNode = JsonNodeFactory.instance.objectNode()
 
     // Specify that this is a v4 json schema
-    rootNode.put("$schema", JsonSchemaGenerator.JSON_SCHEMA_DRAFT_4_URL)
+    rootNode.put("$schema", config.jsonSchemaDraft.url)
     //rootNode.put("id", "http://my.site/myschema#")
 
     // Add schema title

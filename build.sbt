@@ -60,7 +60,7 @@ lazy val deps  = Seq(
   "io.github.classgraph" % "classgraph" % "4.8.21",
   "org.scalatest" %% "scalatest" % "3.0.8" % "test",
   "ch.qos.logback" % "logback-classic" % "1.2.3" % "test",
-  "com.github.java-json-tools" % "json-schema-validator" % "2.2.10" % "test",
+  "com.github.java-json-tools" % "json-schema-validator" % "2.2.11" % "test",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonModuleScalaVersion % "test",
   "com.fasterxml.jackson.module" % "jackson-module-kotlin" % jacksonVersion % "test",
   "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % jacksonVersion % "test",

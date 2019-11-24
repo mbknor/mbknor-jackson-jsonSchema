@@ -75,6 +75,15 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
   val jsonSchemaGeneratorWithIdsNullable = new JsonSchemaGenerator(_objectMapperScala, debug = true,
                                                                    vanillaJsonSchemaDraft4WithIds.copy(useOneOfForNullables = true))
 
+  val jsonSchemaGenerator_draft_06 = new JsonSchemaGenerator(_objectMapper, debug = true,
+    JsonSchemaConfig.vanillaJsonSchemaDraft4.withJsonSchemaDraft(JsonSchemaDraft.DRAFT_06))
+
+  val jsonSchemaGenerator_draft_07 = new JsonSchemaGenerator(_objectMapper, debug = true,
+    JsonSchemaConfig.vanillaJsonSchemaDraft4.withJsonSchemaDraft(JsonSchemaDraft.DRAFT_07))
+
+  val jsonSchemaGenerator_draft_2019_09 = new JsonSchemaGenerator(_objectMapper, debug = true,
+    JsonSchemaConfig.vanillaJsonSchemaDraft4.withJsonSchemaDraft(JsonSchemaDraft.DRAFT_2019_09))
+
   val testData = new TestData{}
 
   def asPrettyJson(node:JsonNode, om:ObjectMapper):String = {
@@ -112,13 +121,18 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   // Generates schema, validates the schema using external schema validator and
   // Optionally tries to validate json against the schema.
-  def generateAndValidateSchema(g:JsonSchemaGenerator, clazz:Class[_], jsonToTestAgainstSchema:Option[JsonNode] = None):JsonNode = {
+  def generateAndValidateSchema
+  (
+    g:JsonSchemaGenerator,
+    clazz:Class[_], jsonToTestAgainstSchema:Option[JsonNode] = None,
+    jsonSchemaDraft: JsonSchemaDraft = JsonSchemaDraft.DRAFT_04
+  ):JsonNode = {
     val schema = g.generateJsonSchema(clazz)
 
     println("--------------------------------------------")
     println(asPrettyJson(schema, g.rootObjectMapper))
 
-    assert(JsonSchemaGenerator.JSON_SCHEMA_DRAFT_4_URL == schema.at("/$schema").asText())
+    assert(jsonSchemaDraft.url == schema.at("/$schema").asText())
 
     useSchema(schema, jsonToTestAgainstSchema)
 
@@ -127,13 +141,19 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   // Generates schema, validates the schema using external schema validator and
   // Optionally tries to validate json against the schema.
-  def generateAndValidateSchemaUsingJavaType(g:JsonSchemaGenerator, javaType:JavaType, jsonToTestAgainstSchema:Option[JsonNode] = None):JsonNode = {
+  def generateAndValidateSchemaUsingJavaType
+  (
+    g:JsonSchemaGenerator,
+    javaType:JavaType,
+    jsonToTestAgainstSchema:Option[JsonNode] = None,
+    jsonSchemaDraft: JsonSchemaDraft = JsonSchemaDraft.DRAFT_04
+  ):JsonNode = {
     val schema = g.generateJsonSchema(javaType)
 
     println("--------------------------------------------")
     println(asPrettyJson(schema, g.rootObjectMapper))
 
-    assert(JsonSchemaGenerator.JSON_SCHEMA_DRAFT_4_URL == schema.at("/$schema").asText())
+    assert(jsonSchemaDraft.url == schema.at("/$schema").asText())
 
     useSchema(schema, jsonToTestAgainstSchema)
 
@@ -1620,6 +1640,36 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertPropertyRequired(schema, "optionalDefault", required = true)
     assertPropertyRequired(schema, "optionalDefaultNull", required = false)
 
+  }
+
+  test("JsonSchema DRAFT-06") {
+    val jsg = jsonSchemaGenerator_draft_06
+    val jsonNode = assertToFromJson(jsg, testData.classNotExtendingAnything)
+    val schema = generateAndValidateSchema(jsg, testData.classNotExtendingAnything.getClass, Some(jsonNode),
+      jsonSchemaDraft = JsonSchemaDraft.DRAFT_06
+    )
+
+    // Currently there are no differences in the generated jsonSchema other than the $schema-url
+  }
+
+  test("JsonSchema DRAFT-07") {
+    val jsg = jsonSchemaGenerator_draft_07
+    val jsonNode = assertToFromJson(jsg, testData.classNotExtendingAnything)
+    val schema = generateAndValidateSchema(jsg, testData.classNotExtendingAnything.getClass, Some(jsonNode),
+      jsonSchemaDraft = JsonSchemaDraft.DRAFT_07
+    )
+
+    // Currently there are no differences in the generated jsonSchema other than the $schema-url
+  }
+
+  test("JsonSchema DRAFT-2019-09") {
+    val jsg = jsonSchemaGenerator_draft_2019_09
+    val jsonNode = assertToFromJson(jsg, testData.classNotExtendingAnything)
+    val schema = generateAndValidateSchema(jsg, testData.classNotExtendingAnything.getClass, Some(jsonNode),
+      jsonSchemaDraft = JsonSchemaDraft.DRAFT_2019_09
+    )
+
+    // Currently there are no differences in the generated jsonSchema other than the $schema-url
   }
 
 }
