@@ -501,9 +501,8 @@ class JsonSchemaGenerator
       // Check if we should include minLength and/or maxLength
       case class MinAndMaxLength(minLength:Option[Int], maxLength:Option[Int])
 
-      // TODO [kog@epiphanic.org 01/09/2018]: Probably want to refactor this: nominally it returns a value used to figure out length
-      // TODO [kog@epiphanic.org 01/09/2018]: but most of the logic seems to be unrelated.
-      val minAndMaxLength:Option[MinAndMaxLength] = currentProperty.flatMap {
+      // If we have 'currentProperty', then check for annotations and insert stuff into schema.
+      currentProperty.flatMap {
         p =>
 
           // Look for @NotBlank
@@ -546,12 +545,12 @@ class JsonSchemaGenerator
 
           // Look for @Email
           selectAnnotation(p, classOf[Email]).map {
-            pattern =>
+            _ =>
               node.put("format", "email")
           }
 
           // Look for a @Size annotation, which should have a set of min/max properties.
-          selectAnnotation(p, classOf[Size])
+          val minAndMaxLength:Option[MinAndMaxLength] = selectAnnotation(p, classOf[Size])
               .map {
                 size =>
                   (size.min(), size.max()) match {
@@ -575,12 +574,13 @@ class JsonSchemaGenerator
                 None
               }
             }
-      }
 
-      minAndMaxLength.map {
-        minAndMax:MinAndMaxLength =>
-          minAndMax.minLength.map( length => node.put("minLength", length) )
-          minAndMax.maxLength.map( length => node.put("maxLength", length) )
+          // Apply size-data if found
+          minAndMaxLength.map {
+            minAndMax:MinAndMaxLength =>
+              minAndMax.minLength.map( length => node.put("minLength", length) )
+              minAndMax.maxLength.map( length => node.put("maxLength", length) )
+          }
       }
 
       new JsonStringFormatVisitor with EnumSupport {
