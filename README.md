@@ -15,7 +15,7 @@ in generating jsonSchema from your POJOs using Jackson @Annotations.
   - **@JsonSchemaDescription**/**@JsonPropertyDescription**
   - **@JsonSchemaFormat**
   - **@JsonSchemaTitle**
-  - **@JsonSchemaDefault**
+  - **@JsonProperty(.., defaultValue)** / **@JsonSchemaDefault**
   - **@JsonSchemaOptions**
   - **@JsonSchemaInject**
   - **@JsonSchemaExamples**

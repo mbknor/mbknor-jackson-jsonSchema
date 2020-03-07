@@ -5,7 +5,7 @@ import java.util
 import java.util.function.Supplier
 import java.util.{Optional, List => JList}
 
-import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonProperty, JsonPropertyDescription, JsonSubTypes, JsonTypeInfo}
 import com.fasterxml.jackson.core.JsonParser.NumberType
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize
@@ -493,6 +493,24 @@ class JsonSchemaGenerator
       new MyJsonFormatVisitorWrapper(objectMapper, level + 1, node = childNode, definitionsHandler = definitionsHandler, currentProperty = currentProperty)
     }
 
+    def extractDefaultValue(p: BeanProperty): Option[String] = {
+      // Prefer default-value from @JsonProperty
+      selectAnnotation(p, classOf[JsonProperty]).flatMap {
+        jsonProp =>
+          val defaultValue = jsonProp.defaultValue();
+          // Since it is default set to "", we should only use it if it is nonEmpty
+          if (defaultValue.nonEmpty) {
+            Some(defaultValue)
+          } else None
+      }.orElse {
+        // Then, look for @JsonSchemaDefault
+        selectAnnotation(p, classOf[JsonSchemaDefault]).map {
+          defaultValue =>
+            defaultValue.value()
+        }
+      }
+    }
+
     override def expectStringFormat(_type: JavaType) = {
       l(s"expectStringFormat - _type: ${_type}")
 
@@ -526,10 +544,8 @@ class JsonSchemaGenerator
             }
           }
 
-          // Look for @JsonSchemaDefault
-          selectAnnotation(p, classOf[JsonSchemaDefault]).map {
-            defaultValue =>
-              node.put("default", defaultValue.value())
+          extractDefaultValue(p).map { value =>
+            node.put("default", value)
           }
 
           // Look for @JsonSchemaExamples
@@ -674,10 +690,8 @@ class JsonSchemaGenerator
               node.put("maximum", decimalMax.value().toDouble)
           }
 
-          // Look for @JsonSchemaDefault
-          Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
-            defaultValue =>
-              node.put("default", defaultValue.value() )
+          extractDefaultValue(p).map { value =>
+            node.put("default", value.toInt)
           }
 
           // Look for @JsonSchemaExamples
@@ -729,10 +743,8 @@ class JsonSchemaGenerator
               node.put("maximum", max.value())
           }
 
-          // Look for @JsonSchemaDefault
-          selectAnnotation(p, classOf[JsonSchemaDefault]).map {
-            defaultValue =>
-              node.put("default", defaultValue.value().toInt)
+          extractDefaultValue(p).map { value =>
+            node.put("default", value.toInt)
           }
 
           // Look for @JsonSchemaExamples
@@ -771,10 +783,8 @@ class JsonSchemaGenerator
 
       currentProperty.map {
         p =>
-          // Look for @JsonSchemaDefault
-          Option(p.getAnnotation(classOf[JsonSchemaDefault])).map {
-            defaultValue =>
-              node.put("default", defaultValue.value().toBoolean)
+          extractDefaultValue(p).map { value =>
+            node.put("default", value.toBoolean)
           }
       }
 
