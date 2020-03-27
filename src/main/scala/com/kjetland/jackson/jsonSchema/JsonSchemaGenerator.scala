@@ -418,7 +418,7 @@ class JsonSchemaGenerator
         if (annotation != null) {
           val name = annotation.value();
           if (!name.isEmpty) {
-            return name.toString
+            return name
           }
         }
 
