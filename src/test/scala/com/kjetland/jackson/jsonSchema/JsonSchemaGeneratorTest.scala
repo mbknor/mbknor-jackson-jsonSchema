@@ -955,6 +955,21 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
   }
 
+  test("using JavaType with @JsonTypeName") {
+    val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+    val g = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+    val instance = new BoringContainer();
+    instance.child1 = new PojoUsingJsonTypeName();
+    instance.child1.stringWithDefault = "test";
+    val jsonNode = assertToFromJson(g, instance)
+    assertToFromJson(g, instance, classOf[BoringContainer])
+
+    val schema = generateAndValidateSchema(g, classOf[BoringContainer], Some(jsonNode))
+
+    assert(schema.at("/definitions/OtherTypeName/type").asText() == "object");
+  }
+
   test("scala using option with HTML5") {
     val jsonNode = assertToFromJson(jsonSchemaGeneratorScalaHTML5, testData.pojoUsingOptionScala)
     val schema = generateAndValidateSchema(jsonSchemaGeneratorScalaHTML5, testData.pojoUsingOptionScala.getClass, Some(jsonNode))
