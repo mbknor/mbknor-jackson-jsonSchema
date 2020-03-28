@@ -404,24 +404,27 @@ class JsonSchemaGenerator
       workInProgressStack = workInProgressStack.tail
     }
 
+    def extractTypeName(_type:JavaType) : String = {
+      // use JsonTypeName annotation if present
+      val annotation = _type.getRawClass.getDeclaredAnnotation(classOf[JsonTypeName])
+      if (annotation != null) {
+        val name = annotation.value();
+        if (name != null && !name.isEmpty) {
+          return name
+        }
+      }
+
+      _type.getRawClass.getSimpleName
+    }
 
     def getDefinitionName (_type:JavaType) : String = {
-      val baseName = if (config.useTypeIdForDefinitionName) _type.getRawClass.getTypeName else _type.getRawClass.getSimpleName
+      val baseName = if (config.useTypeIdForDefinitionName) _type.getRawClass.getTypeName else extractTypeName(_type)
 
       if (_type.hasGenericTypes) {
         val containedTypes = Range(0, _type.containedTypeCount()).map(_type.containedType)
         val typeNames = containedTypes.map(getDefinitionName).mkString(",")
         s"$baseName($typeNames)"
       } else {
-        // use JsonTypeName annotation if present
-        val annotation = _type.getRawClass.getDeclaredAnnotation(classOf[JsonTypeName])
-        if (annotation != null) {
-          val name = annotation.value();
-          if (!name.isEmpty) {
-            return name
-          }
-        }
-
         baseName
       }
     }

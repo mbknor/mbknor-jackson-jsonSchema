@@ -8,6 +8,8 @@ public class GenericClassContainer {
     public GenericClassTwo<String, GenericClass<BoringClass>> child3 =
             new GenericClassTwo<>("qqq", new GenericClass<>(new BoringClass(1337)));
 
+    public GenericClassWithJsonTypeName<String> child4 = new GenericClassWithJsonTypeName<>("testString");
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
