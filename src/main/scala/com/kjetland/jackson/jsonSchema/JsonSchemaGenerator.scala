@@ -407,14 +407,8 @@ class JsonSchemaGenerator
     def extractTypeName(_type:JavaType) : String = {
       // use JsonTypeName annotation if present
       val annotation = _type.getRawClass.getDeclaredAnnotation(classOf[JsonTypeName])
-      if (annotation != null) {
-        val name = annotation.value();
-        if (name != null && !name.isEmpty) {
-          return name
-        }
-      }
-
-      _type.getRawClass.getSimpleName
+      Option(annotation).flatMap( a => Option(a.value())).filter(_.nonEmpty)
+        .getOrElse( _type.getRawClass.getSimpleName )
     }
 
     def getDefinitionName (_type:JavaType) : String = {
@@ -579,14 +573,14 @@ class JsonSchemaGenerator
 
           // Look for a @Size annotation, which should have a set of min/max properties.
           val minAndMaxLength:Option[MinAndMaxLength] = selectAnnotation(p, classOf[Size])
-            .map {
-              size =>
-                (size.min(), size.max()) match {
-                  case (0, max)                 => MinAndMaxLength(None, Some(max))
-                  case (min, Integer.MAX_VALUE) => MinAndMaxLength(Some(min), None)
-                  case (min, max)               => MinAndMaxLength(Some(min), Some(max))
-                }
-            }
+              .map {
+                size =>
+                  (size.min(), size.max()) match {
+                    case (0, max)                 => MinAndMaxLength(None, Some(max))
+                    case (min, Integer.MAX_VALUE) => MinAndMaxLength(Some(min), None)
+                    case (min, max)               => MinAndMaxLength(Some(min), Some(max))
+                  }
+              }
             // Look for other annotations that don't have an explicit size, but we can infer the need to set a size for.
             .orElse {
               // If we're annotated with @NotNull, check to see if our config requires a size property to be generated.
@@ -1465,14 +1459,14 @@ class JsonSchemaGenerator
     }.map {
       title =>
         rootNode.put("title", title)
-      // If root class is annotated with @JsonSchemaTitle, it will later override this title
+        // If root class is annotated with @JsonSchemaTitle, it will later override this title
     }
 
     // Maybe set schema description
     description.map {
       d =>
         rootNode.put("description", d)
-      // If root class is annotated with @JsonSchemaDescription, it will later override this description
+        // If root class is annotated with @JsonSchemaDescription, it will later override this description
     }
 
 
@@ -1484,7 +1478,7 @@ class JsonSchemaGenerator
 
     definitionsHandler.getFinalDefinitionsNode().foreach {
       definitionsNode => rootNode.set("definitions", definitionsNode)
-        ()
+      ()
     }
 
     rootNode
