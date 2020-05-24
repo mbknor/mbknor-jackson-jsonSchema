@@ -1488,6 +1488,7 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assert(schema.at("/patternProperties/^s[a-zA-Z0-9]+/type").asText() == "string")
       assert(schema.at("/patternProperties/^i[a-zA-Z0-9]+/type").asText() == "integer")
       assert(schema.at("/properties/sa/type").asText() == "string")
+      assert(schema.at("/properties/injectedInProperties").asText() == "true")
       assert(schema.at("/properties/sa/options/hidden").asText() == "true")
       assert(schema.at("/properties/saMergeFalse/type").asText() == "integer")
       assert(schema.at("/properties/saMergeFalse/default").asText() == "12")

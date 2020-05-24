@@ -851,12 +851,17 @@ class JsonSchemaGenerator
     }
 
     private def getOptionsNode(objectNode:ObjectNode):ObjectNode = {
-      Option(objectNode.get("options")).map(_.asInstanceOf[ObjectNode]).getOrElse {
+      getOrCreateObjectChild(objectNode, "options")
+    }
+
+    private def getOrCreateObjectChild(parentObjectNode:ObjectNode, name: String):ObjectNode = {
+      Option(parentObjectNode.get(name)).map(_.asInstanceOf[ObjectNode]).getOrElse {
         val o = JsonNodeFactory.instance.objectNode()
-        objectNode.set("options", o)
+        parentObjectNode.set(name, o)
         o
       }
     }
+
     case class PolymorphismInfo(typePropertyName:String, subTypeName:String)
 
     private def extractPolymorphismInfo(_type:JavaType):Option[PolymorphismInfo] = {
@@ -1054,8 +1059,7 @@ class JsonSchemaGenerator
 
             if (renderProps) {
 
-              val propertiesNode = JsonNodeFactory.instance.objectNode()
-              thisObjectNode.set("properties", propertiesNode)
+              val propertiesNode = getOrCreateObjectChild(thisObjectNode, "properties")
 
               extractPolymorphismInfo(_type).map {
                 case pi: PolymorphismInfo =>
@@ -1069,7 +1073,7 @@ class JsonSchemaGenerator
                   val enumValuesNode = JsonNodeFactory.instance.arrayNode()
                   enumValuesNode.add(pi.subTypeName)
 
-                  val enumObjectNode = JsonNodeFactory.instance.objectNode()
+                  val enumObjectNode = getOrCreateObjectChild(propertiesNode, pi.typePropertyName)
                   enumObjectNode.put("type", "string")
                   enumObjectNode.set("enum", enumValuesNode)
                   enumObjectNode.put("default", pi.subTypeName)
@@ -1081,21 +1085,16 @@ class JsonSchemaGenerator
                     optionsNode.put("hidden", true)
                   }
 
-                  propertiesNode.set(pi.typePropertyName, enumObjectNode)
-
                   getRequiredArrayNode(thisObjectNode).add(pi.typePropertyName)
 
                   if (config.useMultipleEditorSelectViaProperty) {
                     // https://github.com/jdorn/json-editor/issues/709
                     // Generate info to help generated editor to select correct oneOf-type
                     // when populating the gui/schema with existing data
-                    val multipleEditorSelectViaPropertyNode = JsonNodeFactory.instance.objectNode()
+                    val objectOptionsNode = getOrCreateObjectChild( thisObjectNode, "options")
+                    val multipleEditorSelectViaPropertyNode = getOrCreateObjectChild( objectOptionsNode, "multiple_editor_select_via_property")
                     multipleEditorSelectViaPropertyNode.put("property", pi.typePropertyName)
                     multipleEditorSelectViaPropertyNode.put("value", pi.subTypeName)
-
-                    val objectOptionsNode = JsonNodeFactory.instance.objectNode()
-                    objectOptionsNode.set("multiple_editor_select_via_property", multipleEditorSelectViaPropertyNode)
-                    thisObjectNode.set("options", objectOptionsNode)
                     ()
                   }
 
