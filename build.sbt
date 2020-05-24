@@ -48,10 +48,9 @@ lazy val commonSettings = Seq(
 )
 
 
-val jacksonVersion = "2.10.1"
-val jacksonModuleScalaVersion = "2.10.1"
+val jacksonVersion = "2.11.0"
+val jacksonModuleScalaVersion = "2.11.0"
 val slf4jVersion = "1.7.26"
-
 
 lazy val deps  = Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
