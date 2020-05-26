@@ -697,7 +697,7 @@ class JsonSchemaGenerator
           }
 
           extractDefaultValue(p).map { value =>
-            node.put("default", value.toInt)
+            node.put("default", value.toDouble)
           }
 
           // Look for @JsonSchemaExamples
@@ -708,6 +708,7 @@ class JsonSchemaGenerator
                 exampleValue => examples.add(exampleValue)
               }
               node.set("examples", examples)
+              ()
           }
       }
 

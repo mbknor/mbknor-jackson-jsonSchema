@@ -1108,10 +1108,12 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(getArrayNodeAsListOfStrings(schema.at("/properties/emailValue/examples")) == List("user@example.com"))
     assert(schema.at("/properties/fontSize/default").asText() == "12")
     assert(getArrayNodeAsListOfStrings(schema.at("/properties/fontSize/examples")) == List("10", "14", "18"))
+    assert(getArrayNodeAsListOfStrings(schema.at("/properties/weight/examples")) == List("1.5", "3.0"))
 
     assert(schema.at("/properties/defaultStringViaJsonValue/default").asText() == "ds")
     assert(schema.at("/properties/defaultIntViaJsonValue/default").asText() == "1")
     assert(schema.at("/properties/defaultBoolViaJsonValue/default").asText() == "true")
+    assert(schema.at("/properties/defaultNumberViaJsonValue/default").asText() == "1.3")
   }
 
   test("validation") {
@@ -1845,7 +1847,7 @@ trait TestData {
   val pojoUsingFormat = new PojoUsingFormat("test@example.com", true, OffsetDateTime.now(), OffsetDateTime.now())
   val manyDates = ManyDates(LocalDateTime.now(), OffsetDateTime.now(), LocalDate.now(), org.joda.time.LocalDate.now())
 
-  val defaultAndExamples = DefaultAndExamples("email@example.com", 18, "s", 2, false)
+  val defaultAndExamples = DefaultAndExamples("email@example.com", 18, 4.0, "s", 2, false, 4.5)
 
   val classUsingValidation = ClassUsingValidation(
     "_stringUsingNotNull", "_stringUsingNotBlank", "_stringUsingNotBlankAndNotNull", "_stringUsingNotEmpty", List("l1", "l2", "l3"), Map("mk1" -> "mv1", "mk2" -> "mv2"),
