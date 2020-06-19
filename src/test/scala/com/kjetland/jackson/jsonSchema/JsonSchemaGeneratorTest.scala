@@ -23,6 +23,7 @@ import com.kjetland.jackson.jsonSchema.testData.polymorphism2.{Child21, Child22,
 import com.kjetland.jackson.jsonSchema.testData.polymorphism3.{Child31, Child32, Parent3}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism4.{Child41, Child42}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism5.{Child51, Child52, Parent5}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism6.{Child61, Parent6}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
 import javax.validation.groups.Default
@@ -479,6 +480,23 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
 
   }
+
+  test("Generate schema for super class annotated with @JsonTypeInfo - single child class") {
+
+    // Java
+    {
+      val jsonNode = assertToFromJson(jsonSchemaGenerator, testData.child61)
+      assertToFromJson(jsonSchemaGenerator, testData.child61, classOf[Parent6])
+
+      val schema = generateAndValidateSchema(jsonSchemaGenerator, classOf[Parent6], Some(jsonNode))
+
+      val child1 = getNodeViaRefs(schema, schema, "Child61")
+      assertJsonSubTypesInfo(child1, "type", "child61")
+      assert(child1.at("/properties/parentString/type").asText() == "string")
+      assert(child1.at("/properties/child1String/type").asText() == "string")
+    }
+  }
+
 
   test("Generate schema for super class annotated with @JsonTypeInfo - use = JsonTypeInfo.Id.CLASS") {
 
@@ -1769,6 +1787,12 @@ trait TestData {
     c
   }
 
+  val child61 = {
+    val c = new Child61()
+    c.parentString = "pv"
+    c.child1String = "cs"
+    c
+  }
 
   val child2Scala = Child2Scala("pv", 12)
   val child1Scala = Child1Scala("pv", "cs", "cs2", "cs3")
