@@ -980,32 +980,40 @@ class JsonSchemaGenerator
         // We have subtypes
         //l(s"polymorphism - subTypes: $subTypes")
 
-        val anyOfArrayNode = JsonNodeFactory.instance.arrayNode()
-        node.set("oneOf", anyOfArrayNode)
+        def handleSubType (targetNode: ObjectNode, subType: Class[_]) = {
+          l(s"polymorphism - subType: $subType")
+          val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(objectMapper.constructType(subType)){
+            objectNode =>
 
-        subTypes.foreach {
-          subType: Class[_] =>
-            l(s"polymorphism - subType: $subType")
-            val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(objectMapper.constructType(subType)){
-              objectNode =>
+              val childVisitor = createChild(objectNode, currentProperty = None)
+              objectMapper.acceptJsonFormatVisitor(tryToReMapType(subType), childVisitor)
 
-                val childVisitor = createChild(objectNode, currentProperty = None)
-                objectMapper.acceptJsonFormatVisitor(tryToReMapType(subType), childVisitor)
+              None
+          }
 
-                None
-            }
+          targetNode.put("$ref", definitionInfo.ref.get)
 
-            val thisOneOfNode = JsonNodeFactory.instance.objectNode()
-            thisOneOfNode.put("$ref", definitionInfo.ref.get)
+          // If class is annotated with JsonSchemaTitle, we should add it
+          Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
+            title =>
+              targetNode.put("title", title)
+          }
 
-            // If class is annotated with JsonSchemaTitle, we should add it
-            Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
-              title =>
-                thisOneOfNode.put("title", title)
-            }
+          null
+        }
 
-            anyOfArrayNode.add(thisOneOfNode)
+        if (subTypes.size > 1) {
+          val oneOfArrayNode = JsonNodeFactory.instance.arrayNode()
+          node.set("oneOf", oneOfArrayNode)
 
+          subTypes.foreach {
+            subType: Class[_] =>
+              val thisRefNode = JsonNodeFactory.instance.objectNode()
+              handleSubType(thisRefNode, subType)
+              oneOfArrayNode.add(thisRefNode)
+          }
+        } else {
+          handleSubType(node, subTypes.head)
         }
 
         null // Returning null to stop jackson from visiting this object since we have done it manually
