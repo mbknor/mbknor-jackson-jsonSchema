@@ -48,16 +48,16 @@ lazy val commonSettings = Seq(
 )
 
 
-val jacksonVersion = "2.10.1"
-val jacksonModuleScalaVersion = "2.10.1"
-val slf4jVersion = "1.7.26"
+val jacksonVersion = "2.12.1"
+val jacksonModuleScalaVersion = "2.12.1"
+val slf4jVersion = "1.7.30"
 
 
 lazy val deps  = Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
   "javax.validation" % "validation-api" % "2.0.1.Final",
   "org.slf4j" % "slf4j-api" % slf4jVersion,
-  "io.github.classgraph" % "classgraph" % "4.8.21",
+  "io.github.classgraph" % "classgraph" % "4.8.98",
   "org.scalatest" %% "scalatest" % "3.0.8" % "test",
   "ch.qos.logback" % "logback-classic" % "1.2.3" % "test",
   "com.github.java-json-tools" % "json-schema-validator" % "2.2.11" % "test",

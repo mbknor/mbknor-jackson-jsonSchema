@@ -201,12 +201,12 @@ case class SubclassesResolverImpl
 
     if (packagesToScan.nonEmpty) {
       classGraphConfigured = true
-      _classGraph.whitelistPackages( packagesToScan:_* )
+      _classGraph.acceptPackages( packagesToScan:_* )
     }
 
     if ( classesToScan.nonEmpty ) {
       classGraphConfigured = true
-      _classGraph.whitelistClasses( classesToScan:_* )
+      _classGraph.acceptClasses( classesToScan:_* )
     }
 
     if ( !classGraphConfigured ) {
