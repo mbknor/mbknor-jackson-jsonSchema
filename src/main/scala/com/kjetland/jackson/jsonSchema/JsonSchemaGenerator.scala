@@ -152,7 +152,7 @@ object JsonSchemaConfig {
 }
 
 trait SubclassesResolver {
-  def resolving(_type: JavaType) {}
+  def resolving(_type: JavaType) = {}
   def getSubclasses(clazz:Class[_]):List[Class[_]]
 }
 
