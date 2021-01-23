@@ -152,6 +152,7 @@ object JsonSchemaConfig {
 }
 
 trait SubclassesResolver {
+  def resolving(_type: JavaType)
   def getSubclasses(clazz:Class[_]):List[Class[_]]
 }
 
@@ -164,6 +165,7 @@ case class SubclassesResolverImpl
   import scala.collection.JavaConverters._
 
   def this() = this(None, List(), List())
+
 
   def withClassGraph(classGraph:ClassGraph):SubclassesResolverImpl = {
     this.copy(classGraph = Option(classGraph))
@@ -220,6 +222,9 @@ case class SubclassesResolverImpl
 
   override def getSubclasses(clazz: Class[_]): List[Class[_]] = {
     reflection.getSubclasses(clazz.getName).loadClasses().asScala.toList
+  }
+
+  override def resolving(_type: JavaType): Unit = {
   }
 }
 
@@ -898,8 +903,11 @@ class JsonSchemaGenerator
       Option(ac.getAnnotation(classOf[JsonTypeInfo])).map {
         jsonTypeInfo: JsonTypeInfo =>
 
+          config.subclassesResolver.resolving(_type)
+
           jsonTypeInfo.use() match {
             case JsonTypeInfo.Id.NAME =>
+              // Callback to user code:
               // First we try to resolve types via manually finding annotations (if success, it will preserve the order), if not we fallback to use collectAndResolveSubtypesByClass()
               val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
                 ann: JsonSubTypes =>

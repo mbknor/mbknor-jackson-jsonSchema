@@ -3,7 +3,6 @@ package com.kjetland.jackson.jsonSchema
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.{Collections, Optional, TimeZone}
-
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.node.{ArrayNode, MissingNode, ObjectNode}
 import com.fasterxml.jackson.databind.{JavaType, JsonNode, ObjectMapper, SerializationFeature}
@@ -25,9 +24,12 @@ import com.kjetland.jackson.jsonSchema.testData.polymorphism4.{Child41, Child42}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism5.{Child51, Child52, Parent5}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
+import io.github.classgraph.ClassGraph
+
 import javax.validation.groups.Default
 import org.scalatest.{FunSuite, Matchers}
 
+import scala.::
 import scala.collection.JavaConverters._
 
 class JsonSchemaGeneratorTest extends FunSuite with Matchers {
@@ -1693,6 +1695,15 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     // Currently there are no differences in the generated jsonSchema other than the $schema-url
   }
 
+  test("SubclassesResolver.resolving called") {
+    val resolver = new TestSubclassesResolver
+    val generator = new JsonSchemaGenerator(_objectMapper, debug = true, config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+      .withSubclassesResolver(resolver))
+
+    generator.generateJsonSchema(classOf[Parent])
+
+    assert(resolver.resolved == List(classOf[Child2], classOf[Child1], classOf[Parent]).map(t => _objectMapper constructType t))
+  }
 }
 
 trait TestData {
@@ -1883,4 +1894,12 @@ trait TestData {
 
   val kotlinWithDefaultValues = new KotlinWithDefaultValues("1", "2", "3", "4")
 
+}
+
+class TestSubclassesResolver extends SubclassesResolverImpl {
+  var resolved: List[JavaType] = List()
+
+  override def resolving(_type: JavaType): Unit = {
+    resolved = _type :: resolved
+  }
 }
