@@ -1694,16 +1694,6 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     // Currently there are no differences in the generated jsonSchema other than the $schema-url
   }
-
-  test("SubclassesResolver.resolving called") {
-    val resolver = new TestSubclassesResolver
-    val generator = new JsonSchemaGenerator(_objectMapper, debug = true, config = JsonSchemaConfig.vanillaJsonSchemaDraft4
-      .withSubclassesResolver(resolver))
-
-    generator.generateJsonSchema(classOf[Parent])
-
-    assert(resolver.resolved == List(classOf[Child2], classOf[Child1], classOf[Parent]).map(t => _objectMapper constructType t))
-  }
 }
 
 trait TestData {
@@ -1894,12 +1884,4 @@ trait TestData {
 
   val kotlinWithDefaultValues = new KotlinWithDefaultValues("1", "2", "3", "4")
 
-}
-
-class TestSubclassesResolver extends SubclassesResolverImpl {
-  var resolved: List[JavaType] = List()
-
-  override def resolving(_type: JavaType): Unit = {
-    resolved = _type :: resolved
-  }
 }
