@@ -219,7 +219,10 @@ case class SubclassesResolverImpl
   }
 
   override def getSubclasses(clazz: Class[_]): List[Class[_]] = {
-    reflection.getSubclasses(clazz.getName).loadClasses().asScala.toList
+    if (clazz.isInterface)
+      reflection.getClassesImplementing(clazz.getName).loadClasses().asScala.toList
+    else
+      reflection.getSubclasses(clazz.getName).loadClasses().asScala.toList
   }
 }
 
