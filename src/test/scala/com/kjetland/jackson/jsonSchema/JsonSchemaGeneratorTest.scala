@@ -3,7 +3,6 @@ package com.kjetland.jackson.jsonSchema
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.{Collections, Optional, TimeZone}
-
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.node.{ArrayNode, MissingNode, ObjectNode}
 import com.fasterxml.jackson.databind.{JavaType, JsonNode, ObjectMapper, SerializationFeature}
@@ -26,9 +25,12 @@ import com.kjetland.jackson.jsonSchema.testData.polymorphism5.{Child51, Child52,
 import com.kjetland.jackson.jsonSchema.testData.polymorphism6.{Child61, Parent6}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
+import io.github.classgraph.ClassGraph
+
 import javax.validation.groups.Default
 import org.scalatest.{FunSuite, Matchers}
 
+import scala.::
 import scala.collection.JavaConverters._
 
 class JsonSchemaGeneratorTest extends FunSuite with Matchers {
@@ -1710,7 +1712,6 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
     // Currently there are no differences in the generated jsonSchema other than the $schema-url
   }
-
 }
 
 trait TestData {

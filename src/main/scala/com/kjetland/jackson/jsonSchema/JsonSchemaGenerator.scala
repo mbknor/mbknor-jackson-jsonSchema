@@ -119,7 +119,7 @@ object JsonSchemaConfig {
               uniqueItemClasses:java.util.Set[Class[_]],
               classTypeReMapping:java.util.Map[Class[_], Class[_]],
               jsonSuppliers:java.util.Map[String, Supplier[JsonNode]],
-              subclassesResolver:SubclassesResolver,
+              subclassesResolver:SubTypeResolver,
               failOnUnknownProperties:Boolean,
               javaxValidationGroups:java.util.List[Class[_]]
             ):JsonSchemaConfig = {
@@ -148,11 +148,50 @@ object JsonSchemaConfig {
       }
     )
   }
-
 }
 
-trait SubclassesResolver {
+trait SubTypeResolver {
+  def getSubTypes(_type: JavaType, objectMapper: ObjectMapper):List[Class[_]]
+}
+
+trait SubclassesResolver extends SubTypeResolver {
+
+  import scala.collection.JavaConverters._
+
   def getSubclasses(clazz:Class[_]):List[Class[_]]
+
+  def getSubTypes(_type: JavaType, objectMapper: ObjectMapper):List[Class[_]] = {
+
+    val ac = AnnotatedClassResolver.resolve(objectMapper.getDeserializationConfig, _type, objectMapper.getDeserializationConfig)
+
+    Option(ac.getAnnotation(classOf[JsonTypeInfo])).map {
+      jsonTypeInfo: JsonTypeInfo =>
+
+        jsonTypeInfo.use() match {
+          case JsonTypeInfo.Id.NAME =>
+            // First we try to resolve types via manually finding annotations (if success, it will preserve the order), if not we fallback to use collectAndResolveSubtypesByClass()
+            val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
+              ann: JsonSubTypes =>
+                // We found it via @JsonSubTypes-annotation
+                ann.value().map {
+                  t: JsonSubTypes.Type => t.value()
+                }.toList
+            }.getOrElse {
+              // We did not find it via @JsonSubTypes-annotation (Probably since it is using mixin's) => Must fallback to using collectAndResolveSubtypesByClass
+              val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
+              resolvedSubTypes.map( _.getType)
+                .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
+            }
+
+            subTypes
+
+          case _ =>
+            // Just find all sub type by ref
+            getSubclasses(_type.getRawClass)
+        }
+
+    }.getOrElse(List())
+  }
 }
 
 case class SubclassesResolverImpl
@@ -164,6 +203,7 @@ case class SubclassesResolverImpl
   import scala.collection.JavaConverters._
 
   def this() = this(None, List(), List())
+
 
   def withClassGraph(classGraph:ClassGraph):SubclassesResolverImpl = {
     this.copy(classGraph = Option(classGraph))
@@ -242,7 +282,7 @@ case class JsonSchemaConfig
   uniqueItemClasses:Set[Class[_]], // If rendering array and type is instanceOf class in this set, then we add 'uniqueItems": true' to schema - See // https://github.com/jdorn/json-editor for more info
   classTypeReMapping:Map[Class[_], Class[_]], // Can be used to prevent rendering using polymorphism for specific classes.
   jsonSuppliers:Map[String, Supplier[JsonNode]], // Suppliers in this map can be accessed using @JsonSchemaInject(jsonSupplierViaLookup = "lookupKey")
-  subclassesResolver:SubclassesResolver = new SubclassesResolverImpl(), // Using default impl that scans entire classpath
+  subclassesResolver:SubTypeResolver = new SubclassesResolverImpl(), // Using default impl that scans entire classpath
   failOnUnknownProperties:Boolean = true,
   javaxValidationGroups:Array[Class[_]] = Array(), // Used to match against different validation-groups (javax.validation.constraints)
   jsonSchemaDraft:JsonSchemaDraft = JsonSchemaDraft.DRAFT_04
@@ -254,6 +294,10 @@ case class JsonSchemaConfig
 
   def withSubclassesResolver(subclassesResolver: SubclassesResolver):JsonSchemaConfig = {
     this.copy( subclassesResolver = subclassesResolver )
+  }
+
+  def withSubTypeResolver(subTypeResolver: SubTypeResolver):JsonSchemaConfig = {
+    this.copy( subclassesResolver = subTypeResolver )
   }
 
   def withJavaxValidationGroups(javaxValidationGroups:Array[Class[_]]):JsonSchemaConfig = {
@@ -894,39 +938,6 @@ class JsonSchemaGenerator
       }
     }
 
-    private def extractSubTypes(_type: JavaType):List[Class[_]] = {
-
-      val ac = AnnotatedClassResolver.resolve(objectMapper.getDeserializationConfig, _type, objectMapper.getDeserializationConfig)
-
-      Option(ac.getAnnotation(classOf[JsonTypeInfo])).map {
-        jsonTypeInfo: JsonTypeInfo =>
-
-          jsonTypeInfo.use() match {
-            case JsonTypeInfo.Id.NAME =>
-              // First we try to resolve types via manually finding annotations (if success, it will preserve the order), if not we fallback to use collectAndResolveSubtypesByClass()
-              val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
-                ann: JsonSubTypes =>
-                  // We found it via @JsonSubTypes-annotation
-                  ann.value().map {
-                    t: JsonSubTypes.Type => t.value()
-                  }.toList
-              }.getOrElse {
-                // We did not find it via @JsonSubTypes-annotation (Probably since it is using mixin's) => Must fallback to using collectAndResolveSubtypesByClass
-                val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
-                resolvedSubTypes.map( _.getType)
-                  .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
-              }
-
-              subTypes
-
-            case _ =>
-              // Just find all subclasses
-              config.subclassesResolver.getSubclasses(_type.getRawClass)
-          }
-
-      }.getOrElse(List())
-    }
-
     def tryToReMapType(originalClass: Class[_]):Class[_] = {
       config.classTypeReMapping.get(originalClass).map {
         mappedToClass:Class[_] =>
@@ -976,7 +987,7 @@ class JsonSchemaGenerator
 
     override def expectObjectFormat(_type: JavaType) = {
 
-      val subTypes: List[Class[_]] = extractSubTypes(_type)
+      val subTypes: List[Class[_]] = config.subclassesResolver.getSubTypes(_type, objectMapper)
 
       // Check if we have subtypes
       if (subTypes.nonEmpty) {
