@@ -357,9 +357,9 @@ class JsonSchemaGenerator
 
             case Some(w) =>
               // this is a recursive polymorphism call
-              if ( _type != w.typeInProgress) throw new Exception(s"Wrong type - working on ${w.typeInProgress} - got ${_type}")
+              if (!w.typeInProgress.isTypeOrSuperTypeOf(_type.getRawClass)) throw new Exception(s"Wrong type - working on ${w.typeInProgress} - got ${_type}")
 
-              DefinitionInfo(None, objectDefinitionBuilder(w.nodeInProgress))
+              DefinitionInfo(if(_type == w.typeInProgress) None else Some(ref), objectDefinitionBuilder(w.nodeInProgress))
           }
 
         case None =>
