@@ -52,6 +52,9 @@ public @interface JsonSchemaInject {
      */
     boolean merge() default true;
 
+    // This can be used in the same way as 'groups' in javax.validation.constraints, e.g @NotNull
+    Class<?>[] javaxValidationGroups() default { };
+
     class None implements Supplier<JsonNode> {
         @Override
         public JsonNode get() {

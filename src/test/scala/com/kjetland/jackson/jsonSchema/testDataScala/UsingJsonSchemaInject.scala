@@ -18,6 +18,9 @@ import scala.annotation.meta.field
             "^s[a-zA-Z0-9]+": {
               "type": "string"
             }
+          },
+          "properties": {
+            "injectedInProperties": "true"
           }
         }
       """,

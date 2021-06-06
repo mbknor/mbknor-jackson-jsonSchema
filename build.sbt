@@ -5,7 +5,7 @@ lazy val commonSettings = Seq(
   organization := "com.kjetland",
   organizationName := "mbknor",
   scalaVersion := "2.12.4",
-  crossScalaVersions := Seq("2.10.7", "2.11.12", "2.12.10", "2.13.1"),
+  crossScalaVersions := Seq("2.11.12", "2.12.13", "2.13.4"),
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
@@ -42,14 +42,15 @@ lazy val commonSettings = Seq(
       Seq("-no-java-comments") //workaround for scala/scala-dev#249
     case _ =>
       Seq()
-  }
+  },
+  packageOptions in (Compile, packageBin) +=
+    Package.ManifestAttributes( "Automatic-Module-Name" -> "mbknor.jackson.jsonschema" )
 )
 
 
-val jacksonVersion = "2.10.1"
-val jacksonModuleScalaVersion = "2.10.1"
+val jacksonVersion = "2.12.1"
+val jacksonModuleScalaVersion = "2.12.1"
 val slf4jVersion = "1.7.26"
-
 
 lazy val deps  = Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
@@ -58,7 +59,7 @@ lazy val deps  = Seq(
   "io.github.classgraph" % "classgraph" % "4.8.21",
   "org.scalatest" %% "scalatest" % "3.0.8" % "test",
   "ch.qos.logback" % "logback-classic" % "1.2.3" % "test",
-  "com.github.java-json-tools" % "json-schema-validator" % "2.2.10" % "test",
+  "com.github.java-json-tools" % "json-schema-validator" % "2.2.11" % "test",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonModuleScalaVersion % "test",
   "com.fasterxml.jackson.module" % "jackson-module-kotlin" % jacksonVersion % "test",
   "com.fasterxml.jackson.datatype" % "jackson-datatype-jdk8" % jacksonVersion % "test",
