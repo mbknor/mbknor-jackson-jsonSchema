@@ -12,7 +12,7 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize
 import com.fasterxml.jackson.databind.introspect.{AnnotatedClass, AnnotatedClassResolver}
 import com.fasterxml.jackson.databind.jsonFormatVisitors._
 import com.fasterxml.jackson.databind.jsontype.impl.MinimalClassNameIdResolver
-import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode}
+import com.fasterxml.jackson.databind.node.{ArrayNode, JsonNodeFactory, ObjectNode, TextNode}
 import com.fasterxml.jackson.databind.util.ClassUtil
 import com.kjetland.jackson.jsonSchema.annotations._
 import io.github.classgraph.{ClassGraph, ScanResult}
@@ -438,9 +438,9 @@ class JsonSchemaGenerator
 
             case Some(w) =>
               // this is a recursive polymorphism call
-              if ( _type != w.typeInProgress) throw new Exception(s"Wrong type - working on ${w.typeInProgress} - got ${_type}")
+              if (!w.typeInProgress.isTypeOrSuperTypeOf(_type.getRawClass)) throw new Exception(s"Wrong type - working on ${w.typeInProgress} - got ${_type}")
 
-              DefinitionInfo(None, objectDefinitionBuilder(w.nodeInProgress))
+              DefinitionInfo(if(_type == w.typeInProgress) None else Some(ref), objectDefinitionBuilder(w.nodeInProgress))
           }
 
         case None =>
@@ -1064,8 +1064,8 @@ class JsonSchemaGenerator
 
               val propertiesNode = getOrCreateObjectChild(thisObjectNode, "properties")
 
-              extractPolymorphismInfo(_type).map {
-                case pi: PolymorphismInfo =>
+              extractPolymorphismInfo(_type).foreach {
+                pi: PolymorphismInfo =>
                   // This class is a child in a polymorphism config..
                   // Set the title = subTypeName
                   thisObjectNode.put("title", pi.subTypeName)
@@ -1088,14 +1088,24 @@ class JsonSchemaGenerator
                     optionsNode.put("hidden", true)
                   }
 
-                  getRequiredArrayNode(thisObjectNode).add(pi.typePropertyName)
+                  var found = false
+                  val reqArrayNode = getRequiredArrayNode(thisObjectNode)
+                  val iterator = reqArrayNode.elements()
+                  while(iterator.hasNext) {
+                    if(iterator.next().equals(TextNode.valueOf(pi.typePropertyName))) {
+                      found = true
+                    }
+                  }
+                  if(!found) {
+                    reqArrayNode.add(pi.typePropertyName)
+                  }
 
                   if (config.useMultipleEditorSelectViaProperty) {
                     // https://github.com/jdorn/json-editor/issues/709
                     // Generate info to help generated editor to select correct oneOf-type
                     // when populating the gui/schema with existing data
-                    val objectOptionsNode = getOrCreateObjectChild( thisObjectNode, "options")
-                    val multipleEditorSelectViaPropertyNode = getOrCreateObjectChild( objectOptionsNode, "multiple_editor_select_via_property")
+                    val objectOptionsNode = getOrCreateObjectChild(thisObjectNode, "options")
+                    val multipleEditorSelectViaPropertyNode = getOrCreateObjectChild(objectOptionsNode, "multiple_editor_select_via_property")
                     multipleEditorSelectViaPropertyNode.put("property", pi.typePropertyName)
                     multipleEditorSelectViaPropertyNode.put("value", pi.subTypeName)
                     ()
