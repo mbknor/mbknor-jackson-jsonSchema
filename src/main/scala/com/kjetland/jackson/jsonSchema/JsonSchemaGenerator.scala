@@ -39,7 +39,8 @@ object JsonSchemaConfig {
     useMultipleEditorSelectViaProperty = false,
     uniqueItemClasses = Set(),
     classTypeReMapping = Map(),
-    jsonSuppliers = Map()
+    jsonSuppliers = Map(),
+    disableRefTitle = false
   )
 
   /**
@@ -74,7 +75,8 @@ object JsonSchemaConfig {
       classOf[java.util.Set[_]]
     ),
     classTypeReMapping = Map(),
-    jsonSuppliers = Map()
+    jsonSuppliers = Map(),
+    disableRefTitle = false
   )
 
   /**
@@ -100,7 +102,8 @@ object JsonSchemaConfig {
     useMultipleEditorSelectViaProperty = false,
     uniqueItemClasses = Set(),
     classTypeReMapping = Map(),
-    jsonSuppliers = Map()
+    jsonSuppliers = Map(),
+    disableRefTitle = false
   )
 
   // Java-API
@@ -121,7 +124,9 @@ object JsonSchemaConfig {
               jsonSuppliers:java.util.Map[String, Supplier[JsonNode]],
               subclassesResolver:SubclassesResolver,
               failOnUnknownProperties:Boolean,
-              javaxValidationGroups:java.util.List[Class[_]]
+              javaxValidationGroups:java.util.List[Class[_]],
+              jsonSchemaDraft: JsonSchemaDraft,
+              disableRefTitle:Boolean
             ):JsonSchemaConfig = {
 
     import scala.collection.JavaConverters._
@@ -145,7 +150,9 @@ object JsonSchemaConfig {
       failOnUnknownProperties,
       if (javaxValidationGroups == null) Array[Class[_]]() else {
         javaxValidationGroups.toArray.asInstanceOf[Array[Class[_]]]
-      }
+      },
+      jsonSchemaDraft,
+      disableRefTitle
     )
   }
 
@@ -245,7 +252,8 @@ case class JsonSchemaConfig
   subclassesResolver:SubclassesResolver = new SubclassesResolverImpl(), // Using default impl that scans entire classpath
   failOnUnknownProperties:Boolean = true,
   javaxValidationGroups:Array[Class[_]] = Array(), // Used to match against different validation-groups (javax.validation.constraints)
-  jsonSchemaDraft:JsonSchemaDraft = JsonSchemaDraft.DRAFT_04
+  jsonSchemaDraft:JsonSchemaDraft = JsonSchemaDraft.DRAFT_04,
+  disableRefTitle:Boolean
 ) {
 
   def withFailOnUnknownProperties(failOnUnknownProperties:Boolean):JsonSchemaConfig = {
@@ -485,7 +493,7 @@ class JsonSchemaGenerator
     level:Int = 0,
     val node: ObjectNode = JsonNodeFactory.instance.objectNode(),
     val definitionsHandler:DefinitionsHandler,
-    currentProperty:Option[BeanProperty] // This property may represent the BeanProperty when we're directly processing beneath the property
+    currentProperty:Option[BeanProperty] = None // This property may represent the BeanProperty when we're directly processing beneath the property
   ) extends JsonFormatVisitorWrapper with MySerializerProvider {
 
     def l(s: => String): Unit = {
@@ -1002,9 +1010,11 @@ class JsonSchemaGenerator
             thisOneOfNode.put("$ref", definitionInfo.ref.get)
 
             // If class is annotated with JsonSchemaTitle, we should add it
-            Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
-              title =>
-                thisOneOfNode.put("title", title)
+            if (!config.disableRefTitle) {
+              Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
+                title =>
+                  thisOneOfNode.put("title", title)
+              }
             }
 
             anyOfArrayNode.add(thisOneOfNode)
@@ -1067,8 +1077,10 @@ class JsonSchemaGenerator
               extractPolymorphismInfo(_type).map {
                 case pi: PolymorphismInfo =>
                   // This class is a child in a polymorphism config..
-                  // Set the title = subTypeName
-                  thisObjectNode.put("title", pi.subTypeName)
+                  // Set the title = subTypeName if title not already set
+                  if (!thisObjectNode.has("title")) {
+                    thisObjectNode.put("title", pi.subTypeName)
+                  }
 
                   // must inject the 'type'-param and value as enum with only one possible value
                   // This is done to make sure the json generated from the schema using this oneOf
