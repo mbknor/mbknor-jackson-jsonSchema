@@ -1001,12 +1001,6 @@ class JsonSchemaGenerator
             val thisOneOfNode = JsonNodeFactory.instance.objectNode()
             thisOneOfNode.put("$ref", definitionInfo.ref.get)
 
-            // If class is annotated with JsonSchemaTitle, we should add it
-            Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
-              title =>
-                thisOneOfNode.put("title", title)
-            }
-
             anyOfArrayNode.add(thisOneOfNode)
 
         }
@@ -1066,10 +1060,6 @@ class JsonSchemaGenerator
 
               extractPolymorphismInfo(_type).map {
                 case pi: PolymorphismInfo =>
-                  // This class is a child in a polymorphism config..
-                  // Set the title = subTypeName
-                  thisObjectNode.put("title", pi.subTypeName)
-
                   // must inject the 'type'-param and value as enum with only one possible value
                   // This is done to make sure the json generated from the schema using this oneOf
                   // contains the correct "type info"
