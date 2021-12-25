@@ -28,6 +28,7 @@ object JsonSchemaConfig {
   val vanillaJsonSchemaDraft4 = JsonSchemaConfig(
     autoGenerateTitleForProperties = false,
     defaultArrayFormat = None,
+    nullableByDefault = false,
     useOneOfForOption = false,
     useOneOfForNullables = false,
     usePropertyOrdering = false,
@@ -51,6 +52,7 @@ object JsonSchemaConfig {
   val html5EnabledSchema = JsonSchemaConfig(
     autoGenerateTitleForProperties = true,
     defaultArrayFormat = Some("table"),
+    nullableByDefault = false,
     useOneOfForOption = true,
     useOneOfForNullables = false,
     usePropertyOrdering = true,
@@ -89,6 +91,7 @@ object JsonSchemaConfig {
   val nullableJsonSchemaDraft4 = JsonSchemaConfig (
     autoGenerateTitleForProperties = false,
     defaultArrayFormat = None,
+    nullableByDefault = false,
     useOneOfForOption = true,
     useOneOfForNullables = true,
     usePropertyOrdering = false,
@@ -107,6 +110,7 @@ object JsonSchemaConfig {
   def create(
               autoGenerateTitleForProperties:Boolean,
               defaultArrayFormat:Optional[String],
+              nullableByDefault:Boolean,
               useOneOfForOption:Boolean,
               useOneOfForNullables:Boolean,
               usePropertyOrdering:Boolean,
@@ -129,6 +133,7 @@ object JsonSchemaConfig {
     JsonSchemaConfig(
       autoGenerateTitleForProperties,
       Option(defaultArrayFormat.orElse(null)),
+      nullableByDefault,
       useOneOfForOption,
       useOneOfForNullables,
       usePropertyOrdering,
@@ -230,6 +235,7 @@ case class JsonSchemaConfig
 (
   autoGenerateTitleForProperties:Boolean,
   defaultArrayFormat:Option[String],
+  nullableByDefault:Boolean,
   useOneOfForOption:Boolean,
   useOneOfForNullables:Boolean,
   usePropertyOrdering:Boolean,
@@ -1123,14 +1129,13 @@ class JsonSchemaGenerator
                   // Need to check for Option/Optional-special-case before we know what node to use here.
                   case class PropertyNode(main: ObjectNode, meta: ObjectNode)
 
-                  // Check if we should set this property as required. Primitive types MUST have a value, as does anything
-                  // with a @JsonProperty that has "required" set to true. Lastly, various javax.validation annotations also
-                  // make this required.
-                  val requiredProperty: Boolean = if (propertyType.getRawClass.isPrimitive || jsonPropertyRequired || validationAnnotationRequired(prop)) {
-                    true
-                  } else {
-                    false
-                  }
+                  // Figure out if the type is considered optional by either Java or Scala.
+                  val isOptional: Boolean = classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) ||
+                    classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass)
+
+                  val isNullable: Boolean = isOptional ||
+                      !propertyType.getRawClass.isPrimitive &&
+                          (validationAnnotationNullable(prop) || config.nullableByDefault && !validationAnnotationNotNull(prop))
 
                   val thisPropertyNode: PropertyNode = {
                     val thisPropertyNode = JsonNodeFactory.instance.objectNode()
@@ -1141,13 +1146,7 @@ class JsonSchemaGenerator
                       nextPropertyOrderIndex = nextPropertyOrderIndex + 1
                     }
 
-                    // Figure out if the type is considered optional by either Java or Scala.
-                    val optionalType: Boolean = classOf[Option[_]].isAssignableFrom(propertyType.getRawClass) ||
-                      classOf[Optional[_]].isAssignableFrom(propertyType.getRawClass)
-
-                    // If the property is not required, and our configuration allows it, let's go ahead and mark the type as nullable.
-                    if (!requiredProperty && ((config.useOneOfForOption && optionalType) ||
-                      (config.useOneOfForNullables && !optionalType))) {
+                    if ((config.useOneOfForNullables && isNullable) || (config.useOneOfForOption && isOptional)) {
                       // We support this type being null, insert a oneOf consisting of a sentinel "null" and the real type.
                       val oneOfArray = JsonNodeFactory.instance.arrayNode()
                       thisPropertyNode.set("oneOf", oneOfArray)
@@ -1212,7 +1211,7 @@ class JsonSchemaGenerator
                   }
 
                   // If this property is required, add it to our array of required properties.
-                  if (requiredProperty) {
+                  if (jsonPropertyRequired) {
                     getRequiredArrayNode(thisObjectNode).add(propertyName)
                   }
 
@@ -1282,9 +1281,18 @@ class JsonSchemaGenerator
                   myPropertyHandler(name, propertyTypeHint, None, jsonPropertyRequired = true)
                 }
 
-                // Checks to see if a javax.validation field that makes our field required is present.
-                private def validationAnnotationRequired(prop: Option[BeanProperty]): Boolean = {
-                  prop.exists(p => selectAnnotation(p, classOf[NotNull]).isDefined || selectAnnotation(p, classOf[NotBlank]).isDefined || selectAnnotation(p, classOf[NotEmpty]).isDefined)
+                // Checks to see if a javax.validation field that makes our field nullable.
+                private def validationAnnotationNullable(prop: Option[BeanProperty]): Boolean = {
+                  prop.exists(p => selectAnnotation(p, classOf[javax.annotation.Nullable]).isDefined ||
+                                   selectAnnotation(p, classOf[org.jetbrains.annotations.Nullable]).isDefined)
+                }
+
+                // Checks to see if a javax.validation field that makes our field not null.
+                private def validationAnnotationNotNull(prop: Option[BeanProperty]): Boolean = {
+                  prop.exists(p => selectAnnotation(p, classOf[javax.annotation.Nonnull]).isDefined ||
+                                   selectAnnotation(p, classOf[javax.validation.constraints.NotNull]).isDefined ||
+                                   selectAnnotation(p, classOf[javax.validation.constraints.NotBlank]).isDefined ||
+                                   selectAnnotation(p, classOf[javax.validation.constraints.NotEmpty]).isDefined)
                 }
               })
             } else None
