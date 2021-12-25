@@ -28,6 +28,7 @@ public class UseItFromJavaTest {
         JsonSchemaConfig config = JsonSchemaConfig.create(
                 true,
                 Optional.of("A"),
+                false,
                 true,
                 true,
                 true,
