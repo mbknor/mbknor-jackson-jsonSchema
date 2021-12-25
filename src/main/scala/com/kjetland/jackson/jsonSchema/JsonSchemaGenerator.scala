@@ -895,36 +895,44 @@ class JsonSchemaGenerator
     }
 
     private def extractSubTypes(_type: JavaType):List[Class[_]] = {
+      return extractSubTypes(_type.getRawClass)
+    }
 
-      val ac = AnnotatedClassResolver.resolve(objectMapper.getDeserializationConfig, _type, objectMapper.getDeserializationConfig)
+    private def extractSubTypes(_type: Class[_]):List[Class[_]] = {
 
-      Option(ac.getAnnotation(classOf[JsonTypeInfo])).map {
-        jsonTypeInfo: JsonTypeInfo =>
+      val ac = AnnotatedClassResolver.resolveWithoutSuperTypes(objectMapper.getDeserializationConfig, _type, objectMapper.getDeserializationConfig)
 
-          jsonTypeInfo.use() match {
-            case JsonTypeInfo.Id.NAME =>
-              // First we try to resolve types via manually finding annotations (if success, it will preserve the order), if not we fallback to use collectAndResolveSubtypesByClass()
-              val subTypes: List[Class[_]] = Option(_type.getRawClass.getDeclaredAnnotation(classOf[JsonSubTypes])).map {
-                ann: JsonSubTypes =>
-                  // We found it via @JsonSubTypes-annotation
-                  ann.value().map {
-                    t: JsonSubTypes.Type => t.value()
-                  }.toList
-              }.getOrElse {
-                // We did not find it via @JsonSubTypes-annotation (Probably since it is using mixin's) => Must fallback to using collectAndResolveSubtypesByClass
-                val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
-                resolvedSubTypes.map( _.getType)
-                  .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
-              }
+      val jsonTypeInfo = ac.getAnnotation(classOf[JsonTypeInfo])
+      if (jsonTypeInfo == null) {
+        return List()
+      }
 
-              subTypes
+      jsonTypeInfo.use() match {
+        case JsonTypeInfo.Id.NAME =>
 
-            case _ =>
-              // Just find all subclasses
-              config.subclassesResolver.getSubclasses(_type.getRawClass)
+          val ann = _type.getDeclaredAnnotation(classOf[JsonSubTypes])
+
+          if (ann == null) {
+            // We did not find it via @JsonSubTypes-annotation (Probably since it is using mixin's) => Must fallback to using collectAndResolveSubtypesByClass
+            val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
+            return resolvedSubTypes.map( _.getType)
+              .filter( c => _type.isAssignableFrom(c) && _type != c)
           }
 
-      }.getOrElse(List())
+//          return ann.value().map { _.value() }.toList
+          return ann.value().flatMap { subTypeAnn =>
+            val subType = subTypeAnn.value()
+            val subSubTypes = extractSubTypes(subType)
+            if (subSubTypes.nonEmpty)
+              subSubTypes
+            else
+              List(subType)
+          }.toList
+
+        case _ =>
+          // Just find all subclasses
+          config.subclassesResolver.getSubclasses(_type)
+      }
     }
 
     def tryToReMapType(originalClass: Class[_]):Class[_] = {
