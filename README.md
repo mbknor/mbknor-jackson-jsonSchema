@@ -1,7 +1,7 @@
+**NOTE:** This is the Java rewrite of the original project, without Scala dependencies. It is a version-compatible drop-in replacement, except that configuration is now via a builder.
+
 Jackson jsonSchema Generator
 ===================================
-[![Build Status](https://travis-ci.org/mbknor/mbknor-jackson-jsonSchema.svg)](https://travis-ci.org/mbknor/mbknor-jackson-jsonSchema)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/com.kjetland/mbknor-jackson-jsonschema_2.12/badge.svg)](http://search.maven.org/#search%7Cga%7C1%7Cmbknor-jackson-jsonSchema)
 
 This projects aims to do a better job than the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)
 in generating jsonSchema from your POJOs using Jackson @Annotations.
@@ -27,12 +27,6 @@ in generating jsonSchema from your POJOs using Jackson @Annotations.
 * Supports injecting custom json-schema-fragments using the **@JsonSchemaInject**-annotation.
 
 
-**Benefits**
-
-* Simple implementation - Just [one file](https://github.com/mbknor/mbknor-jackson-jsonSchema/blob/master/src/main/scala/com/kjetland/jackson/jsonSchema/JsonSchemaGenerator.scala)  (for now..)
-* Implemented in Scala (*Built for 2.10, 2.11, 2.12 and 2.13*)
-* Easy to fix and add functionality
-
 Flexible
 --------------
 
@@ -53,35 +47,18 @@ you can make it work by injecting the following json-schema-fragment:
 ```
 
 
-.. like this in Scala:
-```Scala
+.. like this
+```Java
+
 @JsonSerialize(using = MySpecialSerializer.class)
-JsonSchemaInject(
-  json =
-    """
+@JsonSchemaInject( json = """
       {
         "patternProperties" : {
           "^[a-zA-Z0-9]+" : {
             "type" : "string"
           }
         }
-      }
-    """
-)
-case class MyPojo(...)
-```
-
-.. or like this in Java
-```Java
-
-@JsonSerialize(using = MySpecialSerializer.class)
-@JsonSchemaInject( json = "{\n" +
-        "  \"patternProperties\" : {\n" +
-        "    \"^[a-zA-Z0-9]+\" : {\n" +
-        "      \"type\" : \"string\"\n" +
-        "    }\n" +
-        "  }\n" +
-        "}" )
+      }""")
 public class MyPojo {
     ...
     ...
@@ -113,28 +90,22 @@ public class MyPojo {
 }
 ```
 If a part of the schema is not known at compile time, you can use a json supplier:
-```Scala
-case class MyPojo {
-  @JsonSchemaInject(jsonSupplier = classOf[UserNamesLoader])
-  uns:Set[String]
-  ...
-  ...
-  ...
+```Java
+class MyPojo {
+  @JsonSchemaInject(jsonSupplier = UserNamesLoader.class)
+  Set<String> uns;
 }
 
-class UserNamesLoader extends Supplier[JsonNode] {
-  val _objectMapper = new ObjectMapper()
+class UserNamesLoader implements Supplier<JsonNode> {
+  ObjectMapper objectMapper = new ObjectMapper()
 
-  override def get(): JsonNode = {
-    val schema = _objectMapper.createObjectNode()
-    val values = schema.putObject("items").putArray("enum")
-    loadUsers().foreach(u => values.add(u.name))
-
-    schema
+  @Override public JsonNode get() {
+    var schema = objectMapper.createObjectNode();
+    var valuesNode = schema.putObject("items").putArray("enum");
+    for (var user : loadUsers())
+      valuesNode.add(user.name);
+    return schema;
   }
-  ...
-  ...
-  ...
 }
 ```
 This will associate an enum of possible values for the set that you generate at runtime.
@@ -143,9 +114,9 @@ If you need even more control over the schema-generating runtime, you can use **
 like this:
 
 ```Scala
-case class MyPojo {
+class MyPojo {
   @JsonSchemaInject(jsonSupplierViaLookup = "theKeyToUseWhenLookingUpASupplier")
-  uns:Set[String]
+  Set<String> uns;
   ...
   ...
   ...
@@ -156,8 +127,8 @@ Then you have to add the mapping between the key 'theKeyToUseWhenLookingUpASuppl
 used when creating the JsonSchemaGenerator.
 
 
-The default behaviour of @JsonSchemaInject is to **merge** the injected json into the generated JsonSchema.
-If you want to have full control over it, you can specify @JsonSchemaInject.merge = false to **replace** the generated
+The default behaviour of `@JsonSchemaInject` is to **merge** the injected json into the generated JsonSchema.
+If you want to have full control over it, you can specify `@JsonSchemaInject(overrideAll = true)` to **replace** the generated
 jsonSchema with the injected json.
 
 
@@ -182,11 +153,7 @@ I would really appreciate it if other developers wanted to start using and contr
 Dependency
 ===================
 
-This project publishes artifacts to central maven repo.
-
-The project is also compiled using Java 8. This means that you also need to use Java 8.
-
-Artifacts for both Scala 2.10, 2.11 and 2.12 is now available (Thanks to [@bbyk](https://github.com/bbyk) for adding crossBuild functionality).
+This project publishes artifacts to central maven repo. The project requires Java 17.
 
 Using Maven
 -----------------
@@ -194,83 +161,21 @@ Using Maven
 Add this to you pom.xml:
 
     <dependency>
-        <groupId>com.kjetland</groupId>
-        <artifactId>mbknor-jackson-jsonschema_2.12</artifactId>
-        <version>[---LATEST VERSION---]</version>
-    </dependency>    
-
-Using sbt
-------------
-
-Add this to you sbt build-config:
-
-    "com.kjetland" %% "mbknor-jackson-jsonschema" % "[---LATEST VERSION---]"
+        <groupId>net.almson</groupId>
+        <artifactId>mbknor-jackson-jsonschema-java</artifactId>
+        <version>1.0.39</version>
+    </dependency>
 
 
-Code - Using Scala
--------------------------------
-
-This is how to generate jsonSchema in code using Scala:
-
-```scala
-    val objectMapper = new ObjectMapper
-    val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper)
-    val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
-
-    val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
-```
-
-This is how to generate jsonSchema used for generating HTML5 GUI using [json-editor](https://github.com/jdorn/json-editor):
-
-```scala
-    val objectMapper = new ObjectMapper
-    val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config = JsonSchemaConfig.html5EnabledSchema)
-    val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
-
-    val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
-```
-
-This is how to generate jsonSchema using custom type-to-format-mapping using Scala:
-
-```scala
-    val objectMapper = new ObjectMapper
-    val config:JsonSchemaConfig = JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(
-      customType2FormatMapping = Map( "java.time.OffsetDateTime" -> "date-time-ABC-Special" )
-    )
-    val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config = config)
-    val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
-
-    val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
-```
-
-**Note about Scala and Option[Int]**:
-
-Due to Java's Type Erasure it impossible to resolve the type T behind Option[T] when T is Int, Boolean, Double.
-As a workaround, you have to use the *@JsonDeserialize*-annotation in such cases.
-See https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges for more info.
-
-Example:
-```scala
-    case class PojoUsingOptionScala(
-                                     _string:Option[String], // @JsonDeserialize not needed here
-                                     @JsonDeserialize(contentAs = classOf[Int])     _integer:Option[Int],
-                                     @JsonDeserialize(contentAs = classOf[Boolean]) _boolean:Option[Boolean],
-                                     @JsonDeserialize(contentAs = classOf[Double])  _double:Option[Double],
-                                     child1:Option[SomeOtherPojo] // @JsonDeserialize not needed here
-                                   )
-```
-
-PS: Scala Option combined with Polymorphism does not work in jackson-scala-module and therefore not this project either.
-
-Code - Using Java
+Examples
 -------------------------
 
 ```java
     ObjectMapper objectMapper = new ObjectMapper();
     JsonSchemaGenerator jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper);
 
-    // If using JsonSchema to generate HTML5 GUI:
-    // JsonSchemaGenerator html5 = new JsonSchemaGenerator(objectMapper, JsonSchemaConfig.html5EnabledSchema() );
+    // If using JsonSchema to generate a JSON Editor interface:
+    // JsonSchemaGenerator html5 = new JsonSchemaGenerator(objectMapper, JsonSchemaConfig.JSON_EDITOR);
 
     // If you want to configure it manually:
     // JsonSchemaConfig config = JsonSchemaConfig.create(...);
@@ -287,11 +192,11 @@ Code - Using Java
 Out of the box, the generator does not support nullable types. There is a preconfigured `JsonSchemaGenerator` configuration shortcut that can be used to enable them:
 
 ```java
-JsonSchemaConfig config = JsonSchemaConfig.nullableJsonSchemaDraft4();
+JsonSchemaConfig config = JsonSchemaConfig.NULLABLE;
 JsonSchemaGenerator generator = new JsonSchemaGenerator(objectMapper, config);
 ```
 
-Under the hood `nullableJsonSchemaDraft4` toggles the `useOneOfForOption` and `useOneOfForNullables` properties on `JsonSchemaConfig`.
+Under the hood `NULLABLE` toggles the `useOneOfForOption` and `useOneOfForNullables` properties on `JsonSchemaConfig`.
 
 When support is enabled, the following types may be made nullable:
  - Use `Optional<T>` (or Scala's `Option`)
@@ -315,21 +220,7 @@ While support for these is not built in jsonSchema, it is handy to know how to u
 
 Hence, let's suppose that you want to filter YourPojo using properties marked with the view Views.MyView.
 
-Here is how to do it in Scala: 
-
-```scala
-    val objectMapper = new ObjectMapper
-
-    objectMapper.disable(MapperFeature.DEFAULT_VIEW_INCLUSION)
-    objectMapper.setConfig(objectMapper.getSerializationConfig().withView(Views.MyView.class))
-
-    val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper)
-    val jsonSchema:JsonNode = jsonSchemaGenerator.generateJsonSchema(classOf[YourPOJO])
-
-    val jsonSchemaAsString:String = objectMapper.writeValueAsString(jsonSchema)
-```
-
-And here is the equivalent for Java: 
+Here is how to do it:
 
 ```java
     ObjectMapper objectMapper = new ObjectMapper();
@@ -356,33 +247,16 @@ By default we scan the entire classpath. This can be slow, so it is better to cu
 
 This is how you can configure what *mbknor-jackson-jsonSchema* should scan 
 
-in Scala:
-```Scala
-    // Scan only some packages (this is faster)
-    
-    val resolver = SubclassesResolverImpl()
-                    .withPackagesToScan(List("this.is.myPackage"))
-                    .withClassesToScan(List("this.is.myPackage.MyClass")) // and/or this one
-                    //.withClassGraph() - or use this one to get full control..       
-    
-    config = config.withSubclassesResolver( resolver )
-
-```
-
-.. or in Java:
 ```Java
     // Scan only some packages (this is faster)
     
-    final SubclassesResolver resolver = new SubclassesResolverImpl()
-                                            .withPackagesToScan(Arrays.asList(
-                                               "this.is.myPackage"
-                                            ))
-                                            .withClassesToScan(Arrays.asList( // and/or this one
-                                               "this.is.myPackage.MyClass"
-                                            ))
-                                            //.withClassGraph() - or use this one to get full control..       
-    
-    config = config.withSubclassesResolver( resolver )
+    final SubclassesResolver resolver = new SubclassesResolver(List.of(
+                                               "this.is.myPackage" // packages to include
+                                            ),
+                                            List.of(
+                                               "this.is.myPackage.MyClass" // classes to include
+                                            ));
+    config = JsonSchemaConfig.builder().subclassesResolver(resolver).build();
 
 ```
 
@@ -408,46 +282,8 @@ when generating the schema.
 
 This is how you specify which version/draft to use:
 
-Specify draft-version in Scala:
-```scala
-    val config:JsonSchemaConfig = JsonSchemaConfig.vanillaJsonSchemaDraft4.withJsonSchemaDraft(JsonSchemaDraft.DRAFT_07
-    val jsonSchemaGenerator = new JsonSchemaGenerator(objectMapper, config = config)
-```
-
-Specify draft-version in Java:
+Specify draft-version:
 ```java
-    JsonSchemaConfig config = JsonSchemaConfig.vanillaJsonSchemaDraft4().withJsonSchemaDraft(JsonSchemaDraft.DRAFT_07;
+    JsonSchemaConfig config = JsonSchemaConfig.builder().jsonSchemaDraft(JsonSchemaDraft.DRAFT_07).build();
     JsonSchemaGenerator generator = new JsonSchemaGenerator(objectMapper, config);
 ```
-
-
-
-
-Backstory
---------------
-
-
-At work we've been using the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema)
-to generate schemas used when rendering dynamic GUI using [https://github.com/json-editor/json-editor](https://github.com/json-editor/json-editor).
-
-Recently we needed to support POJO's using polymorphism like this:
-
-```java
-    @JsonTypeInfo(
-            use = JsonTypeInfo.Id.NAME,
-            include = JsonTypeInfo.As.PROPERTY,
-            property = "type")
-    @JsonSubTypes({
-            @JsonSubTypes.Type(value = Child1.class, name = "child1"),
-            @JsonSubTypes.Type(value = Child2.class, name = "child2") })
-    public abstract class Parent {
-
-        public String parentString;
-
-    }
-```
-
-This is not supported by the original [jackson-module-jsonSchema](https://github.com/FasterXML/jackson-module-jsonSchema).
-I have spent many hours trying to figure out how to modify/improve it without any luck,
-and since it is implemented in such a complicated way, I decided to instead write my own
-jsonSchema generator from scratch.
