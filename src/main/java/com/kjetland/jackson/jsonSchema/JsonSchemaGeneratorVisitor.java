@@ -56,7 +56,9 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
         
         // Plain java
         var jp = tryGetAnnotation(JsonProperty.class);
-        if (jp != null)
+        if (jp != null 
+                && jp.defaultValue() != null
+                && !jp.defaultValue().isEmpty()) // unfortunately, defaultValue is empty by default
             return jp.defaultValue();
         
         var jsd = tryGetAnnotation(JsonSchemaDefault.class);

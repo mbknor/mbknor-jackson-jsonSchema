@@ -163,7 +163,7 @@ Add this to you pom.xml:
     <dependency>
         <groupId>net.almson</groupId>
         <artifactId>mbknor-jackson-jsonschema-java</artifactId>
-        <version>1.0.39</version>
+        <version>1.0.39.1</version>
     </dependency>
 
 
