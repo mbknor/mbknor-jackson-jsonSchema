@@ -11,6 +11,7 @@ import static java.lang.System.out;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import javax.annotation.Nullable;
 import lombok.SneakyThrows;
@@ -161,7 +162,7 @@ public final class TestUtils {
         if (node instanceof MissingNode)
             return List.of();
         else
-            return StreamSupport.stream(node.spliterator(), false).map(JsonNode::asText).toList();
+            return StreamSupport.stream(node.spliterator(), false).map(JsonNode::asText).collect(Collectors.toList());
     }
 
     List<String> getRequiredList(JsonNode node) {

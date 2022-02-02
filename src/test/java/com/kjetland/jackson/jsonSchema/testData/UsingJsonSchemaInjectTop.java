@@ -10,7 +10,13 @@ import java.util.Set;
 import java.util.function.Supplier;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.Pattern;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.jackson.Jacksonized;
 
 /**
  *
@@ -18,61 +24,52 @@ import lombok.RequiredArgsConstructor;
  */
 public class UsingJsonSchemaInjectTop {
     @JsonSchemaInject(
-        json=
-          """
-            {
-              "patternProperties": {
-                "^s[a-zA-Z0-9]+": {
-                  "type": "string"
-                }
-              },
-              "properties": {
-                "injectedInProperties": "true"
-              }
-            }
-          """,
+        json="{\n" +
+            " \"patternProperties\": {\n" +
+            "   \"^s[a-zA-Z0-9]+\": {\n" +
+            "     \"type\": \"string\"\n" +
+            "   }\n" +
+            " },\n" +
+            " \"properties\": {\n" +
+            "   \"injectedInProperties\": \"true\"\n" +
+            " }\n" +
+            "}",
         strings = {@JsonSchemaString(path = "patternProperties/^i[a-zA-Z0-9]+/type", value = "integer")}
     )
-    public record UsingJsonSchemaInject
-    (
+    @FieldDefaults(level = AccessLevel.PUBLIC, makeFinal = true) @Jacksonized @Builder // Can be Java 17 record
+    public static class UsingJsonSchemaInject
+    {
       @JsonSchemaInject(
-          json=
-            """
-              {
-                 "options": {
-                    "hidden": true
-                 }
-              }
-            """)
-      String sa,
+          json="{\n" +
+              "  \"options\": {\n" +
+              "     \"hidden\": true\n" +
+              "  }\n" +
+              "}")
+      String sa;
 
       @JsonSchemaInject(
-        json=
-          """
-              {
-                 "type": "integer",
-                 "default": 12
-              }
-            """,
+        json="{\n" +
+             "   \"type\": \"integer\",\n" +
+             "   \"default\": 12\n" +
+             "}",
         overrideAll = true
       )
       @Pattern(regexp = "xxx") // Should not end up in schema since we're replacing with injected
-      String saMergeFalse,
+      String saMergeFalse;
 
       @JsonSchemaInject(
         bools = {@JsonSchemaBool(path = "exclusiveMinimum", value = true)},
         ints = {@JsonSchemaInt(path = "multipleOf", value = 7)}
       )
       @Min(5)
-      int ib,
+      int ib;
 
       @JsonSchemaInject(jsonSupplier = UserNamesLoader.class)
-      Set<String> uns,
+      Set<String> uns;
 
       @JsonSchemaInject(jsonSupplierViaLookup = "myCustomUserNamesLoader")
-      Set<String> uns2
-    )
-    {}
+      Set<String> uns2;
+    }
 
     public static class UserNamesLoader implements Supplier<JsonNode> {
         ObjectMapper _objectMapper = new ObjectMapper();
@@ -103,15 +100,14 @@ public class UsingJsonSchemaInjectTop {
     }
 
     @JsonSchemaInject(
-      json = """
-        {
-          "everything": "should be replaced"
-        }""",
+      json = "{\n" +
+        "  \"everything\": \"should be replaced\"\n" +
+        "}",
       overrideAll = true
     )
-    public record UsingJsonSchemaInjectWithTopLevelMergeFalse
-    (
-      String shouldBeIgnored
-    )
-    {}
+    @FieldDefaults(level = AccessLevel.PUBLIC, makeFinal = true) @Jacksonized @Builder // Can be Java 17 record
+    public static class UsingJsonSchemaInjectWithTopLevelMergeFalse
+    {
+        String shouldBeIgnored;
+    }
 }

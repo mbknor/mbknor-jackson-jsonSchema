@@ -23,7 +23,11 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.validation.constraints.*;
+import lombok.AccessLevel;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
+import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -357,7 +361,8 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
         return new MapVisitor();
     }
 
-    record PolymorphismInfo(String typePropertyName, String subTypeName) {}
+    @Data @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true) @Accessors(fluent = true)
+    static class PolymorphismInfo { String typePropertyName; String subTypeName; }
 
     private PolymorphismInfo extractPolymorphismInfo(JavaType type) throws JsonMappingException {
         
@@ -422,18 +427,14 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
             var subTypes = subTypeAnn.value();
             return Stream.of(subTypes)
                     .map(subType -> subType.value())
-                    // Who the hell thought of multiMap? God I hate Streams
-                    // Also, another javac bug, lol (#9072340)
-//                    .mapMulti((subType, consumer) -> {
-                    .<Class<?>>mapMulti((subType, consumer) -> {
+                    .flatMap(subType -> {
                         var subSubTypes = extractSubTypes(subType);
                         if (!subSubTypes.isEmpty())
-                            for (var subSubType : subSubTypes)
-                                consumer.accept(subSubType);
+                            return subSubTypes.stream();
                         else
-                            consumer.accept(subType);
+                            return Stream.of(subType);
                     })
-                    .toList();
+                    .collect(Collectors.toList());
         }
         else
             return ctx.config.subclassesResolver.getSubclasses(type);
@@ -642,7 +643,9 @@ class JsonSchemaGeneratorVisitor extends AbstractJsonFormatVisitorWithSerializer
                 }
 
                 // Need to check for Optional/Optional-special-case before we know what node to use here.
-                record PropertyNode(ObjectNode main, ObjectNode meta) {}
+//                record PropertyNode(ObjectNode main, ObjectNode meta) {}
+                @Data @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true) @Accessors(fluent = true)
+                class PropertyNode { final ObjectNode main; final ObjectNode meta; }
 
                 // Check if we should set this property as required. Primitive types MUST have a value, as does anything
                 // with a @JsonProperty that has "required" set to true. Lastly, various javax.validation annotations also

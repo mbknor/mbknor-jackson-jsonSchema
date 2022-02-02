@@ -1,66 +1,67 @@
 package com.kjetland.jackson.jsonSchema.testData;
 
-import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaInject;
 import java.util.List;
 import java.util.Map;
 import javax.validation.constraints.*;
-import javax.validation.groups.Default;
+import lombok.AccessLevel;
+import lombok.Builder;
+import lombok.EqualsAndHashCode;
+import lombok.experimental.FieldDefaults;
+import lombok.extern.jackson.Jacksonized;
 
-public record ClassUsingValidation
-(
+@FieldDefaults(level = AccessLevel.PUBLIC, makeFinal = true) @Jacksonized @Builder @EqualsAndHashCode // Can be Java 17 record
+public class ClassUsingValidation
+{
   @NotNull
-  String stringUsingNotNull,
+  String stringUsingNotNull;
 
   @NotBlank
-  String stringUsingNotBlank,
+  String stringUsingNotBlank;
 
   @NotNull
   @NotBlank
-  String stringUsingNotBlankAndNotNull,
+  String stringUsingNotBlankAndNotNull;
 
   @NotEmpty
-  String stringUsingNotEmpty,
+  String stringUsingNotEmpty;
 
   @NotEmpty
-  List<String> notEmptyStringArray, // Per PojoArraysWithScala, we use always use Lists in Scala, and never raw arrays.
+  List<String> notEmptyStringArray; // Per PojoArraysWithScala, we use always use Lists in Scala, and never raw arrays.
 
   @NotEmpty
-  Map<String, String> notEmptyMap,
+  Map<String, String> notEmptyMap;
 
   @Size(min=1, max=20)
-  String stringUsingSize,
+  String stringUsingSize;
 
   @Size(min=1)
-  String stringUsingSizeOnlyMin,
+  String stringUsingSizeOnlyMin;
 
   @Size(max=30)
-  String stringUsingSizeOnlyMax,
+  String stringUsingSizeOnlyMax;
 
   @Pattern(regexp = "_stringUsingPatternA|_stringUsingPatternB")
-  String stringUsingPattern,
+  String stringUsingPattern;
 
   @Pattern.List({
     @Pattern(regexp = "^_stringUsing.*"),
     @Pattern(regexp = ".*PatternList$")
   })
-  String stringUsingPatternList,
+  String stringUsingPatternList;
 
   @Min(1)
-  int intMin,
+  int intMin;
   @Max(10)
-  int intMax,
+  int intMax;
   @Min(1)
-  double doubleMin,
+  double doubleMin;
   @Max(10)
-  double doubleMax,
+  double doubleMax;
   @DecimalMin("1.5")
-  double decimalMin,
+  double decimalMin;
   @DecimalMax("2.5")
-  double decimalMax,
+  double decimalMax;
 
   @Email
-  String email
-)
-{
-    
+  String email;
 }

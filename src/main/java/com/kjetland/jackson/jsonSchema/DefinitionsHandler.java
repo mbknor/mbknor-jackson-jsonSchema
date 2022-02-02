@@ -12,14 +12,21 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import lombok.AccessLevel;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.Accessors;
+import lombok.experimental.FieldDefaults;
 
 // Class that manages creating new definitions or getting $refs to existing definitions
 @RequiredArgsConstructor
 class DefinitionsHandler {
 
-    record DefinitionInfo(String ref, JsonObjectFormatVisitor jsonObjectFormatVisitor) {}
-    record WorkInProgress(JavaType typeInProgress, ObjectNode nodeInProgress) {}
+    // can be records
+    @Data @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true) @Accessors(fluent = true)
+    static class DefinitionInfo { String ref; JsonObjectFormatVisitor jsonObjectFormatVisitor; }
+    @Data @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true) @Accessors(fluent = true)
+    static class WorkInProgress { JavaType typeInProgress; ObjectNode nodeInProgress; }
     
     final JsonSchemaConfig config;
 

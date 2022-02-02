@@ -153,7 +153,7 @@ I would really appreciate it if other developers wanted to start using and contr
 Dependency
 ===================
 
-This project publishes artifacts to central maven repo. The project requires Java 17.
+This project publishes artifacts to central maven repo. The project requires Java 11.
 
 Using Maven
 -----------------
@@ -163,7 +163,7 @@ Add this to you pom.xml:
     <dependency>
         <groupId>net.almson</groupId>
         <artifactId>mbknor-jackson-jsonschema-java</artifactId>
-        <version>1.0.39.1</version>
+        <version>1.0.39.2</version>
     </dependency>
 
 

@@ -61,10 +61,10 @@ public final class Utils {
                 merge(jsonNode, updateNode.get(fieldName));
             }
             else {
-                if (mainNode instanceof ObjectNode node) {
+                if (mainNode instanceof ObjectNode) {
                     // Overwrite field
                     var value = updateNode.get(fieldName);
-                    node.set(fieldName, value);
+                    ((ObjectNode)mainNode).set(fieldName, value);
                 }
             }
         }
@@ -165,8 +165,8 @@ public final class Utils {
                 return List.of();
             }
         } 
-        else if (annotation instanceof JsonSchemaInject _annotation)
-            return List.of(_annotation.javaxValidationGroups());
+        else if (annotation instanceof JsonSchemaInject)
+            return List.of(((JsonSchemaInject)annotation).javaxValidationGroups());
         else
             return List.of();
     }

@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.validation.groups.Default;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -100,7 +101,7 @@ public class JsonSchemaGeneratorTest {
     
     @Test void generateSchemaForPojo() {
 
-        var enumList = List.of(MyEnum.values()).stream().map(Object::toString).toList();
+        var enumList = List.of(MyEnum.values()).stream().map(Object::toString).collect(Collectors.toList());
 
         {
             var jsonNode = assertToFromJson(jsonSchemaGenerator, testData.classNotExtendingAnything);
@@ -464,7 +465,7 @@ public class JsonSchemaGeneratorTest {
 
         assertEquals (schema.at("/properties/myEnum/type").asText(), "string");
         assertEquals (getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/enum")), 
-                Stream.of(MyEnum.values()).map(Enum::name).toList());
+                Stream.of(MyEnum.values()).map(Enum::name).collect(Collectors.toList()));
         assertEquals (schema.at("/properties/myEnum/JsonSchemaInjectOnEnum").asText(), "true");
     }
 
@@ -493,7 +494,7 @@ public class JsonSchemaGeneratorTest {
 
         assertNullableType(schema, "/properties/myEnum", "string");
         assertEquals (getArrayNodeAsListOfStrings(schema.at("/properties/myEnum/oneOf/1/enum")), 
-                Stream.of(MyEnum.values()).map(Enum::name).toList());
+                Stream.of(MyEnum.values()).map(Enum::name).collect(Collectors.toList()));
     }
 
     @Test void optional() {
@@ -1119,7 +1120,7 @@ public class JsonSchemaGeneratorTest {
 
     @Test void polymorphismOneOfOrdering() {
         var schema = generateAndValidateSchema(jsonSchemaGeneratorHTML5, PolymorphismOrdering.class, null);
-        List<String> oneOfList = toList(schema.at("/oneOf").iterator()).stream().map(e -> e.at("/$ref").asText()).toList();
+        List<String> oneOfList = toList(schema.at("/oneOf").iterator()).stream().map(e -> e.at("/$ref").asText()).collect(Collectors.toList());
         assertEquals (List.of("#/definitions/PolymorphismOrderingChild3", "#/definitions/PolymorphismOrderingChild1", "#/definitions/PolymorphismOrderingChild4", "#/definitions/PolymorphismOrderingChild2"), oneOfList);
     }
 
@@ -1180,12 +1181,12 @@ public class JsonSchemaGeneratorTest {
         out.println("--------------------------------------------");
         out.println(schemaJson);
 
-        var fasit = """
-            {
-              "everything" : "should be replaced"
-            }""".stripIndent();
+        var fasit = 
+            "{\n" +
+            "  \"everything\" : \"should be replaced\"\n" +
+            "}";
 
-        assertTrue ( schemaJson .equals (fasit) );
+        assertEquals(fasit, schemaJson);
     }
     
     @Test void preventingPolymorphismWithClassTypeRemapping_classWithProperty() {
