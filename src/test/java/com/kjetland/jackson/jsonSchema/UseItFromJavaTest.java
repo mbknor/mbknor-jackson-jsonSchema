@@ -1,9 +1,11 @@
 package com.kjetland.jackson.jsonSchema;
 
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.time.OffsetDateTime;
 import java.util.*;
+import org.junit.jupiter.api.Test;
 
 public class UseItFromJavaTest {
 
@@ -11,7 +13,8 @@ public class UseItFromJavaTest {
         public String name;
     }
 
-    public UseItFromJavaTest() {
+    @Test
+    public void test() throws JsonMappingException {
         // Just make sure it compiles
         ObjectMapper objectMapper = new ObjectMapper();
         JsonSchemaGenerator g1 = new JsonSchemaGenerator(objectMapper);
@@ -25,33 +28,30 @@ public class UseItFromJavaTest {
         // Create custom JsonSchemaConfig from java
         Map<String,String> customMapping = new HashMap<>();
         customMapping.put(OffsetDateTime.class.getName(), "date-time");
-        JsonSchemaConfig config = JsonSchemaConfig.create(
-                true,
-                Optional.of("A"),
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                true,
-                customMapping,
-                false,
-                new HashSet<>(),
-                new HashMap<>(),
-                new HashMap<>(),
-                null,
-                true,
-                null);
+        JsonSchemaConfig config = JsonSchemaConfig.builder()
+                .autoGenerateTitleForProperties(true)
+                .defaultArrayFormat("A")
+                .useOneOfForOption(false)
+                .useOneOfForNullables(true)
+                .usePropertyOrdering(true)
+                .hidePolymorphismTypeProperty(true)
+                .useMinLengthForNotNull(true)
+                .useTypeIdForDefinitionName(true)
+                .customType2FormatMapping(customMapping)
+                .useMultipleEditorSelectViaProperty(false)
+                .subclassesResolver(null)
+                .failOnUnknownProperties(true)
+                .javaxValidationGroups(null)
+                .build();
         JsonSchemaGenerator g2 = new JsonSchemaGenerator(objectMapper, config);
 
-
         // Config SubclassesResolving
-
-        final SubclassesResolver subclassesResolver = new SubclassesResolverImpl()
-                .withClassesToScan(Arrays.asList(
-                        "this.is.myPackage"
-                ));
+        final SubclassesResolver subclassesResolver 
+                = new SubclassesResolver
+                    (null
+                    , Arrays.asList(
+                            "this.is.myPackage"
+                    ));
     }
 
 }
