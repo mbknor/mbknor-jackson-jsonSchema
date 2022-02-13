@@ -865,7 +865,7 @@ class JsonSchemaGenerator
       }
     }
 
-    case class PolymorphismInfo(typePropertyName:String, subTypeName:String)
+    case class PolymorphismInfo(typePropertyName:Option[String], subTypeName:String)
 
     private def extractPolymorphismInfo(_type:JavaType):Option[PolymorphismInfo] = {
       val maybeBaseType = ClassUtil.findSuperTypes(_type, null, false).asScala.find { cl =>
@@ -886,7 +886,7 @@ class JsonSchemaGenerator
                 case _ : MinimalClassNameIdResolver => extractMinimalClassnameId(baseType, _type)
                 case _ => idResolver.idFromValueAndType(null, _type.getRawClass)
               }
-              PolymorphismInfo(serializer.getPropertyName, id)
+              PolymorphismInfo(Option(serializer.getPropertyName), id)
 
             case x => throw new Exception(s"We do not support polymorphism using jsonTypeInfo.include() = $x")
           }
@@ -1054,32 +1054,30 @@ class JsonSchemaGenerator
             }
 
             // Optionally add JsonSchemaInject to top-level
-            val renderProps:Boolean = selectAnnotation(ac, classOf[JsonSchemaInject]).map {
-              a =>
-                val merged = injectFromJsonSchemaInject(a, thisObjectNode)
-                merged == true // Continue to render props since we merged injection
-            }.getOrElse( true ) // nothing injected => of course we should render props
+            val renderProps:Boolean = selectAnnotation(ac, classOf[JsonSchemaInject]).forall {
+              a => injectFromJsonSchemaInject(a, thisObjectNode)
+            } // nothing injected => of course we should render props
 
             if (renderProps) {
 
               val propertiesNode = getOrCreateObjectChild(thisObjectNode, "properties")
 
-              extractPolymorphismInfo(_type).map {
-                case pi: PolymorphismInfo =>
+              extractPolymorphismInfo(_type).collect {
+                case PolymorphismInfo(Some(typePropertyName), subTypeName) =>
                   // This class is a child in a polymorphism config..
                   // Set the title = subTypeName
-                  thisObjectNode.put("title", pi.subTypeName)
+                  thisObjectNode.put("title", subTypeName)
 
                   // must inject the 'type'-param and value as enum with only one possible value
                   // This is done to make sure the json generated from the schema using this oneOf
                   // contains the correct "type info"
                   val enumValuesNode = JsonNodeFactory.instance.arrayNode()
-                  enumValuesNode.add(pi.subTypeName)
+                  enumValuesNode.add(subTypeName)
 
-                  val enumObjectNode = getOrCreateObjectChild(propertiesNode, pi.typePropertyName)
+                  val enumObjectNode = getOrCreateObjectChild(propertiesNode, typePropertyName)
                   enumObjectNode.put("type", "string")
                   enumObjectNode.set("enum", enumValuesNode)
-                  enumObjectNode.put("default", pi.subTypeName)
+                  enumObjectNode.put("default", subTypeName)
 
                   if (config.hidePolymorphismTypeProperty) {
                     // Make sure the editor hides this polymorphism-specific property
@@ -1088,7 +1086,7 @@ class JsonSchemaGenerator
                     optionsNode.put("hidden", true)
                   }
 
-                  getRequiredArrayNode(thisObjectNode).add(pi.typePropertyName)
+                  getRequiredArrayNode(thisObjectNode).add(typePropertyName)
 
                   if (config.useMultipleEditorSelectViaProperty) {
                     // https://github.com/jdorn/json-editor/issues/709
@@ -1096,11 +1094,10 @@ class JsonSchemaGenerator
                     // when populating the gui/schema with existing data
                     val objectOptionsNode = getOrCreateObjectChild( thisObjectNode, "options")
                     val multipleEditorSelectViaPropertyNode = getOrCreateObjectChild( objectOptionsNode, "multiple_editor_select_via_property")
-                    multipleEditorSelectViaPropertyNode.put("property", pi.typePropertyName)
-                    multipleEditorSelectViaPropertyNode.put("value", pi.subTypeName)
+                    multipleEditorSelectViaPropertyNode.put("property", typePropertyName)
+                    multipleEditorSelectViaPropertyNode.put("value", subTypeName)
                     ()
                   }
-
               }
 
               Some(new JsonObjectFormatVisitor with MySerializerProvider {
