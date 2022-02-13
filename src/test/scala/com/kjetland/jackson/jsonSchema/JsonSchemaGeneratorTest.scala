@@ -3,7 +3,6 @@ package com.kjetland.jackson.jsonSchema
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime}
 import java.util
 import java.util.{Collections, Optional, TimeZone}
-
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.databind.node.{ArrayNode, MissingNode, ObjectNode}
 import com.fasterxml.jackson.databind.{JavaType, JsonNode, ObjectMapper, SerializationFeature}
@@ -24,8 +23,10 @@ import com.kjetland.jackson.jsonSchema.testData.polymorphism3.{Child31, Child32,
 import com.kjetland.jackson.jsonSchema.testData.polymorphism4.{Child41, Child42}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism5.{Child51, Child52, Parent5}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism6.{Child61, Parent6}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism7.{Child71, Child72, Parent7}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
+
 import javax.validation.groups.Default
 import org.scalatest.{FunSuite, Matchers}
 
@@ -520,6 +521,36 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     }
   }
 
+  test("Generate schema for super class annotated with @JsonTypeInfo - use = JsonTypeInfo.Id.DEDUCTION") {
+    // Java
+    {
+      val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+      val g = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+      assertToFromJson(g, testData.child71, classOf[Parent7])
+      val jsonNode = assertToFromJson(g, testData.child71)
+      val schema = generateAndValidateSchema(g, classOf[Parent7], Some(jsonNode))
+
+      // we have two sub types
+      schema.at("/oneOf").asInstanceOf[ArrayNode]
+        .asScala
+        .toStream
+        .map(_.at("/$ref").asText()) should contain only ("#/definitions/Child71", "#/definitions/Child72") //
+
+      // child71 should include both parent and child properties
+      schema.at("/definitions/Child71/properties").asInstanceOf[ObjectNode]
+        .fieldNames()
+        .asScala
+        .toStream should contain only ("id", "firstName")
+
+      // child72 should include both parent and child properties
+      schema.at("/definitions/Child72/properties").asInstanceOf[ObjectNode]
+        .fieldNames()
+        .asScala
+        .toStream should contain only ("id", "middleName", "lastName")
+    }
+  }
+
   test("Generate schema for interface annotated with @JsonTypeInfo - use = JsonTypeInfo.Id.MINIMAL_CLASS") {
 
     // Java
@@ -536,7 +567,6 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assertChild2(schema, "/oneOf", "Child62", typeParamName = "clazz", typeName = ".Child62")
     }
   }
-
 
   test("Generate schema for super class annotated with @JsonTypeInfo - include = JsonTypeInfo.As.EXISTING_PROPERTY") {
 
@@ -567,6 +597,8 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
       assertJsonSubTypesInfo(schema2, "type", "Child42")
     }
   }
+
+
 
   test("Generate schema for class containing generics with same base type but different type arguments") {
     {
@@ -1792,6 +1824,20 @@ trait TestData {
     c.child1String = "cs"
     c.child1String2 = "cs2"
     c.child1String3 = "cs3"
+    c
+  }
+
+  val child71 = {
+    val c = new Child71()
+    c.id = 1
+    c.firstName = "Jeff"
+    c
+  }
+  val child72 = {
+    val c = new Child72();
+    c.id = 2;
+    c.middleName = "Test"
+    c.lastName = "Tester"
     c
   }
 
