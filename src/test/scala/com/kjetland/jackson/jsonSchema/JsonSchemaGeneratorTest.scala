@@ -409,6 +409,17 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertPropertyRequired(child1, "_child1String3", required = true)
   }
 
+  def assertKotlinChild(node:JsonNode, path:String, defName:String = "Child1", typeParamName:String = "type", typeName:String = "child1"): Unit ={
+    val child1 = getNodeViaRefs(node, path, defName)
+    assert(child1 != null)
+    assertJsonSubTypesInfo(child1, typeParamName, typeName, false)
+  }
+
+  def assertKotlinSubType(node:JsonNode, path:String, defName:String = "Child1"): Unit ={
+    val child1 = getNodeViaRefs(node, path, defName)
+    assert(child1 != null)
+  }
+
   def assertNullableChild1(node:JsonNode, path:String, defName:String = "Child1", html5Checks:Boolean = false): Unit ={
     val child1 = getNodeViaRefs(node, path, defName)
     assertJsonSubTypesInfo(child1, "type", "child1", html5Checks)
@@ -1679,6 +1690,32 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assertPropertyRequired(schema, "optionalDefault", required = true)
     assertPropertyRequired(schema, "optionalDefaultNull", required = false)
 
+  }
+
+  test("Polymorphic sealed class with subtypes in Kotlin should generate schema") {
+
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorKotlin, classOf[SampleCreatorWithSubtypes], None)
+
+    println(schema)
+    assertKotlinChild(schema, "/oneOf", "definitions/author", typeParamName = "_type", typeName = "author")
+    assertKotlinChild(schema, "/oneOf", "definitions/actor", typeParamName = "_type", typeName = "actor")
+    assertKotlinSubType(schema, "/oneOf", "definitions/Artist")
+    assertKotlinChild(schema, "/definitions/Artist/oneOf", "definitions/band", "_type", "band")
+    assertKotlinChild(schema, "/definitions/Artist/oneOf", "definitions/performer", "_type", "performer")
+  }
+
+  test("Polymorphic sealed class without subtypes in Kotlin should be flatten") {
+
+    val schema = generateAndValidateSchema(jsonSchemaGeneratorKotlin, classOf[SampleCreator], None)
+
+    println(schema)
+    assertKotlinChild(schema, "/oneOf", "definitions/author", typeParamName = "_type", typeName = "author")
+    assertKotlinChild(schema, "/oneOf", "definitions/actor", typeParamName = "_type", typeName = "actor")
+    assertKotlinSubType(schema, "/oneOf", "definitions/Artist")
+    assertKotlinChild(schema, "/oneOf", "definitions/band", typeParamName = "_type", typeName = "band")
+    assertKotlinChild(schema, "/oneOf", "definitions/performer", typeParamName = "_type", typeName = "performer")
+    assertKotlinChild(schema, "/definitions/Artist/oneOf", "definitions/band", "_type", "band")
+    assertKotlinChild(schema, "/definitions/Artist/oneOf", "definitions/performer", "_type", "performer")
   }
 
   test("JsonSchema DRAFT-06") {
