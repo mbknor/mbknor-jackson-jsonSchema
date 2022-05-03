@@ -58,7 +58,7 @@ object JsonSchemaConfig {
     disableWarnings = false,
     useMinLengthForNotNull = true,
     useTypeIdForDefinitionName = false,
-    customType2FormatMapping = Map[String,String](
+    customType2FormatMapping = Map[String, String](
       // Java7 dates
       "java.time.LocalDateTime" -> "datetime-local",
       "java.time.OffsetDateTime" -> "datetime",
@@ -86,7 +86,7 @@ object JsonSchemaConfig {
     * If you need to mix nullable and non-nullable types, you may override the nullability of the type by either setting
     * a `NotNull` annotation on the given property, or setting the `required` attribute of the `JsonProperty` annotation.
     */
-  val nullableJsonSchemaDraft4 = JsonSchemaConfig (
+  val nullableJsonSchemaDraft4 = JsonSchemaConfig(
     autoGenerateTitleForProperties = false,
     defaultArrayFormat = None,
     useOneOfForOption = true,
@@ -105,24 +105,24 @@ object JsonSchemaConfig {
 
   // Java-API
   def create(
-              autoGenerateTitleForProperties:Boolean,
-              defaultArrayFormat:Optional[String],
-              useOneOfForOption:Boolean,
-              useOneOfForNullables:Boolean,
-              usePropertyOrdering:Boolean,
-              hidePolymorphismTypeProperty:Boolean,
-              disableWarnings:Boolean,
-              useMinLengthForNotNull:Boolean,
-              useTypeIdForDefinitionName:Boolean,
-              customType2FormatMapping:java.util.Map[String, String],
-              useMultipleEditorSelectViaProperty:Boolean,
-              uniqueItemClasses:java.util.Set[Class[_]],
-              classTypeReMapping:java.util.Map[Class[_], Class[_]],
-              jsonSuppliers:java.util.Map[String, Supplier[JsonNode]],
-              subclassesResolver:SubclassesResolver,
-              failOnUnknownProperties:Boolean,
-              javaxValidationGroups:java.util.List[Class[_]]
-            ):JsonSchemaConfig = {
+              autoGenerateTitleForProperties: Boolean,
+              defaultArrayFormat: Optional[String],
+              useOneOfForOption: Boolean,
+              useOneOfForNullables: Boolean,
+              usePropertyOrdering: Boolean,
+              hidePolymorphismTypeProperty: Boolean,
+              disableWarnings: Boolean,
+              useMinLengthForNotNull: Boolean,
+              useTypeIdForDefinitionName: Boolean,
+              customType2FormatMapping: java.util.Map[String, String],
+              useMultipleEditorSelectViaProperty: Boolean,
+              uniqueItemClasses: java.util.Set[Class[_]],
+              classTypeReMapping: java.util.Map[Class[_], Class[_]],
+              jsonSuppliers: java.util.Map[String, Supplier[JsonNode]],
+              subclassesResolver: SubclassesResolver,
+              failOnUnknownProperties: Boolean,
+              javaxValidationGroups: java.util.List[Class[_]]
+            ): JsonSchemaConfig = {
 
     import scala.collection.JavaConverters._
 
@@ -141,7 +141,7 @@ object JsonSchemaConfig {
       uniqueItemClasses.asScala.toSet,
       classTypeReMapping.asScala.toMap,
       jsonSuppliers.asScala.toMap,
-      Option(subclassesResolver).getOrElse( new SubclassesResolverImpl()),
+      Option(subclassesResolver).getOrElse(new SubclassesResolverImpl()),
       failOnUnknownProperties,
       if (javaxValidationGroups == null) Array[Class[_]]() else {
         javaxValidationGroups.toArray.asInstanceOf[Array[Class[_]]]
@@ -152,64 +152,65 @@ object JsonSchemaConfig {
 }
 
 trait SubclassesResolver {
-  def getSubclasses(clazz:Class[_]):List[Class[_]]
+  def getSubclasses(clazz: Class[_]): List[Class[_]]
 }
 
 case class SubclassesResolverImpl
 (
-  classGraph:Option[ClassGraph] = None,
-  packagesToScan:List[String] = List(),
-  classesToScan:List[String] = List()
+  classGraph: Option[ClassGraph] = None,
+  packagesToScan: List[String] = List(),
+  classesToScan: List[String] = List()
 ) extends SubclassesResolver {
+
   import scala.collection.JavaConverters._
 
   def this() = this(None, List(), List())
 
-  def withClassGraph(classGraph:ClassGraph):SubclassesResolverImpl = {
+  def withClassGraph(classGraph: ClassGraph): SubclassesResolverImpl = {
     this.copy(classGraph = Option(classGraph))
   }
 
   // Scala API
-  def withPackagesToScan(packagesToScan:List[String]):SubclassesResolverImpl = {
+  def withPackagesToScan(packagesToScan: List[String]): SubclassesResolverImpl = {
     this.copy(packagesToScan = packagesToScan)
   }
 
   // Java API
-  def withPackagesToScan(packagesToScan:JList[String]):SubclassesResolverImpl = {
+  def withPackagesToScan(packagesToScan: JList[String]): SubclassesResolverImpl = {
     this.copy(packagesToScan = packagesToScan.asScala.toList)
   }
 
   // Scala API
-  def withClassesToScan(classesToScan:List[String]):SubclassesResolverImpl = {
+  def withClassesToScan(classesToScan: List[String]): SubclassesResolverImpl = {
     this.copy(classesToScan = classesToScan)
   }
 
   // Java API
-  def withClassesToScan(classesToScan:JList[String]):SubclassesResolverImpl = {
+  def withClassesToScan(classesToScan: JList[String]): SubclassesResolverImpl = {
     this.copy(classesToScan = classesToScan.asScala.toList)
   }
 
-  lazy val reflection:ScanResult = {
+  lazy val reflection: ScanResult = {
 
-    var classGraphConfigured:Boolean = false
+    var classGraphConfigured: Boolean = false
 
-    if ( classGraph.isDefined ) {
+    if (classGraph.isDefined) {
       classGraphConfigured = true
     }
 
-    val _classGraph:ClassGraph = classGraph.getOrElse( new ClassGraph() )
+    val _classGraph: ClassGraph = classGraph.getOrElse(new ClassGraph())
 
     if (packagesToScan.nonEmpty) {
       classGraphConfigured = true
-      _classGraph.whitelistPackages( packagesToScan:_* )
+      _classGraph.whitelistPackages(packagesToScan: _*)
     }
 
-    if ( classesToScan.nonEmpty ) {
+    if (classesToScan.nonEmpty) {
       classGraphConfigured = true
-      _classGraph.whitelistClasses( classesToScan:_* )
+      _classGraph.whitelistClasses(classesToScan: _*)
     }
 
-    if ( !classGraphConfigured ) {
+    if (!classGraphConfigured) {
       LoggerFactory.getLogger(this.getClass).warn(s"Performance-warning. Since SubclassesResolver is not configured," +
         s" it scans the entire classpath. " +
         s"https://github.com/mbknor/mbknor-jackson-jsonSchema#subclass-resolving-using-reflection")
@@ -228,56 +229,56 @@ case class SubclassesResolverImpl
 
 case class JsonSchemaConfig
 (
-  autoGenerateTitleForProperties:Boolean,
-  defaultArrayFormat:Option[String],
-  useOneOfForOption:Boolean,
-  useOneOfForNullables:Boolean,
-  usePropertyOrdering:Boolean,
-  hidePolymorphismTypeProperty:Boolean,
-  disableWarnings:Boolean,
-  useMinLengthForNotNull:Boolean,
-  useTypeIdForDefinitionName:Boolean,
-  customType2FormatMapping:Map[String, String],
-  useMultipleEditorSelectViaProperty:Boolean, // https://github.com/jdorn/json-editor/issues/709
-  uniqueItemClasses:Set[Class[_]], // If rendering array and type is instanceOf class in this set, then we add 'uniqueItems": true' to schema - See // https://github.com/jdorn/json-editor for more info
-  classTypeReMapping:Map[Class[_], Class[_]], // Can be used to prevent rendering using polymorphism for specific classes.
-  jsonSuppliers:Map[String, Supplier[JsonNode]], // Suppliers in this map can be accessed using @JsonSchemaInject(jsonSupplierViaLookup = "lookupKey")
-  subclassesResolver:SubclassesResolver = new SubclassesResolverImpl(), // Using default impl that scans entire classpath
-  failOnUnknownProperties:Boolean = true,
-  javaxValidationGroups:Array[Class[_]] = Array(), // Used to match against different validation-groups (javax.validation.constraints)
-  jsonSchemaDraft:JsonSchemaDraft = JsonSchemaDraft.DRAFT_04
+  autoGenerateTitleForProperties: Boolean,
+  defaultArrayFormat: Option[String],
+  useOneOfForOption: Boolean,
+  useOneOfForNullables: Boolean,
+  usePropertyOrdering: Boolean,
+  hidePolymorphismTypeProperty: Boolean,
+  disableWarnings: Boolean,
+  useMinLengthForNotNull: Boolean,
+  useTypeIdForDefinitionName: Boolean,
+  customType2FormatMapping: Map[String, String],
+  useMultipleEditorSelectViaProperty: Boolean, // https://github.com/jdorn/json-editor/issues/709
+  uniqueItemClasses: Set[Class[_]], // If rendering array and type is instanceOf class in this set, then we add 'uniqueItems": true' to schema - See // https://github.com/jdorn/json-editor for more info
+  classTypeReMapping: Map[Class[_], Class[_]], // Can be used to prevent rendering using polymorphism for specific classes.
+  jsonSuppliers: Map[String, Supplier[JsonNode]], // Suppliers in this map can be accessed using @JsonSchemaInject(jsonSupplierViaLookup = "lookupKey")
+  subclassesResolver: SubclassesResolver = new SubclassesResolverImpl(), // Using default impl that scans entire classpath
+  failOnUnknownProperties: Boolean = true,
+  javaxValidationGroups: Array[Class[_]] = Array(), // Used to match against different validation-groups (javax.validation.constraints)
+  jsonSchemaDraft: JsonSchemaDraft = JsonSchemaDraft.DRAFT_04
 ) {
 
-  def withFailOnUnknownProperties(failOnUnknownProperties:Boolean):JsonSchemaConfig = {
-    this.copy( failOnUnknownProperties = failOnUnknownProperties )
+  def withFailOnUnknownProperties(failOnUnknownProperties: Boolean): JsonSchemaConfig = {
+    this.copy(failOnUnknownProperties = failOnUnknownProperties)
   }
 
-  def withSubclassesResolver(subclassesResolver: SubclassesResolver):JsonSchemaConfig = {
-    this.copy( subclassesResolver = subclassesResolver )
+  def withSubclassesResolver(subclassesResolver: SubclassesResolver): JsonSchemaConfig = {
+    this.copy(subclassesResolver = subclassesResolver)
   }
 
-  def withJavaxValidationGroups(javaxValidationGroups:Array[Class[_]]):JsonSchemaConfig = {
+  def withJavaxValidationGroups(javaxValidationGroups: Array[Class[_]]): JsonSchemaConfig = {
     this.copy(javaxValidationGroups = javaxValidationGroups)
   }
 
-  def withJsonSchemaDraft(jsonSchemaDraft:JsonSchemaDraft):JsonSchemaConfig = {
+  def withJsonSchemaDraft(jsonSchemaDraft: JsonSchemaDraft): JsonSchemaConfig = {
     this.copy(jsonSchemaDraft = jsonSchemaDraft)
   }
 }
 
 
-
 /**
   * Json Schema Generator
+  *
   * @param rootObjectMapper pre-configured ObjectMapper
-  * @param debug Default = false - set to true if generator should log some debug info while generating the schema
-  * @param config default = vanillaJsonSchemaDraft4. Please use html5EnabledSchema if generating HTML5 GUI, e.g. using https://github.com/jdorn/json-editor
+  * @param debug            Default = false - set to true if generator should log some debug info while generating the schema
+  * @param config           default = vanillaJsonSchemaDraft4. Please use html5EnabledSchema if generating HTML5 GUI, e.g. using https://github.com/jdorn/json-editor
   */
 class JsonSchemaGenerator
 (
   val rootObjectMapper: ObjectMapper,
-  debug:Boolean = false,
-  config:JsonSchemaConfig = JsonSchemaConfig.vanillaJsonSchemaDraft4
+  debug: Boolean = false,
+  config: JsonSchemaConfig = JsonSchemaConfig.vanillaJsonSchemaDraft4
 ) {
 
   val javaxValidationGroups = config.javaxValidationGroups
@@ -286,13 +287,13 @@ class JsonSchemaGenerator
   def this(rootObjectMapper: ObjectMapper) = this(rootObjectMapper, false, JsonSchemaConfig.vanillaJsonSchemaDraft4)
 
   // Java API
-  def this(rootObjectMapper: ObjectMapper, config:JsonSchemaConfig) = this(rootObjectMapper, false, config)
+  def this(rootObjectMapper: ObjectMapper, config: JsonSchemaConfig) = this(rootObjectMapper, false, config)
 
   import scala.collection.JavaConverters._
 
   val log = LoggerFactory.getLogger(getClass)
 
-  val dateFormatMapping = Map[String,String](
+  val dateFormatMapping = Map[String, String](
     // Java7 dates
     "java.time.LocalDateTime" -> "datetime-local",
     "java.time.OffsetDateTime" -> "datetime",
@@ -306,6 +307,7 @@ class JsonSchemaGenerator
     var provider: SerializerProvider = null
 
     def getProvider: SerializerProvider = provider
+
     def setProvider(provider: SerializerProvider): Unit = this.provider = provider
   }
 
@@ -326,32 +328,32 @@ class JsonSchemaGenerator
     }
   }
 
-  private def setFormat(node:ObjectNode, format:String): Unit = {
+  private def setFormat(node: ObjectNode, format: String): Unit = {
     node.put("format", format)
   }
 
   // Verifies that the annotation is applicable based on the config.javaxValidationGroups
-  private def annotationIsApplicable(annotation:Annotation):Boolean = {
+  private def annotationIsApplicable(annotation: Annotation): Boolean = {
 
-    def extractGroupsFromAnnotation(annotation:Annotation):Array[Class[_]] = {
+    def extractGroupsFromAnnotation(annotation: Annotation): Array[Class[_]] = {
       // Annotations cannot implement interface, so we have to check each and every
       // javax-annotation... To prevent bugs with missing groups-extract-impl when new
       // validation-annotations are added, I've decided to do it using reflection
       val annotationClass = annotation.annotationType()
-      if ( annotationClass.getPackage.getName().startsWith("javax.validation.constraints") ) {
+      if (annotationClass.getPackage.getName().startsWith("javax.validation.constraints")) {
         val groupsMethod = try {
           annotationClass.getMethod("groups")
         } catch {
-          case e:NoSuchMethodException => null
+          case e: NoSuchMethodException => null
         }
-        if ( groupsMethod != null ) {
+        if (groupsMethod != null) {
           groupsMethod.invoke(annotation).asInstanceOf[Array[Class[_]]]
         } else {
           Array()
         }
       } else {
         annotation match {
-          case x:JsonSchemaInject => x.javaxValidationGroups()
+          case x: JsonSchemaInject => x.javaxValidationGroups()
           case _ => Array()
         }
       }
@@ -359,30 +361,30 @@ class JsonSchemaGenerator
 
     val javaxDefaultGroup = classOf[Default]
 
-    val groupsOnAnnotation:Array[Class[_]] = extractGroupsFromAnnotation(annotation)
+    val groupsOnAnnotation: Array[Class[_]] = extractGroupsFromAnnotation(annotation)
 
     (javaxValidationGroups, groupsOnAnnotation) match {
       case (Array(), Array()) => true
-      case (Array(), l)       => l.contains(javaxDefaultGroup)// Use it if groupsOnAnnotation contains Default
-      case (l, Array())       => l.contains(javaxDefaultGroup)// Use it if javaxValidationGroups contains Default
-      case (a, b)             => a.exists( c => b.contains(c))// One of a must be included in b
+      case (Array(), l) => l.contains(javaxDefaultGroup) // Use it if groupsOnAnnotation contains Default
+      case (l, Array()) => l.contains(javaxDefaultGroup) // Use it if javaxValidationGroups contains Default
+      case (a, b) => a.exists(c => b.contains(c)) // One of a must be included in b
     }
   }
 
   // Tries to retrieve a annotation and validates that it is applicable
-  private def selectAnnotation[T <: Annotation](property:BeanProperty, annotationClass:Class[T]):Option[T] = {
+  private def selectAnnotation[T <: Annotation](property: BeanProperty, annotationClass: Class[T]): Option[T] = {
     Option(property.getAnnotation(annotationClass))
       .filter(annotationIsApplicable(_))
   }
 
   // Tries to retrieve a annotation and validates that it is applicable
-  private def selectAnnotation[T <: Annotation](annotatedClass:AnnotatedClass, annotationClass:Class[T]):Option[T] = {
+  private def selectAnnotation[T <: Annotation](annotatedClass: AnnotatedClass, annotationClass: Class[T]): Option[T] = {
     Option(annotatedClass.getAnnotation(annotationClass))
       .filter(annotationIsApplicable(_))
   }
 
 
-  case class DefinitionInfo(ref:Option[String], jsonObjectFormatVisitor: Option[JsonObjectFormatVisitor])
+  case class DefinitionInfo(ref: Option[String], jsonObjectFormatVisitor: Option[JsonObjectFormatVisitor])
 
   // Class that manages creating new definitions or getting $refs to existing definitions
   class DefinitionsHandler() {
@@ -390,31 +392,31 @@ class JsonSchemaGenerator
     private val definitionsNode = JsonNodeFactory.instance.objectNode()
 
 
-    case class WorkInProgress(typeInProgress:JavaType, nodeInProgress:ObjectNode)
+    case class WorkInProgress(typeInProgress: JavaType, nodeInProgress: ObjectNode)
 
     // Used when 'combining' multiple invocations to getOrCreateDefinition when processing polymorphism.
-    private var workInProgress:Option[WorkInProgress] = None
+    private var workInProgress: Option[WorkInProgress] = None
 
     private var workInProgressStack = List[Option[WorkInProgress]]()
 
-    def pushWorkInProgress(): Unit ={
+    def pushWorkInProgress(): Unit = {
       workInProgressStack = workInProgress :: workInProgressStack
       workInProgress = None
     }
 
-    def popworkInProgress(): Unit ={
+    def popworkInProgress(): Unit = {
       workInProgress = workInProgressStack.head
       workInProgressStack = workInProgressStack.tail
     }
 
-    def extractTypeName(_type:JavaType) : String = {
+    def extractTypeName(_type: JavaType): String = {
       // use JsonTypeName annotation if present
       val annotation = _type.getRawClass.getDeclaredAnnotation(classOf[JsonTypeName])
-      Option(annotation).flatMap( a => Option(a.value())).filter(_.nonEmpty)
-        .getOrElse( _type.getRawClass.getSimpleName )
+      Option(annotation).flatMap(a => Option(a.value())).filter(_.nonEmpty)
+        .getOrElse(_type.getRawClass.getSimpleName)
     }
 
-    def getDefinitionName (_type:JavaType) : String = {
+    def getDefinitionName(_type: JavaType): String = {
       val baseName = if (config.useTypeIdForDefinitionName) _type.getRawClass.getTypeName else extractTypeName(_type)
 
       if (_type.hasGenericTypes) {
@@ -427,20 +429,24 @@ class JsonSchemaGenerator
     }
 
     // Either creates new definitions or return $ref to existing one
-    def getOrCreateDefinition(_type:JavaType)(objectDefinitionBuilder:(ObjectNode) => Option[JsonObjectFormatVisitor]):DefinitionInfo = {
+    def getOrCreateDefinition(_type: JavaType)(objectDefinitionBuilder: (ObjectNode) => Option[JsonObjectFormatVisitor]): Option[DefinitionInfo] = {
 
       class2Ref.get(_type) match {
         case Some(ref) =>
 
           workInProgress match {
             case None =>
-              DefinitionInfo(Some(ref), None)
+              Some(DefinitionInfo(Some(ref), None))
 
             case Some(w) =>
               // this is a recursive polymorphism call
-              if ( _type != w.typeInProgress) throw new Exception(s"Wrong type - working on ${w.typeInProgress} - got ${_type}")
+              //              if ( _type != w.typeInProgress) throw new Exception(s"Wrong type - working on ${w.typeInProgress} - got ${_type}")
+              if (_type != w.typeInProgress) {
+                Some(DefinitionInfo(Some(ref), None))
+              } else {
+                Some(DefinitionInfo(None, objectDefinitionBuilder(w.nodeInProgress)))
+              }
 
-              DefinitionInfo(None, objectDefinitionBuilder(w.nodeInProgress))
           }
 
         case None =>
@@ -450,7 +456,7 @@ class JsonSchemaGenerator
           val definitionName = getDefinitionName(_type)
           var shortRef = definitionName
           var longRef = "#/definitions/" + definitionName
-          while( class2Ref.values.toList.contains(longRef)) {
+          while (class2Ref.values.toList.contains(longRef)) {
             retryCount = retryCount + 1
             shortRef = definitionName + "_" + retryCount
             longRef = "#/definitions/" + definitionName + "_" + retryCount
@@ -469,11 +475,11 @@ class JsonSchemaGenerator
 
           workInProgress = None
 
-          DefinitionInfo(Some(longRef), jsonObjectFormatVisitor)
+          Some(DefinitionInfo(Some(longRef), jsonObjectFormatVisitor))
       }
     }
 
-    def getFinalDefinitionsNode():Option[ObjectNode] = {
+    def getFinalDefinitionsNode(): Option[ObjectNode] = {
       if (class2Ref.isEmpty) None else Some(definitionsNode)
     }
 
@@ -482,23 +488,23 @@ class JsonSchemaGenerator
   class MyJsonFormatVisitorWrapper
   (
     objectMapper: ObjectMapper,
-    level:Int = 0,
+    level: Int = 0,
     val node: ObjectNode = JsonNodeFactory.instance.objectNode(),
-    val definitionsHandler:DefinitionsHandler,
-    currentProperty:Option[BeanProperty] // This property may represent the BeanProperty when we're directly processing beneath the property
+    val definitionsHandler: DefinitionsHandler,
+    currentProperty: Option[BeanProperty] // This property may represent the BeanProperty when we're directly processing beneath the property
   ) extends JsonFormatVisitorWrapper with MySerializerProvider {
 
     def l(s: => String): Unit = {
       if (!debug) return
 
       var indent = ""
-      for(_ <- 0 until level) {
+      for (_ <- 0 until level) {
         indent = indent + "  "
       }
       println(indent + s)
     }
 
-    def createChild(childNode: ObjectNode, currentProperty:Option[BeanProperty]): MyJsonFormatVisitorWrapper = {
+    def createChild(childNode: ObjectNode, currentProperty: Option[BeanProperty]): MyJsonFormatVisitorWrapper = {
       new MyJsonFormatVisitorWrapper(objectMapper, level + 1, node = childNode, definitionsHandler = definitionsHandler, currentProperty = currentProperty)
     }
 
@@ -526,7 +532,7 @@ class JsonSchemaGenerator
       node.put("type", "string")
 
       // Check if we should include minLength and/or maxLength
-      case class MinAndMaxLength(minLength:Option[Int], maxLength:Option[Int])
+      case class MinAndMaxLength(minLength: Option[Int], maxLength: Option[Int])
 
       // If we have 'currentProperty', then check for annotations and insert stuff into schema.
       currentProperty.flatMap {
@@ -575,15 +581,15 @@ class JsonSchemaGenerator
           }
 
           // Look for a @Size annotation, which should have a set of min/max properties.
-          val minAndMaxLength:Option[MinAndMaxLength] = selectAnnotation(p, classOf[Size])
-              .map {
-                size =>
-                  (size.min(), size.max()) match {
-                    case (0, max)                 => MinAndMaxLength(None, Some(max))
-                    case (min, Integer.MAX_VALUE) => MinAndMaxLength(Some(min), None)
-                    case (min, max)               => MinAndMaxLength(Some(min), Some(max))
-                  }
-              }
+          val minAndMaxLength: Option[MinAndMaxLength] = selectAnnotation(p, classOf[Size])
+            .map {
+              size =>
+                (size.min(), size.max()) match {
+                  case (0, max) => MinAndMaxLength(None, Some(max))
+                  case (min, Integer.MAX_VALUE) => MinAndMaxLength(Some(min), None)
+                  case (min, max) => MinAndMaxLength(Some(min), Some(max))
+                }
+            }
             // Look for other annotations that don't have an explicit size, but we can infer the need to set a size for.
             .orElse {
               // If we're annotated with @NotNull, check to see if our config requires a size property to be generated.
@@ -602,14 +608,15 @@ class JsonSchemaGenerator
 
           // Apply size-data if found
           minAndMaxLength.map {
-            minAndMax:MinAndMaxLength =>
-              minAndMax.minLength.map( length => node.put("minLength", length) )
-              minAndMax.maxLength.map( length => node.put("maxLength", length) )
+            minAndMax: MinAndMaxLength =>
+              minAndMax.minLength.map(length => node.put("minLength", length))
+              minAndMax.maxLength.map(length => node.put("maxLength", length))
           }
       }
 
       new JsonStringFormatVisitor with EnumSupport {
         val _node = node
+
         override def format(format: JsonValueFormat): Unit = {
           setFormat(node, format.toString)
         }
@@ -622,7 +629,7 @@ class JsonSchemaGenerator
 
       node.put("type", "array")
 
-      if (config.uniqueItemClasses.exists( c => _type.getRawClass.isAssignableFrom(c))) {
+      if (config.uniqueItemClasses.exists(c => _type.getRawClass.isAssignableFrom(c))) {
         // Adding '"uniqueItems": true' to be used with https://github.com/jdorn/json-editor
         node.put("uniqueItems", true)
         setFormat(node, "checkbox")
@@ -656,7 +663,7 @@ class JsonSchemaGenerator
       // We get improved result while processing scala-collections by getting elementType this way
       // instead of using the one which we receive in JsonArrayFormatVisitor.itemsFormat
       // This approach also works for Java
-      val preferredElementType:JavaType = _type.getContentType
+      val preferredElementType: JavaType = _type.getContentType
 
       new JsonArrayFormatVisitor with MySerializerProvider {
         override def itemsFormat(handler: JsonFormatVisitable, _elementType: JavaType): Unit = {
@@ -714,9 +721,11 @@ class JsonSchemaGenerator
           }
       }
 
-      new JsonNumberFormatVisitor  with EnumSupport {
+      new JsonNumberFormatVisitor with EnumSupport {
         val _node = node
+
         override def numberType(_type: NumberType): Unit = l(s"JsonNumberFormatVisitor.numberType: ${_type}")
+
         override def format(format: JsonValueFormat): Unit = {
           setFormat(node, format.toString)
         }
@@ -771,7 +780,9 @@ class JsonSchemaGenerator
 
       new JsonIntegerFormatVisitor with EnumSupport {
         val _node = node
+
         override def numberType(_type: NumberType): Unit = l(s"JsonIntegerFormatVisitor.numberType: ${_type}")
+
         override def format(format: JsonValueFormat): Unit = {
           setFormat(node, format.toString)
         }
@@ -799,6 +810,7 @@ class JsonSchemaGenerator
 
       new JsonBooleanFormatVisitor with EnumSupport {
         val _node = node
+
         override def format(format: JsonValueFormat): Unit = {
           setFormat(node, format.toString)
         }
@@ -845,7 +857,7 @@ class JsonSchemaGenerator
     }
 
 
-    private def getRequiredArrayNode(objectNode:ObjectNode):ArrayNode = {
+    private def getRequiredArrayNode(objectNode: ObjectNode): ArrayNode = {
       Option(objectNode.get("required")).map(_.asInstanceOf[ArrayNode]).getOrElse {
         val rn = JsonNodeFactory.instance.arrayNode()
         objectNode.set("required", rn)
@@ -853,11 +865,11 @@ class JsonSchemaGenerator
       }
     }
 
-    private def getOptionsNode(objectNode:ObjectNode):ObjectNode = {
+    private def getOptionsNode(objectNode: ObjectNode): ObjectNode = {
       getOrCreateObjectChild(objectNode, "options")
     }
 
-    private def getOrCreateObjectChild(parentObjectNode:ObjectNode, name: String):ObjectNode = {
+    private def getOrCreateObjectChild(parentObjectNode: ObjectNode, name: String): ObjectNode = {
       Option(parentObjectNode.get(name)).map(_.asInstanceOf[ObjectNode]).getOrElse {
         val o = JsonNodeFactory.instance.objectNode()
         parentObjectNode.set(name, o)
@@ -865,11 +877,11 @@ class JsonSchemaGenerator
       }
     }
 
-    case class PolymorphismInfo(typePropertyName:String, subTypeName:String)
+    case class PolymorphismInfo(typePropertyName: String, subTypeName: String)
 
-    private def extractPolymorphismInfo(_type:JavaType):Option[PolymorphismInfo] = {
+    private def extractPolymorphismInfo(_type: JavaType): Option[PolymorphismInfo] = {
       val maybeBaseType = ClassUtil.findSuperTypes(_type, null, false).asScala.find { cl =>
-        cl.getRawClass.isAnnotationPresent(classOf[JsonTypeInfo] )
+        cl.getRawClass.isAnnotationPresent(classOf[JsonTypeInfo])
       } orElse Option(_type.getSuperClass)
 
       maybeBaseType.flatMap { baseType =>
@@ -883,7 +895,7 @@ class JsonSchemaGenerator
               val idResolver = serializer.getTypeIdResolver
               val id = idResolver match {
                 // use custom implementation instead, because default implementation needs instance and we don't have one
-                case _ : MinimalClassNameIdResolver => extractMinimalClassnameId(baseType, _type)
+                case _: MinimalClassNameIdResolver => extractMinimalClassnameId(baseType, _type)
                 case _ => idResolver.idFromValueAndType(null, _type.getRawClass)
               }
               PolymorphismInfo(serializer.getPropertyName, id)
@@ -894,7 +906,7 @@ class JsonSchemaGenerator
       }
     }
 
-    private def extractSubTypes(_type: JavaType):List[Class[_]] = {
+    private def extractSubTypes(_type: JavaType): List[Class[_]] = {
 
       val ac = AnnotatedClassResolver.resolve(objectMapper.getDeserializationConfig, _type, objectMapper.getDeserializationConfig)
 
@@ -913,8 +925,8 @@ class JsonSchemaGenerator
               }.getOrElse {
                 // We did not find it via @JsonSubTypes-annotation (Probably since it is using mixin's) => Must fallback to using collectAndResolveSubtypesByClass
                 val resolvedSubTypes = objectMapper.getSubtypeResolver.collectAndResolveSubtypesByClass(objectMapper.getDeserializationConfig, ac).asScala.toList
-                resolvedSubTypes.map( _.getType)
-                  .filter( c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
+                resolvedSubTypes.map(_.getType)
+                  .filter(c => _type.getRawClass.isAssignableFrom(c) && _type.getRawClass != c)
               }
 
               subTypes
@@ -927,19 +939,19 @@ class JsonSchemaGenerator
       }.getOrElse(List())
     }
 
-    def tryToReMapType(originalClass: Class[_]):Class[_] = {
+    def tryToReMapType(originalClass: Class[_]): Class[_] = {
       config.classTypeReMapping.get(originalClass).map {
-        mappedToClass:Class[_] =>
+        mappedToClass: Class[_] =>
           l(s"Class $originalClass is remapped to $mappedToClass")
           mappedToClass
       }.getOrElse(originalClass)
     }
 
-    private def tryToReMapType(originalType: JavaType):JavaType = {
-      val _type:JavaType = config.classTypeReMapping.get(originalType.getRawClass).map {
-        mappedToClass:Class[_] =>
+    private def tryToReMapType(originalType: JavaType): JavaType = {
+      val _type: JavaType = config.classTypeReMapping.get(originalType.getRawClass).map {
+        mappedToClass: Class[_] =>
           l(s"Class ${originalType.getRawClass} is remapped to $mappedToClass")
-          val mappedToJavaType:JavaType = objectMapper.getTypeFactory.constructType(mappedToClass)
+          val mappedToJavaType: JavaType = objectMapper.getTypeFactory.constructType(mappedToClass)
           mappedToJavaType
       }.getOrElse(originalType)
 
@@ -947,7 +959,7 @@ class JsonSchemaGenerator
     }
 
     // Returns the value of merge
-    private def injectFromJsonSchemaInject(a:JsonSchemaInject, thisObjectNode:ObjectNode): Boolean ={
+    private def injectFromJsonSchemaInject(a: JsonSchemaInject, thisObjectNode: ObjectNode): Boolean = {
       // Must parse json
       val injectJsonNode = objectMapper.readTree(a.json())
       Option(a.jsonSupplier())
@@ -962,7 +974,7 @@ class JsonSchemaGenerator
       a.bools().foreach(v => injectJsonNode.visit(v.path(), (o, n) => o.put(n, v.value())))
 
       val mergeInjectedJson: Boolean = a.merge()
-      if ( !mergeInjectedJson) {
+      if (!mergeInjectedJson) {
         // Since we're not merging, we must remove all content of thisObjectNode before injecting.
         // We cannot just "replace" it with injectJsonNode, since thisObjectNode already have been added to its parent
         thisObjectNode.removeAll()
@@ -989,7 +1001,7 @@ class JsonSchemaGenerator
         subTypes.foreach {
           subType: Class[_] =>
             l(s"polymorphism - subType: $subType")
-            val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(objectMapper.constructType(subType)){
+            val definitionInfo: Option[DefinitionInfo] = definitionsHandler.getOrCreateDefinition(objectMapper.constructType(subType)) {
               objectNode =>
 
                 val childVisitor = createChild(objectNode, currentProperty = None)
@@ -998,17 +1010,20 @@ class JsonSchemaGenerator
                 None
             }
 
-            val thisOneOfNode = JsonNodeFactory.instance.objectNode()
-            thisOneOfNode.put("$ref", definitionInfo.ref.get)
+            definitionInfo match {
+              case None => l(s"WARNING: could not create definitionInfo. Recursive Polymorphism will be flatten. Use @JsonSubtypes for recursive polymorphism.")
+              case Some(definitionInfo) =>
+                val thisOneOfNode = JsonNodeFactory.instance.objectNode()
+                thisOneOfNode.put("$ref", definitionInfo.ref.get)
 
-            // If class is annotated with JsonSchemaTitle, we should add it
-            Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
-              title =>
-                thisOneOfNode.put("title", title)
+                // If class is annotated with JsonSchemaTitle, we should add it
+                Option(subType.getDeclaredAnnotation(classOf[JsonSchemaTitle])).map(_.value()).foreach {
+                  title =>
+                    thisOneOfNode.put("title", title)
+                }
+
+                anyOfArrayNode.add(thisOneOfNode)
             }
-
-            anyOfArrayNode.add(thisOneOfNode)
-
         }
 
         null // Returning null to stop jackson from visiting this object since we have done it manually
@@ -1016,8 +1031,8 @@ class JsonSchemaGenerator
       } else {
         // We do not have subtypes
 
-        val objectBuilder:ObjectNode => Option[JsonObjectFormatVisitor] = {
-          thisObjectNode:ObjectNode =>
+        val objectBuilder: ObjectNode => Option[JsonObjectFormatVisitor] = {
+          thisObjectNode: ObjectNode =>
 
             thisObjectNode.put("type", "object")
             thisObjectNode.put("additionalProperties", !config.failOnUnknownProperties)
@@ -1054,11 +1069,11 @@ class JsonSchemaGenerator
             }
 
             // Optionally add JsonSchemaInject to top-level
-            val renderProps:Boolean = selectAnnotation(ac, classOf[JsonSchemaInject]).map {
+            val renderProps: Boolean = selectAnnotation(ac, classOf[JsonSchemaInject]).map {
               a =>
                 val merged = injectFromJsonSchemaInject(a, thisObjectNode)
                 merged == true // Continue to render props since we merged injection
-            }.getOrElse( true ) // nothing injected => of course we should render props
+            }.getOrElse(true) // nothing injected => of course we should render props
 
             if (renderProps) {
 
@@ -1094,8 +1109,8 @@ class JsonSchemaGenerator
                     // https://github.com/jdorn/json-editor/issues/709
                     // Generate info to help generated editor to select correct oneOf-type
                     // when populating the gui/schema with existing data
-                    val objectOptionsNode = getOrCreateObjectChild( thisObjectNode, "options")
-                    val multipleEditorSelectViaPropertyNode = getOrCreateObjectChild( objectOptionsNode, "multiple_editor_select_via_property")
+                    val objectOptionsNode = getOrCreateObjectChild(thisObjectNode, "options")
+                    val multipleEditorSelectViaPropertyNode = getOrCreateObjectChild(objectOptionsNode, "multiple_editor_select_via_property")
                     multipleEditorSelectViaPropertyNode.put("property", pi.typePropertyName)
                     multipleEditorSelectViaPropertyNode.put("value", pi.subTypeName)
                     ()
@@ -1254,7 +1269,7 @@ class JsonSchemaGenerator
                         case None =>
                           // Try to look at the class itself -- Looks like this is the only way to find it if the type is Enum
                           Option(p.getType.getRawClass.getAnnotation(classOf[JsonSchemaInject]))
-                            .filter( annotationIsApplicable(_) )
+                            .filter(annotationIsApplicable(_))
                       }
                   }.foreach {
                     a =>
@@ -1290,19 +1305,25 @@ class JsonSchemaGenerator
             } else None
         }
 
-        if ( level == 0) {
+        if (level == 0) {
           // This is the first level - we must not use definitions
           objectBuilder(node).orNull
         } else {
-          val definitionInfo: DefinitionInfo = definitionsHandler.getOrCreateDefinition(_type)(objectBuilder)
+          val definitionInfo: Option[DefinitionInfo] = definitionsHandler.getOrCreateDefinition(_type)(objectBuilder)
 
-          definitionInfo.ref.foreach {
-            r =>
-              // Must add ref to def at "this location"
-              node.put("$ref", r)
+          definitionInfo match {
+            case None =>
+              l(s"WARNING: could not create definitionInfo. Recursive Polymorphism will be flatten. Use @JsonSubtypes for recursive polymorphism.")
+              null
+            case Some(definitionInfo) =>
+              definitionInfo.ref.foreach {
+                r =>
+                  // Must add ref to def at "this location"
+                  node.put("$ref", r)
+              }
+
+              definitionInfo.jsonObjectFormatVisitor.orNull
           }
-
-          definitionInfo.jsonObjectFormatVisitor.orNull
         }
 
       }
@@ -1328,7 +1349,7 @@ class JsonSchemaGenerator
     }
   }
 
-  private def merge(mainNode:JsonNode, updateNode:JsonNode):Unit = {
+  private def merge(mainNode: JsonNode, updateNode: JsonNode): Unit = {
     val fieldNames = updateNode.fieldNames()
     while (fieldNames.hasNext) {
 
@@ -1352,7 +1373,7 @@ class JsonSchemaGenerator
     }
   }
 
-  def generateTitleFromPropertyName(propertyName:String):String = {
+  def generateTitleFromPropertyName(propertyName: String): String = {
     // Code found here: http://stackoverflow.com/questions/2559759/how-do-i-convert-camelcase-into-human-readable-names-in-java
     val s = propertyName.replaceAll(
       String.format("%s|%s|%s",
@@ -1364,20 +1385,20 @@ class JsonSchemaGenerator
     )
 
     // Make the first letter uppercase
-    s.substring(0,1).toUpperCase() + s.substring(1)
+    s.substring(0, 1).toUpperCase() + s.substring(1)
   }
 
-  def resolvePropertyFormat(_type: JavaType, objectMapper:ObjectMapper):Option[String] = {
+  def resolvePropertyFormat(_type: JavaType, objectMapper: ObjectMapper): Option[String] = {
     val ac = AnnotatedClassResolver.resolve(objectMapper.getDeserializationConfig, _type, objectMapper.getDeserializationConfig)
     resolvePropertyFormat(Option(ac.getAnnotation(classOf[JsonSchemaFormat])), _type.getRawClass.getName)
   }
 
-  def resolvePropertyFormat(prop: BeanProperty):Option[String] = {
+  def resolvePropertyFormat(prop: BeanProperty): Option[String] = {
     // Prefer format specified in annotation
     resolvePropertyFormat(Option(prop.getAnnotation(classOf[JsonSchemaFormat])), prop.getType.getRawClass.getName)
   }
 
-  def resolvePropertyFormat(jsonSchemaFormatAnnotation:Option[JsonSchemaFormat], rawClassName:String):Option[String] = {
+  def resolvePropertyFormat(jsonSchemaFormatAnnotation: Option[JsonSchemaFormat], rawClassName: String): Option[String] = {
     // Prefer format specified in annotation
     jsonSchemaFormatAnnotation.map {
       jsonSchemaFormat =>
@@ -1387,21 +1408,21 @@ class JsonSchemaGenerator
     }
   }
 
-  def resolveType(propertyType:JavaType, prop: Option[BeanProperty], objectMapper: ObjectMapper):JavaType = {
+  def resolveType(propertyType: JavaType, prop: Option[BeanProperty], objectMapper: ObjectMapper): JavaType = {
     val containedType = propertyType.containedType(0)
 
-    if ( containedType.getRawClass == classOf[Object] ) {
+    if (containedType.getRawClass == classOf[Object]) {
       // try to resolve it via @JsonDeserialize as described here: https://github.com/FasterXML/jackson-module-scala/wiki/FAQ#deserializing-optionint-and-other-primitive-challenges
       prop.flatMap {
-        p:BeanProperty =>
+        p: BeanProperty =>
           Option(p.getAnnotation(classOf[JsonDeserialize]))
       }.flatMap {
-        jsonDeserialize:JsonDeserialize =>
+        jsonDeserialize: JsonDeserialize =>
           Option(jsonDeserialize.contentAs()).map {
             clazz =>
               objectMapper.getTypeFactory.constructType(clazz)
           }
-      }.getOrElse( {
+      }.getOrElse({
         if (!config.disableWarnings) {
           log.warn(s"$prop - Contained type is java.lang.Object and we're unable to extract its Type using fallback-approach looking for @JsonDeserialize")
         }
@@ -1415,19 +1436,21 @@ class JsonSchemaGenerator
   }
 
   def generateJsonSchema[T <: Any](clazz: Class[T]): JsonNode = generateJsonSchema(clazz, None, None)
+
   def generateJsonSchema[T <: Any](javaType: JavaType): JsonNode = generateJsonSchema(javaType, None, None)
 
   // Java-API
-  def generateJsonSchema[T <: Any](clazz: Class[T], title:String, description:String): JsonNode = generateJsonSchema(clazz, Option(title), Option(description))
+  def generateJsonSchema[T <: Any](clazz: Class[T], title: String, description: String): JsonNode = generateJsonSchema(clazz, Option(title), Option(description))
+
   // Java-API
-  def generateJsonSchema[T <: Any](javaType: JavaType, title:String, description:String): JsonNode = generateJsonSchema(javaType, Option(title), Option(description))
+  def generateJsonSchema[T <: Any](javaType: JavaType, title: String, description: String): JsonNode = generateJsonSchema(javaType, Option(title), Option(description))
 
-  def generateJsonSchema[T <: Any](clazz: Class[T], title:Option[String], description:Option[String]): JsonNode = {
+  def generateJsonSchema[T <: Any](clazz: Class[T], title: Option[String], description: Option[String]): JsonNode = {
 
 
-    def tryToReMapType(originalClass: Class[_]):Class[_] = {
+    def tryToReMapType(originalClass: Class[_]): Class[_] = {
       config.classTypeReMapping.get(originalClass).map {
-        mappedToClass:Class[_] =>
+        mappedToClass: Class[_] =>
           if (debug) {
             println(s"Class $originalClass is remapped to $mappedToClass")
           }
@@ -1443,7 +1466,7 @@ class JsonSchemaGenerator
 
   }
 
-  def generateJsonSchema[T <: Any](javaType: JavaType, title:Option[String], description:Option[String]): JsonNode = {
+  def generateJsonSchema[T <: Any](javaType: JavaType, title: Option[String], description: Option[String]): JsonNode = {
 
     val rootNode = JsonNodeFactory.instance.objectNode()
 
@@ -1457,18 +1480,18 @@ class JsonSchemaGenerator
     }.flatMap {
       title =>
         // Skip it if specified to empty string
-        if ( title.isEmpty) None else Some(title)
+        if (title.isEmpty) None else Some(title)
     }.map {
       title =>
         rootNode.put("title", title)
-        // If root class is annotated with @JsonSchemaTitle, it will later override this title
+      // If root class is annotated with @JsonSchemaTitle, it will later override this title
     }
 
     // Maybe set schema description
     description.map {
       d =>
         rootNode.put("description", d)
-        // If root class is annotated with @JsonSchemaDescription, it will later override this description
+      // If root class is annotated with @JsonSchemaDescription, it will later override this description
     }
 
 
@@ -1479,15 +1502,16 @@ class JsonSchemaGenerator
     rootObjectMapper.acceptJsonFormatVisitor(javaType, rootVisitor)
 
     definitionsHandler.getFinalDefinitionsNode().foreach {
-      definitionsNode => rootNode.set("definitions", definitionsNode)
-      ()
+      definitionsNode =>
+        rootNode.set("definitions", definitionsNode)
+        ()
     }
 
     rootNode
 
   }
 
-  implicit class JsonNodeExtension(o:JsonNode) {
+  implicit class JsonNodeExtension(o: JsonNode) {
     def visit(path: String, f: (ObjectNode, String) => Unit) = {
       var p = o
 
