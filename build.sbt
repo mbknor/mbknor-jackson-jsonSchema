@@ -5,7 +5,7 @@ lazy val commonSettings = Seq(
   organization := "com.kjetland",
   organizationName := "mbknor",
   scalaVersion := "2.12.4",
-  crossScalaVersions := Seq("2.10.7", "2.11.12", "2.12.10", "2.13.1"),
+  crossScalaVersions := Seq("2.11.12", "2.12.13", "2.13.4"),
   publishMavenStyle := true,
   publishArtifact in Test := false,
   pomIncludeRepository := { _ => false },
@@ -48,10 +48,9 @@ lazy val commonSettings = Seq(
 )
 
 
-val jacksonVersion = "2.10.1"
-val jacksonModuleScalaVersion = "2.10.1"
-val slf4jVersion = "1.7.26"
-
+val jacksonVersion = "2.12.1"
+val jacksonModuleScalaVersion = "2.12.1"
+val slf4jVersion = "2.0.3"
 
 lazy val deps  = Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
