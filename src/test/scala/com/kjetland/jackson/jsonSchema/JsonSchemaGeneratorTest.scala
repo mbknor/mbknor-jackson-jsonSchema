@@ -23,6 +23,7 @@ import com.kjetland.jackson.jsonSchema.testData.polymorphism2.{Child21, Child22,
 import com.kjetland.jackson.jsonSchema.testData.polymorphism3.{Child31, Child32, Parent3}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism4.{Child41, Child42}
 import com.kjetland.jackson.jsonSchema.testData.polymorphism5.{Child51, Child52, Parent5}
+import com.kjetland.jackson.jsonSchema.testData.polymorphism6.{Child61, Parent6}
 import com.kjetland.jackson.jsonSchema.testDataScala._
 import com.kjetland.jackson.jsonSchema.testData_issue_24.EntityWrapper
 import javax.validation.groups.Default
@@ -516,6 +517,23 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
 
       val embeddedTypeName = _objectMapper.valueToTree[ObjectNode](new Parent5.Child51InnerClass()).get("clazz").asText()
       assertChild1(schema, "/oneOf", "Child51InnerClass", typeParamName = "clazz", typeName = embeddedTypeName)
+    }
+  }
+
+  test("Generate schema for interface annotated with @JsonTypeInfo - use = JsonTypeInfo.Id.MINIMAL_CLASS") {
+
+    // Java
+    {
+      val config = JsonSchemaConfig.vanillaJsonSchemaDraft4
+      val g = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+
+      val jsonNode = assertToFromJson(g, testData.child61)
+      assertToFromJson(g, testData.child61, classOf[Parent6])
+
+      val schema = generateAndValidateSchema(g, classOf[Parent6], Some(jsonNode))
+
+      assertChild1(schema, "/oneOf", "Child61", typeParamName = "clazz", typeName = ".Child61")
+      assertChild2(schema, "/oneOf", "Child62", typeParamName = "clazz", typeName = ".Child62")
     }
   }
 
@@ -1768,7 +1786,14 @@ trait TestData {
     c.child2int = 12
     c
   }
-
+  val child61 = {
+    val c = new Child61()
+    c.parentString = "pv"
+    c.child1String = "cs"
+    c.child1String2 = "cs2"
+    c.child1String3 = "cs3"
+    c
+  }
 
   val child2Scala = Child2Scala("pv", 12)
   val child1Scala = Child1Scala("pv", "cs", "cs2", "cs3")
