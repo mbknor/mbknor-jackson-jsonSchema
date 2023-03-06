@@ -42,7 +42,9 @@ public class UseItFromJavaTest {
                 new HashMap<>(),
                 null,
                 true,
-                null);
+                null,
+                null,
+                false);
         JsonSchemaGenerator g2 = new JsonSchemaGenerator(objectMapper, config);
 
 

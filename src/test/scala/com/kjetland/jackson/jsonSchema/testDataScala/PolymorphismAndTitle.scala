@@ -1,6 +1,6 @@
 package com.kjetland.jackson.jsonSchema.testDataScala
 
-import com.fasterxml.jackson.annotation.{JsonSubTypes, JsonTypeInfo}
+import com.fasterxml.jackson.annotation.{JsonPropertyDescription, JsonSubTypes, JsonTypeInfo}
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaTitle
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
@@ -10,6 +10,9 @@ import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaTitle
 trait PolymorphismAndTitleBase
 
 @JsonSchemaTitle("CustomTitle1")
+@JsonPropertyDescription("Custom title 1 description")
 case class PolymorphismAndTitle1(a:String) extends PolymorphismAndTitleBase
 
+@JsonSchemaTitle("CustomTitle2")
+@JsonPropertyDescription("Custom title 2 description")
 case class PolymorphismAndTitle2(a:String) extends PolymorphismAndTitleBase

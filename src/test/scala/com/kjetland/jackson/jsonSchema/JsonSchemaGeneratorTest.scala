@@ -176,7 +176,6 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     assert(node.at(s"/properties/$typeParamName/type").asText() == "string")
     assert(node.at(s"/properties/$typeParamName/enum/0").asText() == typeName)
     assert(node.at(s"/properties/$typeParamName/default").asText() == typeName)
-    assert(node.at(s"/title").asText() == typeName)
     assertPropertyRequired(node, typeParamName, required = true)
 
     if (html5Checks) {
@@ -1711,6 +1710,29 @@ class JsonSchemaGeneratorTest extends FunSuite with Matchers {
     // Currently there are no differences in the generated jsonSchema other than the $schema-url
   }
 
+  test("PojoWithSuperTypeProperties") {
+    val config = JsonSchemaConfig.vanillaJsonSchemaDraft4.copy(disableRefTitle = true)
+    val _jsonSchemaGenerator = new JsonSchemaGenerator(_objectMapper, debug = true, config)
+    val schema = _jsonSchemaGenerator.generateJsonSchema(classOf[PojoWithSuperTypeProperties])
+
+    println("--------------------------------------------")
+    println(asPrettyJson(schema, jsonSchemaGeneratorScala.rootObjectMapper))
+
+    assert( schema.at("/properties/prop1/oneOf/0/$ref").asText() == "#/definitions/PolymorphismAndTitle1")
+    assert( schema.at("/properties/prop1/oneOf/0/title").asText() == "")
+    assert( schema.at("/properties/prop1/oneOf/1/$ref").asText() == "#/definitions/PolymorphismAndTitle2")
+    assert( schema.at("/properties/prop1/oneOf/1/title").asText() == "")
+    assert( schema.at("/properties/prop2/oneOf/0/$ref").asText() == "#/definitions/PolymorphismAndTitle1")
+    assert( schema.at("/properties/prop2/oneOf/0/title").asText() == "")
+    assert( schema.at("/properties/prop2/oneOf/1/$ref").asText() == "#/definitions/PolymorphismAndTitle2")
+    assert( schema.at("/properties/prop2/oneOf/1/title").asText() == "")
+    assert( schema.at("/properties/prop2/title").asText() == "CustomPropTitle2")
+    assert( schema.at("/properties/prop2/description").asText() == "Custom prop title 2 description")
+    assert(schema.at("/definitions/PolymorphismAndTitle1/title").asText() == "CustomTitle1")
+    assert(schema.at("/definitions/PolymorphismAndTitle1/description").asText() == "Custom title 1 description")
+    assert(schema.at("/definitions/PolymorphismAndTitle2/title").asText() == "CustomTitle2")
+    assert(schema.at("/definitions/PolymorphismAndTitle2/description").asText() == "Custom title 2 description")
+  }
 }
 
 trait TestData {
