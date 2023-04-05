@@ -416,7 +416,7 @@ Specify draft-version in Scala:
 
 Specify draft-version in Java:
 ```java
-    JsonSchemaConfig config = JsonSchemaConfig.vanillaJsonSchemaDraft4().withJsonSchemaDraft(JsonSchemaDraft.DRAFT_07;
+    JsonSchemaConfig config = JsonSchemaConfig.vanillaJsonSchemaDraft4().withJsonSchemaDraft(JsonSchemaDraft.DRAFT_07);
     JsonSchemaGenerator generator = new JsonSchemaGenerator(objectMapper, config);
 ```
 
